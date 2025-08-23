@@ -62,6 +62,17 @@ detect_os() {
     fi
 }
 
+# Ensure the dedicated system user exists early if requested, so we can chown/clone as that user
+ensure_system_user() {
+    [ "${CREATE_USER}" = "y" ] || return 0
+    if id -u "$APP_USER" >/dev/null 2>&1; then
+        ok "User $APP_USER exists"
+        return 0
+    fi
+    say "Creating system user $APP_USER"
+    $SUDO useradd -r -m -d "/home/${APP_USER}" -s /usr/sbin/nologin "$APP_USER"
+}
+
 generate_secret() {
     # 40 chars alnum
     # Suppress potential SIGPIPE stderr from tr when head closes early
@@ -233,11 +244,12 @@ ensure_repo() {
         # If the archive extracted into a single top-level directory, flatten it
         local entries count first
         entries=$(ls -1A "${INSTALL_DIR}" | wc -l | tr -d ' ')
-        if [ "${entries}" = "1" ]; then
+    if [ "${entries}" = "1" ]; then
             first=$(ls -1A "${INSTALL_DIR}")
             if [ -d "${INSTALL_DIR}/${first}" ]; then
                 say "Flattening extracted directory ${first}"
-                $SUDO sh -c "shopt -s dotglob; mv '${INSTALL_DIR}/${first}'/* '${INSTALL_DIR}/'"
+        # Use bash for dotglob to include hidden files when moving
+        $SUDO bash -lc "shopt -s dotglob; mv '${INSTALL_DIR}/${first}'/* '${INSTALL_DIR}/'"
                 $SUDO rm -rf "${INSTALL_DIR}/${first}"
             fi
         fi
@@ -863,6 +875,8 @@ main() {
     need_sudo
     detect_os
     prompt_inputs
+    # Create system user early (if requested) so subsequent steps can run chown/clone as that user
+    ensure_system_user
     ensure_repo
     install_node
     install_postgres
