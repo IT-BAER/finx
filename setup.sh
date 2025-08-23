@@ -486,7 +486,7 @@ create_user_if_needed() {
 }
 
 create_db() {
-    say "Generating environment file at ${ENV_FILE}"
+    say "Ensuring database and user exist"
     # Build CORS_ORIGIN list: include https and http for DOMAIN, plus explicit port if non-80/443
     local ORIGINS=""
     if [ -n "${DOMAIN:-}" ]; then
@@ -602,7 +602,7 @@ install_dependencies() {
                     run_as_user "$APP_USER" bash -lc 'rm -rf build' && \
                     run_as_user "$APP_USER" npm run build && \
                     # Ensure icons and logos exist in build output (robust against toolchain changes)
-                    run_as_user "$APP_USER" bash -lc 'set -e; \
+                    run_as_user "$APP_USER" bash -lc '\
                         [ -d public/icons ] && mkdir -p build/icons && cp -rn public/icons/* build/icons/ || true; \
                         [ -d public/logos ] && mkdir -p build/logos && cp -rn public/logos/* build/logos/ || true; \
                         [ -f public/icons/favicon.ico ] && cp -n public/icons/favicon.ico build/icons/favicon.ico || true'
@@ -619,7 +619,7 @@ install_dependencies() {
                     bash -lc 'rm -rf build' && \
                     npm run build && \
                     # Ensure icons and logos exist in build output (robust against toolchain changes)
-                    bash -lc 'set -e; \
+                    bash -lc '\
                         [ -d public/icons ] && mkdir -p build/icons && cp -rn public/icons/* build/icons/ || true; \
                         [ -d public/logos ] && mkdir -p build/logos && cp -rn public/logos/* build/logos/ || true; \
                         [ -f public/icons/favicon.ico ] && cp -n public/icons/favicon.ico build/icons/favicon.ico || true'
