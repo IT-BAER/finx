@@ -527,7 +527,6 @@ footer {
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
 }
 .card:hover {
-  transform: translateY(-4px);
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
   will-change: transform;
 }
