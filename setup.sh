@@ -427,8 +427,8 @@ prompt_inputs() {
     say "Welcome to FinX installer"
     read -rp "Domain to serve frontend (blank for localhost): " DOMAIN || true
     read -rp "Backend port [5000]: " PORT || true; PORT=${PORT:-5000}
-    read -rp "Create a dedicated system user to run FinX? [y/N]: " CREATE_USER || true
-    CREATE_USER=$(echo "${CREATE_USER:-N}" | tr '[:upper:]' '[:lower:]')
+    read -rp "Create a dedicated system user to run FinX? [Y/n]: " CREATE_USER || true
+    CREATE_USER=$(echo "${CREATE_USER:-Y}" | tr '[:upper:]' '[:lower:]')
     if [ "${CREATE_USER}" = "y" ]; then
         read -rp "System username [${APP_USER_DEFAULT}]: " APP_USER || true; APP_USER=${APP_USER:-$APP_USER_DEFAULT}
     else
@@ -487,14 +487,6 @@ create_user_if_needed() {
 
 create_db() {
     say "Ensuring database and user exist"
-    # Build CORS_ORIGIN list: include https and http for DOMAIN, plus explicit port if non-80/443
-    local ORIGINS=""
-    if [ -n "${DOMAIN:-}" ]; then
-        ORIGINS="https://${DOMAIN},http://${DOMAIN}"
-        if [ -n "${FRONTEND_PORT:-}" ] && [ "${FRONTEND_PORT}" != "80" ] && [ "${FRONTEND_PORT}" != "443" ]; then
-            ORIGINS="${ORIGINS},http://${DOMAIN}:${FRONTEND_PORT}"
-        fi
-    fi
     local DB_PASS
     if run_as_user postgres psql -Atqc "SELECT 1 FROM pg_roles WHERE rolname='${DB_USER}'" | grep -q 1; then
         ok "DB user ${DB_USER} exists"
@@ -537,6 +529,14 @@ create_env() {
         return 0
     fi
     say "Generating environment file at ${ENV_FILE}"
+    # Build CORS_ORIGIN list locally (avoid relying on outer scope with set -u)
+    local ORIGINS=""
+    if [ -n "${DOMAIN:-}" ]; then
+        ORIGINS="https://${DOMAIN},http://${DOMAIN}"
+        if [ -n "${FRONTEND_PORT:-}" ] && [ "${FRONTEND_PORT}" != "80" ] && [ "${FRONTEND_PORT}" != "443" ]; then
+            ORIGINS="${ORIGINS},http://${DOMAIN}:${FRONTEND_PORT}"
+        fi
+    fi
     local JWT_SECRET
     JWT_SECRET=$(generate_secret)
     $SUDO mkdir -p "$ENV_DIR"
