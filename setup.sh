@@ -527,6 +527,8 @@ install_dependencies() {
                     else
                         run_as_user "$APP_USER" npm install
                     fi && \
+                    # Ensure previous build output is removed to avoid stale precache entries
+                    run_as_user "$APP_USER" bash -lc 'rm -rf build' && \
                     run_as_user "$APP_USER" npm run build && \
                     # Ensure icons and logos exist in build output (robust against toolchain changes)
                     run_as_user "$APP_USER" bash -lc 'set -e; \
@@ -542,6 +544,8 @@ install_dependencies() {
                     else
                         npm install
                     fi && \
+                    # Ensure previous build output is removed to avoid stale precache entries
+                    bash -lc 'rm -rf build' && \
                     npm run build && \
                     # Ensure icons and logos exist in build output (robust against toolchain changes)
                     bash -lc 'set -e; \
@@ -686,19 +690,32 @@ server {
 
     # PWA files
     location = /manifest.webmanifest {
-    # Scope MIME override to this location only
-    types { }
-    default_type application/manifest+json;
-    try_files $uri /manifest.webmanifest =404;
+        # Scope MIME override to this location only
+        types { }
+        default_type application/manifest+json;
+        add_header Cache-Control "no-cache, no-store, must-revalidate";
+        expires -1;
+        try_files $uri /manifest.webmanifest =404;
     }
     # Hashed manifest emitted by VitePWA lives under /assets
     location ~ ^/assets/.*\.webmanifest$ {
         types { }
         default_type application/manifest+json;
+        add_header Cache-Control "no-cache, no-store, must-revalidate";
+        expires -1;
         try_files $uri =404;
     }
-        location = /sw.js { try_files $uri /sw.js =404; }
-        location = /workbox-5e62206c.js { try_files $uri /workbox-5e62206c.js =404; }
+        # Service worker should never be cached aggressively to allow instant updates
+        location = /sw.js {
+            add_header Cache-Control "no-cache, no-store, must-revalidate";
+            expires -1;
+            try_files $uri /sw.js =404;
+        }
+        location ~ ^/workbox-.*\.js$ {
+            add_header Cache-Control "no-cache, no-store, must-revalidate";
+            expires -1;
+            try_files $uri =404;
+        }
 
         # API proxy
         location /api/ {
@@ -724,7 +741,12 @@ server {
 
         # SPA fallback
     location / {
-        try_files $uri /index.html;
+            try_files $uri /index.html;
+            # Prevent caching HTML so clients pick up new asset URLs immediately
+            location ~* \.html$ {
+                add_header Cache-Control "no-cache, no-store, must-revalidate";
+                expires -1;
+            }
     }
 }
 EOF

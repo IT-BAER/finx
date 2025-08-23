@@ -112,7 +112,8 @@ export default defineConfig(({ mode }) => {
             },
             {
               urlPattern: /\.(?:js|css)$/,
-              handler: "CacheFirst",
+              // Prefer StaleWhileRevalidate so new versions are picked up quickly
+              handler: "StaleWhileRevalidate",
               options: {
                 cacheName: "static-resources",
                 expiration: {
