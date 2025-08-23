@@ -46,10 +46,10 @@ Modern, offline-capable personal finance app with sharing, recurring transaction
 
 ## 🧰 Requirements
 
-- Docker Desktop (Windows/macOS) or Docker Engine (Linux) with Docker Compose v2
-- Open ports: 3000 (frontend), 5000 (backend)
-- Internet access to pull images; ~300MB+ free disk space for images and DB volume
-- Optional for development (not required for Docker run): Node.js 20+
+- Docker Desktop (Windows/macOS) or Docker Engine (Linux) with Docker Compose (for Docker Setup)
+- Debian/Ubuntu (for non-Docker Setup)
+- Open ports: 3000 (frontend)
+- ~300MB+ free disk space for images and DB volume
 
 <br>
 
