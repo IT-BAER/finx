@@ -16,6 +16,7 @@ Modern, offline-capable personal finance app with sharing, recurring transaction
 
 <p align="center">
    <a href="#-key-features">✨ Features</a> •
+   <a href="#-tech-stack">🧱 Tech Stack</a> •
    <a href="#-requirements">🧰 Requirements</a> •
    <a href="#-quick-install">🚀 Install</a> •
    <a href="#-management">🛠️ Management</a> •
@@ -203,6 +204,45 @@ npm run migrate-db
 | WSL2 (dev) | Ubuntu 22.04 | ✅ | ✅ | ✅ |
 | Android (Chrome) | 16 | ✅ | ✅ | ✅ |
 | Chrome (Desktop) | latest | ✅ | ✅ | ✅ |
+
+<br>
+
+## 🧱 Tech Stack
+
+### Frontend
+
+- React 19 + Vite 6 (fast dev/build)
+- React Router 7 (routing)
+- Tailwind CSS 3, PostCSS, Autoprefixer (styling)
+- Framer Motion 12 (micro‑interactions/animations)
+- Chart.js 4 + react-chartjs-2 + chartjs-plugin-datalabels (charts)
+- Styled‑components 6 (styled Button and small UI pieces)
+- Swiper 10 (mobile swipeable page navigation)
+- react-hot-toast (notifications)
+- PWA via Vite Plugin PWA (Workbox under the hood, offline caching + update prompts)
+
+### Backend
+
+- Node.js 20, Express 4 (REST API)
+- PostgreSQL via `pg` 8
+- AuthN/AuthZ: JWT (`jsonwebtoken`) with password hashing (`bcryptjs`)
+- Security and hardening: `helmet`, `cors`, `express-rate-limit`, `compression`
+- Background jobs: lightweight in‑process scheduler (`services/scheduler.js`) and recurring transaction processor (`services/recurringProcessor.js`)
+
+### Architecture & Conventions
+
+- Express routes → controllers → models; DB in `config/db.js`
+- Auth middleware in `middleware/auth.js`; optional `DEV_MODE` for local auto‑login
+- Sharing/permissions in `utils/access.js` and `models/SharingPermission.js`; controllers compute `can_edit`
+- Frontend API client in `frontend/src/services/api.jsx` (axios, JWT header, 401 redirect)
+- Offline layer in `frontend/src/services/offlineAPI.js` (GET caching + queued mutations)
+- Vite dev proxy `/api` → backend (see `frontend/vite.config.js`)
+
+### Tooling & Ops
+
+- Docker Compose for local/prod deployments; Nginx serves built frontend (see `frontend/nginx.conf`)
+- Scripts: DB migrate/init (`scripts/migrate-db.js`, `scripts/init-db.js`), dev runner (`scripts/dev-start.js`)
+- Debian/Ubuntu installer (`setup.sh`) and uninstaller (`uninstall.sh`) with optional web server config
 
 <br>
 
