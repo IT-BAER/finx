@@ -23,6 +23,7 @@ SERVICE_FILE="/etc/systemd/system/${APP_NAME}.service"
 NGINX_SITE_AVAILABLE="/etc/nginx/sites-available/${APP_NAME}.conf"
 NGINX_SITE_ENABLED="/etc/nginx/sites-enabled/${APP_NAME}.conf"
 FRONTEND_PORT=""
+UPDATE_MODE="n"
 
 BLUE="\033[1;34m"; GREEN="\033[1;32m"; YELLOW="\033[1;33m"; RED="\033[1;31m"; NC="\033[0m"
 say() { echo -e "${BLUE}⇒${NC} $*"; }
@@ -101,6 +102,37 @@ ensure_tool() {
             git) ensure_pkg git ;;
             *) ensure_pkg "$tool" ;;
         esac
+    fi
+}
+
+# Load existing settings for non-interactive updates
+load_existing_settings() {
+    say "Existing installation detected; running update with current settings"
+    # Load env if present
+    if [ -f "$ENV_FILE" ]; then
+        # shellcheck disable=SC1090
+        source "$ENV_FILE"
+        PORT=${PORT:-5000}
+        DB_NAME=${DB_NAME:-finx_db}
+        DB_USER=${DB_USER:-finx_user}
+        export DB_PASSWORD=${DB_PASSWORD:-}
+    fi
+    # Determine service user
+    if [ -f "$SERVICE_FILE" ]; then
+        local SVC_USER
+        SVC_USER=$(grep -E '^User=' "$SERVICE_FILE" | tail -n1 | cut -d'=' -f2 || true)
+        if [ -n "$SVC_USER" ]; then
+            CREATE_USER=y
+            APP_USER="$SVC_USER"
+        fi
+    fi
+    # Detect existing web server in use
+    if [ -f "/etc/nginx/sites-available/${APP_NAME}.conf" ]; then
+        WEB_SERVER=nginx
+    elif [ -f "/etc/apache2/sites-available/${APP_NAME}.conf" ]; then
+        WEB_SERVER=apache
+    else
+        WEB_SERVER=none
     fi
 }
 
@@ -278,6 +310,24 @@ ensure_repo() {
     if [ -d "${INSTALL_DIR}/.git" ]; then
         ok "Existing git repo found at ${INSTALL_DIR}"
         APP_DIR="${INSTALL_DIR}"
+        # Update flow: fetch latest and checkout desired ref
+        if [ -z "${REF}" ]; then
+            say "Fetching latest tags for update"
+            ( cd "${INSTALL_DIR}" && git fetch --tags --prune ) || true
+            local LATEST_TAG
+            LATEST_TAG=$(cd "${INSTALL_DIR}" && git tag --list | sort -V | tail -n1 || true)
+            if [ -n "${LATEST_TAG}" ]; then
+                REF="${LATEST_TAG}"
+                ok "Updating to latest release tag: ${REF}"
+            else
+                warn "No tags found locally; pulling default branch"
+            fi
+        fi
+        if [ -n "${REF}" ]; then
+            ( cd "${INSTALL_DIR}" && git checkout -q "${REF}" ) || true
+        else
+            ( cd "${INSTALL_DIR}" && git pull --ff-only || true )
+        fi
         return 0
     fi
 
@@ -365,7 +415,15 @@ create_user_if_needed() {
 }
 
 create_db() {
-    say "Configuring PostgreSQL database and role"
+    say "Generating environment file at ${ENV_FILE}"
+    # Build CORS_ORIGIN list: include https and http for DOMAIN, plus explicit port if non-80/443
+    local ORIGINS=""
+    if [ -n "${DOMAIN:-}" ]; then
+        ORIGINS="https://${DOMAIN},http://${DOMAIN}"
+        if [ -n "${FRONTEND_PORT:-}" ] && [ "${FRONTEND_PORT}" != "80" ] && [ "${FRONTEND_PORT}" != "443" ]; then
+            ORIGINS="${ORIGINS},http://${DOMAIN}:${FRONTEND_PORT}"
+        fi
+    fi
     local DB_PASS
     if run_as_user postgres psql -Atqc "SELECT 1 FROM pg_roles WHERE rolname='${DB_USER}'" | grep -q 1; then
         ok "DB user ${DB_USER} exists"
@@ -402,6 +460,11 @@ SQL
 }
 
 create_env() {
+    # If env already exists in update mode, keep it
+    if [ "$UPDATE_MODE" = "y" ] && [ -f "$ENV_FILE" ]; then
+        ok "Keeping existing environment file at ${ENV_FILE}"
+        return 0
+    fi
     say "Generating environment file at ${ENV_FILE}"
     local JWT_SECRET
     JWT_SECRET=$(generate_secret)
@@ -422,7 +485,7 @@ DB_PASSWORD=${DB_PASSWORD}
 JWT_SECRET=${JWT_SECRET}
 
 # CORS
-CORS_ORIGIN=${DOMAIN}
+CORS_ORIGIN=${ORIGINS}
 
 # Feature flags
 DISABLE_REGISTRATION=true
@@ -549,6 +612,11 @@ EOF
 
 create_nginx_site() {
     [ "${WEB_SERVER}" = "nginx" ] || return 0
+    # Skip if site already exists (update mode)
+    if [ -f "${NGINX_SITE_AVAILABLE}" ]; then
+        ok "Nginx site already present; skipping reconfiguration"
+        return 0
+    fi
     say "Configuring Nginx site"
     local SERVER_NAME
     SERVER_NAME=${DOMAIN:-_}
@@ -675,6 +743,11 @@ EOF
 
 create_apache_site() {
     [ "${WEB_SERVER}" = "apache" ] || return 0
+    # Skip if site already exists (update mode)
+    if [ -f "/etc/apache2/sites-available/${APP_NAME}.conf" ]; then
+        ok "Apache site already present; skipping reconfiguration"
+        return 0
+    fi
     say "Configuring Apache site"
     local SERVER_NAME
     SERVER_NAME=${DOMAIN:-localhost}
@@ -874,7 +947,12 @@ summary() {
 main() {
     need_sudo
     detect_os
-    prompt_inputs
+    if [ -f "$ENV_FILE" ] || [ -f "$SERVICE_FILE" ]; then
+        UPDATE_MODE="y"
+        load_existing_settings
+    else
+        prompt_inputs
+    fi
     # Create system user early (if requested) so subsequent steps can run chown/clone as that user
     ensure_system_user
     ensure_repo
@@ -890,8 +968,12 @@ main() {
     run_migrations
     seed_admin_and_capture_credentials
     create_systemd_service
-    create_nginx_site
-    create_apache_site
+    if [ "$UPDATE_MODE" != "y" ]; then
+        create_nginx_site
+        create_apache_site
+    else
+        ok "Skipping web server site creation (update mode)"
+    fi
     start_services
     summary
 }
