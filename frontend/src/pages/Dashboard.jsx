@@ -417,7 +417,8 @@ const Dashboard = () => {
       legend: {
         position: "right",
         labels: {
-          color: isDarkMode ? "#ffffff" : "#374151", // White in dark mode, darker gray in light mode for contrast
+          // Lighten legend label colors for better readability in the card
+          color: isDarkMode ? "#f3f4f6" : "#4b5563",
           font: {
             size: 12,
             weight: "600",
