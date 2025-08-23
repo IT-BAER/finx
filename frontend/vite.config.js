@@ -22,7 +22,52 @@ export default defineConfig(({ mode }) => {
           "apple-touch-icon.png",
           "masked-icon.svg",
         ],
-        manifest: true,
+        // Explicit manifest so installed app name is "FinX"
+        manifest: {
+          name: "FinX - Personal Finance Tracker",
+          short_name: "FinX",
+          description:
+            "Modern personal finance tracking application with comprehensive analytics and budgeting tools",
+          start_url: "/",
+          scope: "/",
+          display: "standalone",
+          orientation: "portrait-primary",
+          theme_color: "#2563eb",
+          background_color: "#ffffff",
+          lang: "en",
+          dir: "ltr",
+          categories: ["finance", "productivity", "business"],
+          icons: [
+            { src: "/icons/favicon.ico", sizes: "16x16", type: "image/x-icon" },
+            { src: "/logos/logo-32.png", sizes: "32x32", type: "image/png", purpose: "any" },
+            { src: "/logos/logo-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
+            { src: "/logos/logo-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
+            { src: "/logos/logo-192-maskable.png", sizes: "192x192", type: "image/png", purpose: "maskable" },
+            { src: "/logos/logo-512-maskable.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
+          ],
+          shortcuts: [
+            {
+              name: "Add Transaction",
+              short_name: "Add",
+              description: "Quickly add a new transaction",
+              url: "/add-transaction",
+              icons: [{ src: "/icons/add.svg", sizes: "96x96" }],
+            },
+            {
+              name: "View Reports",
+              short_name: "Reports",
+              description: "View financial reports and analytics",
+              url: "/reports",
+              icons: [{ src: "/icons/chart.svg", sizes: "96x96" }],
+            },
+          ],
+          share_target: {
+            action: "/add-transaction",
+            method: "GET",
+            enctype: "application/x-www-form-urlencoded",
+            params: { title: "title", text: "text", url: "url" },
+          },
+        },
         workbox: {
           globPatterns: [
             "**/*.{js,css,html,ico,png,svg,woff2,webmanifest}",
