@@ -14,6 +14,9 @@ APP_USER_DEFAULT="finx"
 APP_DIR="$(cd "$(dirname "$0")" && pwd)"
 INSTALL_DIR_DEFAULT="/opt/${APP_NAME}"
 REPO_URL_DEFAULT="https://g.it-baer.net/IT-BAER/finx.git"
+# Optional versioning controls (can be provided via environment)
+# FINX_REF: branch, tag, or commit to install (e.g., v1.2.3)
+# FINX_ARCHIVE_URL: URL to a release archive (.tar.gz/.tgz/.zip) to install
 ENV_DIR="/etc/${APP_NAME}"
 ENV_FILE="${ENV_DIR}/${APP_NAME}.env"
 SERVICE_FILE="/etc/systemd/system/${APP_NAME}.service"
@@ -73,6 +76,20 @@ ensure_pkg() {
         $SUDO DEBIAN_FRONTEND=noninteractive apt-get install -y "$pkg"
     else
         ok "$pkg already installed"
+    fi
+}
+
+ensure_tool() {
+    # Ensure a generic tool exists (curl, unzip, tar are typically present)
+    local tool="$1"
+    if ! command -v "$tool" >/dev/null 2>&1; then
+        case "$tool" in
+            curl) ensure_pkg curl ;;
+            unzip) ensure_pkg unzip ;;
+            tar) ensure_pkg tar ;;
+            git) ensure_pkg git ;;
+            *) ensure_pkg "$tool" ;;
+        esac
     fi
 }
 
@@ -166,31 +183,107 @@ choose_frontend_port() {
 }
 
 ensure_repo() {
-    # When executed via curl|bash, APP_DIR won’t contain the repo; clone it
+    # When executed inside a checked-out tree, use it as-is
     if [ -f "${APP_DIR}/package.json" ] && [ -f "${APP_DIR}/server.js" ]; then
         ok "Repository detected at ${APP_DIR}"
         return 0
     fi
 
-    local INSTALL_DIR REPO_URL
+    local INSTALL_DIR REPO_URL ARCHIVE_URL REF TMP
     INSTALL_DIR="${FINX_INSTALL_DIR:-${INSTALL_DIR_DEFAULT}}"
     REPO_URL="${FINX_REPO_URL:-${REPO_URL_DEFAULT}}"
+    ARCHIVE_URL="${FINX_ARCHIVE_URL:-}"
+    REF="${FINX_REF:-}"
 
-    ensure_pkg git
-    say "Cloning FinX repo to ${INSTALL_DIR}"
     $SUDO mkdir -p "${INSTALL_DIR}"
     if [ "${CREATE_USER}" = "y" ]; then
         $SUDO chown -R "${APP_USER}:${APP_USER}" "${INSTALL_DIR}"
-        if [ ! -d "${INSTALL_DIR}/.git" ]; then
-            run_as_user "${APP_USER}" git clone --depth 1 "${REPO_URL}" "${INSTALL_DIR}"
+    fi
+
+    # Path A: Install from a release/archive if provided
+    if [ -n "${ARCHIVE_URL}" ]; then
+        say "Fetching release archive to ${INSTALL_DIR}"
+        ensure_tool curl
+        ensure_tool file
+        # Determine filename
+        TMP=$(mktemp -t finx-archive-XXXX)
+        # Download as the target user if created, else as current user
+        if [ "${CREATE_USER}" = "y" ]; then
+            run_as_user "${APP_USER}" curl -fsSL "${ARCHIVE_URL}" -o "${TMP}"
         else
-            ok "Existing git repo found at ${INSTALL_DIR}"
+            curl -fsSL "${ARCHIVE_URL}" -o "${TMP}"
+        fi
+        # Detect archive type and extract
+        if file -b "${TMP}" | grep -qi 'gzip\|tar'; then
+            ensure_tool tar
+            if [ "${CREATE_USER}" = "y" ]; then
+                run_as_user "${APP_USER}" tar -xzf "${TMP}" -C "${INSTALL_DIR}"
+            else
+                tar -xzf "${TMP}" -C "${INSTALL_DIR}"
+            fi
+        else
+            ensure_tool unzip
+            if [ "${CREATE_USER}" = "y" ]; then
+                run_as_user "${APP_USER}" unzip -q "${TMP}" -d "${INSTALL_DIR}"
+            else
+                unzip -q "${TMP}" -d "${INSTALL_DIR}"
+            fi
+        fi
+        rm -f "${TMP}"
+        # If the archive extracted into a single top-level directory, flatten it
+        local entries count first
+        entries=$(ls -1A "${INSTALL_DIR}" | wc -l | tr -d ' ')
+        if [ "${entries}" = "1" ]; then
+            first=$(ls -1A "${INSTALL_DIR}")
+            if [ -d "${INSTALL_DIR}/${first}" ]; then
+                say "Flattening extracted directory ${first}"
+                $SUDO sh -c "shopt -s dotglob; mv '${INSTALL_DIR}/${first}'/* '${INSTALL_DIR}/'"
+                $SUDO rm -rf "${INSTALL_DIR}/${first}"
+            fi
+        fi
+        APP_DIR="${INSTALL_DIR}"
+        ok "Using APP_DIR=${APP_DIR} (from archive)"
+        return 0
+    fi
+
+    # Path B: Git clone (optionally at a ref)
+    # If no ref provided, try to detect latest tagged release
+    if [ -z "${REF}" ]; then
+        ensure_tool git
+        say "Detecting latest release tag from ${REPO_URL}"
+        local LATEST_TAG
+        LATEST_TAG=$(git ls-remote --tags --refs "${REPO_URL}" 2>/dev/null | awk '{print $2}' | sed 's#refs/tags/##' | sort -V | tail -n1 || true)
+        if [ -n "${LATEST_TAG}" ]; then
+            REF="${LATEST_TAG}"
+            ok "Using latest release tag: ${REF}"
+        else
+            warn "No tags detected; falling back to default branch"
+        fi
+    fi
+
+    ensure_tool git
+    say "Cloning FinX repo to ${INSTALL_DIR}${REF:+ (ref: ${REF})}"
+    if [ -d "${INSTALL_DIR}/.git" ]; then
+        ok "Existing git repo found at ${INSTALL_DIR}"
+        APP_DIR="${INSTALL_DIR}"
+        return 0
+    fi
+
+    if [ -n "${REF}" ]; then
+        # Clone and checkout specific ref (branch, tag, or commit)
+        if [ "${CREATE_USER}" = "y" ]; then
+            run_as_user "${APP_USER}" git clone "${REPO_URL}" "${INSTALL_DIR}"
+            ( cd "${INSTALL_DIR}" && run_as_user "${APP_USER}" git checkout "${REF}" )
+        else
+            git clone "${REPO_URL}" "${INSTALL_DIR}"
+            ( cd "${INSTALL_DIR}" && git checkout "${REF}" )
         fi
     else
-        if [ ! -d "${INSTALL_DIR}/.git" ]; then
-            git clone --depth 1 "${REPO_URL}" "${INSTALL_DIR}"
+        # Default shallow clone of default branch for speed
+        if [ "${CREATE_USER}" = "y" ]; then
+            run_as_user "${APP_USER}" git clone --depth 1 "${REPO_URL}" "${INSTALL_DIR}"
         else
-            ok "Existing git repo found at ${INSTALL_DIR}"
+            git clone --depth 1 "${REPO_URL}" "${INSTALL_DIR}"
         fi
     fi
     APP_DIR="${INSTALL_DIR}"

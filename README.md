@@ -86,6 +86,19 @@ sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/IT-BAER/finx/main/s
 
 What it does: installs Node.js LTS and PostgreSQL, creates DB/user, writes `/etc/finx/finx.env`, builds the frontend, creates a `systemd` service `finx.service`, and configures Nginx or Apache on request. See `docs/DEPLOY-DEBIAN.md` for details.
 
+Release installs (optional):
+- Specific tag/commit via git: set `FINX_REF=v1.2.3` (or a commit) before running the installer.
+- Release archive: set `FINX_ARCHIVE_URL=https://.../finx-v1.2.3.tar.gz` to install from a tar/zip archive.
+
+Examples:
+```bash
+# Install a specific release tag
+FINX_REF=v1.2.3 bash setup.sh
+
+# Install from an archive URL (tar.gz or zip)
+FINX_ARCHIVE_URL=https://example.com/finx-v1.2.3.tar.gz bash setup.sh
+```
+
 <br>
 
 ### 💻 Development (Windows/macOS/Linux)

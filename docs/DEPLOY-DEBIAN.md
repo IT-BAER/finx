@@ -17,6 +17,20 @@ What it does:
 - Creates `finx.service` and starts it
 - Configures Nginx to serve `frontend/build` and proxy `/api` (optional)
 
+### Installing a specific release (optional)
+
+You can pin the installer to a tag/commit or provide a release archive URL:
+
+```bash
+# Tag or commit
+FINX_REF=v1.2.3 sudo bash setup.sh
+
+# Archive (.tar.gz or .zip)
+FINX_ARCHIVE_URL=https://your-host/finx-v1.2.3.tar.gz sudo bash setup.sh
+```
+
+If you run the installer from within a working tree (already checked out tag/commit), it will use the current directory without cloning.
+
 ## Service commands
 
 - Check status: `sudo systemctl status finx`
