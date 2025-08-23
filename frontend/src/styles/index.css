@@ -518,17 +518,17 @@ footer {
 }
 
 /* Modern Card Styles (optimized for performance)
-   - Use a single soft shadow and transform lift on hover.
+   - Keep only shadow change on hover (no scale/transform).
    - Avoid multi-layer heavy shadows that force expensive paints.
 */
 .card {
-  @apply rounded-xl transition-transform duration-200 overflow-hidden;
+  @apply rounded-xl overflow-hidden;
   background-color: var(--surface);
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
+  transition: box-shadow 200ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 .card:hover {
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
-  will-change: transform;
 }
 
 .card-header {
