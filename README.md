@@ -211,7 +211,9 @@ npm run migrate-db
 
 ## 📄 License
 
-No license specified yet.
+Apache-2.0 with the “Commons Clause” restriction. You may use, copy, modify, fork, and redistribute the software under Apache-2.0 terms, except you may not “Sell” the software. “Sell” includes selling access, reselling, sublicensing, or offering the software as a hosted/managed service where the value derives substantially from the software, without a commercial license from IT-BAER.
+
+See full terms in `LICENSE` (Commons Clause v1.0 + Apache-2.0). The package manifests use `"SEE LICENSE IN LICENSE"` to reflect this composite license.
 
 <br>
 

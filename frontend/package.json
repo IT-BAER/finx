@@ -3,6 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
+  "license": "SEE LICENSE IN LICENSE",
   "scripts": {
     "start": "vite",
     "build": "vite build",
