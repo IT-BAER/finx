@@ -602,10 +602,7 @@ install_dependencies() {
                     run_as_user "$APP_USER" bash -lc 'rm -rf build' && \
                     run_as_user "$APP_USER" npm run build && \
                     # Ensure icons and logos exist in build output (robust against toolchain changes)
-                    run_as_user "$APP_USER" bash -lc '\
-                        [ -d public/icons ] && mkdir -p build/icons && cp -rn public/icons/* build/icons/ || true; \
-                        [ -d public/logos ] && mkdir -p build/logos && cp -rn public/logos/* build/logos/ || true; \
-                        [ -f public/icons/favicon.ico ] && cp -n public/icons/favicon.ico build/icons/favicon.ico || true'
+                    run_as_user "$APP_USER" bash -lc '[ -d public/icons ] && mkdir -p build/icons && cp -rn public/icons/* build/icons/ || true; [ -d public/logos ] && mkdir -p build/logos && cp -rn public/logos/* build/logos/ || true; [ -f public/icons/favicon.ico ] && cp -n public/icons/favicon.ico build/icons/favicon.ico || true'
                 )
     else
                 (
@@ -619,10 +616,7 @@ install_dependencies() {
                     bash -lc 'rm -rf build' && \
                     npm run build && \
                     # Ensure icons and logos exist in build output (robust against toolchain changes)
-                    bash -lc '\
-                        [ -d public/icons ] && mkdir -p build/icons && cp -rn public/icons/* build/icons/ || true; \
-                        [ -d public/logos ] && mkdir -p build/logos && cp -rn public/logos/* build/logos/ || true; \
-                        [ -f public/icons/favicon.ico ] && cp -n public/icons/favicon.ico build/icons/favicon.ico || true'
+                    bash -lc '[ -d public/icons ] && mkdir -p build/icons && cp -rn public/icons/* build/icons/ || true; [ -d public/logos ] && mkdir -p build/logos && cp -rn public/logos/* build/logos/ || true; [ -f public/icons/favicon.ico ] && cp -n public/icons/favicon.ico build/icons/favicon.ico || true'
                 )
     fi
     ok "Dependencies installed and frontend built"
