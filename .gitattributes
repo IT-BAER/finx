@@ -1,0 +1,18 @@
+# Normalize text files; Git will handle line endings appropriately per OS
+* text=auto
+
+# Always use LF for scripts and config that run on Linux servers
+*.sh text eol=lf
+*.bash text eol=lf
+Dockerfile* text eol=lf
+*.sql text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+
+# Treat common binary assets as binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary

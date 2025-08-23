@@ -1,0 +1,152 @@
+const db = require("../config/db");
+const RecurringTransaction = require("../models/RecurringTransaction");
+const Transaction = require("../models/Transaction");
+
+/**
+ * Compute the next occurrence date for a recurring entry based on recurrence_type and interval
+ * recurrence_type: 'daily' | 'weekly' | 'monthly' | 'yearly'
+ */
+function computeNextDate(
+  startDate,
+  occurrencesCreated,
+  recurrenceType,
+  interval,
+) {
+  const base = new Date(startDate);
+  let next = new Date(base);
+  if (!Number.isInteger(occurrencesCreated)) occurrencesCreated = 0;
+  const step = Number(interval) || 1;
+  switch ((recurrenceType || "").toLowerCase()) {
+    case "daily":
+      next.setDate(base.getDate() + occurrencesCreated * step + step);
+      break;
+    case "weekly":
+      next.setDate(base.getDate() + (occurrencesCreated * step + step) * 7);
+      break;
+    case "monthly":
+      next.setMonth(base.getMonth() + occurrencesCreated * step + step);
+      break;
+    case "yearly":
+      next.setFullYear(base.getFullYear() + occurrencesCreated * step + step);
+      break;
+    default:
+      // default to monthly
+      next.setMonth(base.getMonth() + occurrencesCreated * step + step);
+      break;
+  }
+  // Normalize time to start of day
+  next.setHours(0, 0, 0, 0);
+  return next;
+}
+
+async function processRecurringJobs() {
+  console.log("Recurring processor: scanning for due recurring entries...");
+
+  // Process recurring rules in batches to avoid loading all rows into memory.
+  // Only consider rules that could be due (start_date <= today, not ended, not exhausted).
+  const now = new Date();
+  const BATCH_SIZE = 200;
+  let offset = 0;
+
+  let createdCount = 0;
+  let skippedFuture = 0;
+  let exhausted = 0;
+  let errors = 0;
+
+  while (true) {
+    const res = await db.query(
+      `SELECT *
+       FROM recurring_transactions
+       WHERE start_date <= CURRENT_DATE
+         AND (end_date IS NULL OR end_date >= CURRENT_DATE)
+         AND (max_occurrences IS NULL OR occurrences_created < max_occurrences)
+       ORDER BY id
+       LIMIT $1 OFFSET $2`,
+      [BATCH_SIZE, offset],
+    );
+
+    const rows = res.rows;
+    if (!rows || rows.length === 0) break;
+
+    for (const r of rows) {
+      try {
+        const occurrences = r.occurrences_created || 0;
+        const nextDate = computeNextDate(
+          r.start_date,
+          occurrences,
+          r.recurrence_type,
+          r.recurrence_interval || 1,
+        );
+
+        // skip if nextDate in future
+        if (nextDate > now) {
+          skippedFuture++;
+          continue;
+        }
+
+        // check end_date and max_occurrences defensively (extra safety)
+        if (r.end_date && new Date(r.end_date) < nextDate) {
+          exhausted++;
+          continue;
+        }
+        if (r.max_occurrences && occurrences >= r.max_occurrences) {
+          exhausted++;
+          continue;
+        }
+
+        // Check whether a transaction for this recurring id and occurrence date already exists
+        const existsQ = await db.query(
+          "SELECT 1 FROM transactions WHERE user_id = $1 AND amount = $2 AND date = $3 LIMIT 1",
+          [r.user_id, r.amount, nextDate],
+        );
+  if (existsQ.rows.length > 0) {
+          // Avoid duplicate creation; increment occurrences and set last_run
+          await RecurringTransaction.markRun(r.id, now);
+          continue;
+        }
+
+        // Create a new transaction record for this occurrence
+        const created = await Transaction.create(
+          r.user_id,
+          r.category_id,
+          null, // source_id - keep null because recurring stores source name, not id
+          null, // target_id
+          r.amount,
+          r.type,
+          r.description,
+          nextDate,
+        );
+
+        // Link the created transaction to the recurring rule by setting transaction_id for initial record
+        // Only set transaction_id if recurring.record.transaction_id is null
+        if (!r.transaction_id) {
+          await db.query(
+            "UPDATE recurring_transactions SET transaction_id = $1 WHERE id = $2",
+            [created.id, r.id],
+          );
+        }
+
+  // Mark the run (increment occurrences_created and set last_run)
+        await RecurringTransaction.markRun(r.id, now);
+  createdCount++;
+
+        console.log(
+          `Recurring processor: created transaction ${created.id} for recurring ${r.id} on ${nextDate.toISOString().substring(0, 10)}`,
+        );
+      } catch (e) {
+        console.error("Error processing recurring entry", r.id, e);
+        errors++;
+      }
+    }
+
+    // If we received less than a full batch, we've reached the end.
+    if (rows.length < BATCH_SIZE) break;
+    offset += rows.length;
+  }
+  return { created: createdCount, skippedFuture, exhausted, errors };
+}
+
+module.exports = {
+  processRecurringJobs,
+  computeNextDate,
+};

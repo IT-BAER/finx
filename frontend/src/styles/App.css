@@ -1,0 +1,436 @@
+.App {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+/* Override for content-based sizing on mobile */
+@media (max-width: 768px) {
+  .App {
+    min-height: 100vh;
+  }
+}
+
+/* Icon utilities for public/icons usage */
+.icon {
+  display: inline-block;
+  vertical-align: middle;
+  object-fit: contain;
+}
+
+/* Size utilities */
+.icon-sm {
+  width: 20px;
+  height: 20px;
+}
+.icon-md {
+  width: 22px;
+  height: 22px;
+}
+.icon-lg {
+  width: 26px;
+  height: 26px;
+}
+
+/* Consistent icon wrapper backgrounds (square/circle) */
+.icon-wrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  border-radius: 12px; /* default rounded rectangle */
+  background-color: rgba(229, 231, 235, 1); /* gray-200 */
+}
+.dark .icon-wrap {
+  background-color: rgba(75, 85, 99, 1); /* gray-600 */
+}
+
+/* Size-specific wraps to ensure perfect 1:1 containers */
+.icon-wrap-sm {
+  width: 28px;
+  height: 28px;
+} /* 20px icon with padding */
+.icon-wrap-md {
+  width: 40px;
+  height: 40px;
+} /* 24px icon with breathing room */
+.icon-wrap-lg {
+  width: 48px;
+  height: 48px;
+} /* 32px icon */
+
+.icon-wrap-circle {
+  border-radius: 9999px;
+} /* make it a perfect circle */
+
+/* Theme-tintable icons:
+   Use with <img class="icon icon-sm icon-tint" src="...svg" />
+   The SVGs should either be mono (black) or use currentColor to allow tinting.
+*/
+.icon-tint {
+  filter: var(--icon-filter, none);
+  transition: filter 0.15s ease-in-out;
+}
+
+/* App brand accent (blue) and neutrals */
+:root {
+  /* Base neutral for light mode (no green/brown cast) */
+  --icon-filter: invert(22%) sepia(4%) saturate(232%) hue-rotate(178deg)
+    brightness(92%) contrast(90%);
+  /* Blue accent for light mode (edit/primary actions) */
+  --icon-filter-accent: invert(26%) sepia(94%) saturate(1649%)
+    hue-rotate(199deg) brightness(94%) contrast(96%);
+}
+.dark :root,
+.dark {
+  /* Base neutral for dark mode (near-white) */
+  --icon-filter: invert(100%) sepia(0%) saturate(2%) hue-rotate(182deg)
+    brightness(118%) contrast(100%);
+  /* Blue accent for dark mode (slightly brighter) */
+  --icon-filter-accent: invert(67%) sepia(77%) saturate(640%) hue-rotate(188deg)
+    brightness(111%) contrast(101%);
+}
+
+/* High-contrast neutral for critical/primary visibility */
+/* High-contrast neutral for critical/primary visibility */
+.icon-tint-strong {
+  filter: var(--icon-filter-strong, var(--icon-filter, none));
+  transition:
+    filter 0.15s ease-in-out,
+    opacity 0.15s ease-in-out;
+}
+:root {
+  /* Light strong neutral */
+  --icon-filter-strong: invert(9%) sepia(3%) saturate(462%) hue-rotate(182deg)
+    brightness(92%) contrast(96%);
+}
+.dark :root,
+.dark {
+  /* Dark strong neutral */
+  --icon-filter-strong: invert(100%) sepia(0%) saturate(2%) hue-rotate(182deg)
+    brightness(130%) contrast(100%);
+}
+
+/* Explicit red tint for destructive actions (trash) */
+.icon-tint-danger {
+  filter: var(--icon-filter-danger, var(--icon-filter, none));
+  transition:
+    filter 0.15s ease-in-out,
+    opacity 0.15s ease-in-out;
+}
+:root {
+  /* Light red */
+  --icon-filter-danger: invert(24%) sepia(92%) saturate(3257%)
+    hue-rotate(347deg) brightness(94%) contrast(97%);
+}
+.dark :root,
+.dark {
+  /* Dark red (slightly brighter) */
+  --icon-filter-danger: invert(61%) sepia(65%) saturate(2771%)
+    hue-rotate(331deg) brightness(112%) contrast(103%);
+}
+
+/* Disabled icon treatment: neutral gray + subtle opacity difference */
+.icon-disabled {
+  /* Light neutral disabled */
+  filter: invert(52%) sepia(3%) saturate(120%) hue-rotate(182deg)
+    brightness(94%) contrast(92%) !important;
+  opacity: 0.85;
+  transition:
+    filter 0.15s ease-in-out,
+    opacity 0.15s ease-in-out;
+}
+.dark .icon-disabled {
+  /* Dark neutral disabled (light gray) */
+  filter: invert(82%) sepia(4%) saturate(108%) hue-rotate(182deg)
+    brightness(110%) contrast(98%) !important;
+  opacity: 0.86;
+}
+
+.main-content {
+  flex: 1;
+  padding: 1rem;
+  padding-bottom: 2rem; /* Reduced padding for better content fit */
+  min-height: 0; /* Allow flex shrinking */
+  height: auto; /* Let content determine height naturally */
+}
+
+/* Add padding for mobile view to account for mobile menu */
+@media (max-width: 768px) {
+  .main-content {
+    padding-bottom: 5rem; /* Reduced from 6rem to 5rem for mobile menu */
+    padding-left: 0;
+    padding-right: 0;
+  }
+}
+
+/* Utility: Blue accent tint for brand-aligned icons */
+.icon-tint-accent {
+  filter: var(--icon-filter-accent, var(--icon-filter, none));
+  transition:
+    filter 0.15s ease-in-out,
+    opacity 0.15s ease-in-out;
+}
+
+/* Table action cell alignment helpers */
+.table-action-cell {
+  white-space: nowrap;
+  /* Use flex-end for reliable right alignment across browsers */
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 1rem 1.5rem !important; /* Match padding of other table cells (px-6 py-4) */
+}
+.table-action-cell .table-action-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.table-action-cell .table-action-button:first-child {
+  margin-left: 0;
+}
+
+/* Mobile-specific adjustments for table action cells */
+@media (max-width: 640px) {
+  .table-action-cell {
+    padding-left: 0.5rem !important;
+    padding-right: 0 !important;
+  }
+}
+
+/* Mobile-specific icon sizing */
+@media (max-width: 768px) {
+  .table-action-cell .icon-sm {
+    width: 24px;
+    height: 24px;
+  }
+}
+
+/* Dark mode overrides */
+.dark .card {
+  background-color: #2d3748;
+}
+
+/* Allow dropdown popovers to escape card boundaries */
+.card,
+.card-body {
+  overflow: visible;
+  position: relative;
+}
+
+.dark .form-input {
+  border-color: #718096;
+  color: #e2e8f0;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .main-content {
+    padding: 1rem 0;
+  }
+
+  .card {
+    padding: 1rem;
+    padding: 1rem;
+  }
+}
+
+/* Swipeable container styles */
+.swipeable-container {
+  flex: 1;
+  width: 100%;
+  min-height: calc(
+    100vh - 140px
+  ); /* Ensure slides have enough height to display content */
+  touch-action: pan-y;
+  position: relative;
+  overflow: hidden;
+  padding: 1rem;
+  padding-bottom: 2rem; /* Reduced padding for better content fit */
+  box-sizing: border-box;
+}
+
+/* Add padding for mobile view to account for mobile menu */
+@media (max-width: 768px) {
+  .swipeable-container {
+    padding: 1rem 0;
+    padding-bottom: 5rem; /* Reduced from 6rem to 5rem for mobile menu */
+    min-height: auto; /* Remove forced minimum height on mobile */
+  }
+}
+
+/* Ensure proper positioning for swipe animations */
+.swipeable-page {
+  position: relative;
+  width: 100%;
+  min-height: calc(100vh - 140px);
+  height: auto;
+  box-sizing: border-box;
+  top: auto;
+  left: auto;
+  right: auto;
+  bottom: auto;
+}
+
+/* Prevent horizontal scrolling during swipe */
+body {
+  overscroll-behavior-x: none;
+}
+
+/* Improve swipe performance - avoid promoting layers globally; promote only during active drag */
+.motion-div {
+  width: 100%;
+  height: 100%;
+  backface-visibility: hidden;
+  /* Keep a non-layer-promoting transform as a safe default to avoid forcing compositor layers */
+  -webkit-transform: translate3d(0, 0, 0);
+  transform: translate3d(0, 0, 0);
+}
+
+/* Promote compositor-layer only during active drags to reduce memory usage and avoid jank */
+.swipeable-container.dragging .swipeable-page,
+.swipeable-container.dragging .motion-div {
+  will-change: transform;
+}
+
+/* Swipe hint indicators - only visible on mobile */
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+.swipe-hint-left,
+.swipe-hint-right {
+  animation: pulse 2s infinite;
+}
+
+/* Show hints when user is near the edges - only on mobile */
+@media (max-width: 768px) {
+  .swipeable-container:hover .swipe-hint-left,
+  .swipeable-container:hover .swipe-hint-right {
+    opacity: 0.5;
+  }
+
+  /* Make hints visible on mobile when triggered by JavaScript */
+  .swipe-hint-left.opacity-50,
+  .swipe-hint-right.opacity-50 {
+    opacity: 0.5 !important;
+  }
+}
+/* Swipe Performance Optimizations */
+.swipeable-container {
+  -webkit-overflow-scrolling: touch;
+  /* Do not force layer creation by default; enable during active drags instead */
+  -webkit-transform: none;
+  transform: none;
+  /* Contain overscroll to avoid repaints on parent elements */
+  overscroll-behavior: contain;
+}
+
+.pager-container {
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  -webkit-transform: none;
+  transform: none;
+}
+
+.pager-page {
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  height: auto !important; /* Override any height forcing */
+  min-height: auto !important; /* Remove minimum height constraints */
+}
+
+/* Ensure pager container can handle absolute positioned children */
+.pager-container {
+  position: relative;
+  width: 100%;
+} /* Fi
+x mobile touch delay - eliminate 300ms delay on mobile buttons */
+* {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+}
+
+button,
+a,
+[role="button"],
+.mobile-menu-item {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+/* Ensure fast taps on all interactive elements */
+input,
+textarea,
+select {
+  touch-action: manipulation;
+}
+
+/* Loading animations */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* App loading states */
+.app-loading {
+  opacity: 0;
+  transition: opacity 0.3s ease-in-out;
+}
+
+.app-loaded {
+  opacity: 1;
+  transition: opacity 0.3s ease-in-out;
+} /* C
+ontent-based sizing for pages */
+.container {
+  height: auto !important;
+  min-height: 0 !important;
+}
+
+/* Ensure cards don't expand unnecessarily */
+.card {
+  height: auto;
+  min-height: auto;
+}
+
+/* Mobile-specific content sizing */
+@media (max-width: 768px) {
+  .container {
+    max-height: none;
+    overflow: visible;
+  }
+
+  /* Allow main-content to grow but prevent others from expanding unnecessarily */
+  .swipeable-container,
+  .pager-container,
+  .pager-page {
+    flex-grow: 0;
+  }
+}

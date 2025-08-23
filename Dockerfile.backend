@@ -1,0 +1,35 @@
+# Build stage
+FROM node:20-alpine AS builder
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+COPY . .
+
+# Production stage
+FROM node:20-alpine
+RUN apk add --no-cache postgresql-client
+WORKDIR /app
+ENV NODE_ENV=production
+
+# Create a non-root user and group
+RUN addgroup -S finx && adduser -S finx -G finx
+
+# Set ownership of the app directory
+RUN chown -R finx:finx /app
+
+# Switch to the new user
+USER finx
+
+# Copy package files and install dependencies as the new user
+COPY --from=builder /app/package*.json ./
+RUN npm ci --omit=dev
+
+# Copy the rest of the application code
+COPY --from=builder /app .
+
+EXPOSE 5000
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+  CMD wget -q --spider http://localhost:5000/health || exit 1
+
+CMD ["./scripts/start-backend.sh"]

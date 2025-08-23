@@ -1,0 +1,792 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+# FinX Debian/Ubuntu Installer (interactive + idempotent)
+# - Installs Node.js LTS, PostgreSQL, Nginx (optional)
+# - Creates database and app user with strong passwords
+# - Generates .env, builds frontend
+# - Configures systemd service and Nginx site
+# - Starts everything and prints next steps
+
+APP_NAME="finx"
+APP_USER_DEFAULT="finx"
+APP_DIR="$(cd "$(dirname "$0")" && pwd)"
+INSTALL_DIR_DEFAULT="/opt/${APP_NAME}"
+REPO_URL_DEFAULT="https://g.it-baer.net/IT-BAER/finx.git"
+ENV_DIR="/etc/${APP_NAME}"
+ENV_FILE="${ENV_DIR}/${APP_NAME}.env"
+SERVICE_FILE="/etc/systemd/system/${APP_NAME}.service"
+NGINX_SITE_AVAILABLE="/etc/nginx/sites-available/${APP_NAME}.conf"
+NGINX_SITE_ENABLED="/etc/nginx/sites-enabled/${APP_NAME}.conf"
+FRONTEND_PORT=""
+
+BLUE="\033[1;34m"; GREEN="\033[1;32m"; YELLOW="\033[1;33m"; RED="\033[1;31m"; NC="\033[0m"
+say() { echo -e "${BLUE}⇒${NC} $*"; }
+ok()  { echo -e "${GREEN}✔${NC} $*"; }
+warn(){ echo -e "${YELLOW}⚠${NC} $*"; }
+err() { echo -e "${RED}✖${NC} $*"; }
+
+need_sudo() {
+    if [ "${EUID:-$(id -u)}" -ne 0 ]; then
+        if command -v sudo >/dev/null 2>&1; then
+            SUDO="sudo"
+        else
+            err "This script requires root privileges or sudo installed."
+            exit 1
+        fi
+    else
+        SUDO=""
+    fi
+}
+
+# Run a command as a given system user, compatible with both sudo and pure-root contexts
+run_as_user() {
+    local _user="$1"; shift
+    if [ -n "${SUDO}" ]; then
+        ${SUDO} -u "${_user}" "$@"
+    else
+        # Use su for root context; preserve environment variables passed explicitly
+        su -s /bin/sh -c "$(printf '%q ' "$@")" "${_user}"
+    fi
+}
+
+detect_os() {
+    if [ -f /etc/debian_version ]; then
+        ok "Debian/Ubuntu detected"
+    else
+        warn "This installer is intended for Debian/Ubuntu. Continuing anyway."
+    fi
+}
+
+generate_secret() {
+    # 40 chars alnum
+    # Suppress potential SIGPIPE stderr from tr when head closes early
+    tr -dc 'A-Za-z0-9' </dev/urandom 2>/dev/null | head -c 40 || true
+}
+
+ensure_pkg() {
+    local pkg="$1"
+    if ! dpkg -s "$pkg" >/dev/null 2>&1; then
+        say "Installing package: $pkg"
+        $SUDO apt-get update -y
+        $SUDO DEBIAN_FRONTEND=noninteractive apt-get install -y "$pkg"
+    else
+        ok "$pkg already installed"
+    fi
+}
+
+install_node() {
+    if command -v node >/dev/null 2>&1; then
+        local v;
+        v=$(node -v | sed 's/v//')
+        say "Found Node.js ${v}"
+    else
+        say "Installing Node.js LTS (20.x) via NodeSource"
+        if [ -n "${SUDO}" ]; then
+            curl -fsSL https://deb.nodesource.com/setup_20.x | ${SUDO} -E bash -
+        else
+            curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+        fi
+        ensure_pkg nodejs
+    fi
+}
+
+install_postgres() {
+    if ! command -v psql >/dev/null 2>&1; then
+        say "Installing PostgreSQL"
+        ensure_pkg postgresql
+        ensure_pkg postgresql-contrib
+    else
+        ok "PostgreSQL already installed"
+    fi
+    $SUDO systemctl enable postgresql
+    $SUDO systemctl start postgresql
+}
+
+is_pkg_installed() { dpkg -s "$1" >/dev/null 2>&1; }
+
+install_web_server() {
+    case "${WEB_SERVER}" in
+        nginx)
+            ensure_pkg nginx
+            $SUDO systemctl enable nginx
+            $SUDO systemctl start nginx
+            ;;
+        apache)
+            ensure_pkg apache2
+            # Enable required Apache modules (include proxy_wstunnel for WebSockets)
+            $SUDO a2enmod proxy proxy_http proxy_wstunnel headers rewrite deflate mime expires >/dev/null 2>&1 || true
+            $SUDO systemctl enable apache2
+            $SUDO systemctl start apache2
+            ;;
+        none|"")
+            warn "Skipping web server installation"
+            ;;
+    esac
+}
+
+# Determine a free frontend port starting at 3000, avoiding conflicts in nginx/apache configs and active listeners
+port_in_use_any() {
+    local p="$1"
+    # Check active listeners
+    if command -v ss >/dev/null 2>&1; then
+        ss -ltn 2>/dev/null | awk '{print $4}' | grep -E "(^|:)${p}$" -q && return 0
+    elif command -v netstat >/dev/null 2>&1; then
+        netstat -tln 2>/dev/null | awk '{print $4}' | grep -E "(^|:)${p}$" -q && return 0
+    elif command -v lsof >/dev/null 2>&1; then
+        lsof -i TCP:${p} -sTCP:LISTEN >/dev/null 2>&1 && return 0
+    fi
+    # Check nginx configs
+    if [ -d /etc/nginx ]; then
+        grep -RhoE "\\blisten\\s+${p}(;|\\s)" /etc/nginx/sites-enabled /etc/nginx/sites-available 2>/dev/null | grep -q . && return 0
+    fi
+    # Check apache configs
+    if [ -d /etc/apache2 ]; then
+        grep -RhoE "(VirtualHost|Listen)\\s+\*?:${p}\\b" /etc/apache2 2>/dev/null | grep -q . && return 0
+    fi
+    return 1
+}
+
+choose_frontend_port() {
+    local start=${1:-3000}
+    local max=$((start+200))
+    local p=${start}
+    while [ ${p} -le ${max} ]; do
+        if ! port_in_use_any "${p}"; then
+            FRONTEND_PORT="${p}"
+            ok "Selected frontend port ${FRONTEND_PORT}"
+            return 0
+        fi
+        p=$((p+1))
+    done
+    # Fallback
+    FRONTEND_PORT="${start}"
+    warn "Could not find a free port between ${start}-${max}; using ${FRONTEND_PORT}"
+}
+
+ensure_repo() {
+    # When executed via curl|bash, APP_DIR won’t contain the repo; clone it
+    if [ -f "${APP_DIR}/package.json" ] && [ -f "${APP_DIR}/server.js" ]; then
+        ok "Repository detected at ${APP_DIR}"
+        return 0
+    fi
+
+    local INSTALL_DIR REPO_URL
+    INSTALL_DIR="${FINX_INSTALL_DIR:-${INSTALL_DIR_DEFAULT}}"
+    REPO_URL="${FINX_REPO_URL:-${REPO_URL_DEFAULT}}"
+
+    ensure_pkg git
+    say "Cloning FinX repo to ${INSTALL_DIR}"
+    $SUDO mkdir -p "${INSTALL_DIR}"
+    if [ "${CREATE_USER}" = "y" ]; then
+        $SUDO chown -R "${APP_USER}:${APP_USER}" "${INSTALL_DIR}"
+        if [ ! -d "${INSTALL_DIR}/.git" ]; then
+            run_as_user "${APP_USER}" git clone --depth 1 "${REPO_URL}" "${INSTALL_DIR}"
+        else
+            ok "Existing git repo found at ${INSTALL_DIR}"
+        fi
+    else
+        if [ ! -d "${INSTALL_DIR}/.git" ]; then
+            git clone --depth 1 "${REPO_URL}" "${INSTALL_DIR}"
+        else
+            ok "Existing git repo found at ${INSTALL_DIR}"
+        fi
+    fi
+    APP_DIR="${INSTALL_DIR}"
+    ok "Using APP_DIR=${APP_DIR}"
+}
+
+prompt_inputs() {
+    say "Welcome to FinX installer"
+    read -rp "Domain to serve frontend (blank for localhost): " DOMAIN || true
+    read -rp "Backend port [5000]: " PORT || true; PORT=${PORT:-5000}
+    read -rp "Create a dedicated system user to run FinX? [y/N]: " CREATE_USER || true
+    CREATE_USER=$(echo "${CREATE_USER:-N}" | tr '[:upper:]' '[:lower:]')
+    if [ "${CREATE_USER}" = "y" ]; then
+        read -rp "System username [${APP_USER_DEFAULT}]: " APP_USER || true; APP_USER=${APP_USER:-$APP_USER_DEFAULT}
+    else
+        APP_USER=$(whoami)
+    fi
+    # Detect existing web servers
+    local has_nginx has_apache
+    if is_pkg_installed nginx; then has_nginx=y; else has_nginx=n; fi
+    if is_pkg_installed apache2; then has_apache=y; else has_apache=n; fi
+
+    say "Web server detection: Nginx=${has_nginx} Apache=${has_apache}"
+    if [ "$has_nginx" = "y" ] && [ "$has_apache" = "y" ]; then
+        echo "Choose web server to use:"
+        echo "  1) Nginx (recommended)"
+        echo "  2) Apache"
+        echo "  3) None"
+        read -rp "Selection [1]: " WS_CHOICE || true; WS_CHOICE=${WS_CHOICE:-1}
+        case "$WS_CHOICE" in
+            1) WEB_SERVER=nginx ;;
+            2) WEB_SERVER=apache ;;
+            *) WEB_SERVER=none ;;
+        esac
+    elif [ "$has_nginx" = "y" ]; then
+        read -rp "Use existing Nginx to serve the frontend? [Y/n]: " ANS || true; ANS=$(echo "${ANS:-Y}" | tr '[:upper:]' '[:lower:]')
+        WEB_SERVER=$([ "$ANS" = "n" ] && echo none || echo nginx)
+    elif [ "$has_apache" = "y" ]; then
+        read -rp "Use existing Apache to serve the frontend? [Y/n]: " ANS || true; ANS=$(echo "${ANS:-Y}" | tr '[:upper:]' '[:lower:]')
+        WEB_SERVER=$([ "$ANS" = "n" ] && echo none || echo apache)
+    else
+        echo "No web server found. Install one?"
+        echo "  1) Install Apache (recommended)"
+        echo "  2) Install Nginx"
+        echo "  3) None (I'll serve the build myself)"
+        read -rp "Selection [1]: " WS_CHOICE || true; WS_CHOICE=${WS_CHOICE:-1}
+        case "$WS_CHOICE" in
+            1) WEB_SERVER=apache ;;
+            2) WEB_SERVER=nginx ;;
+            *) WEB_SERVER=none ;;
+        esac
+    fi
+    read -rp "Database name [finx_db]: " DB_NAME || true; DB_NAME=${DB_NAME:-finx_db}
+    read -rp "Database user [finx_user]: " DB_USER || true; DB_USER=${DB_USER:-finx_user}
+}
+
+create_user_if_needed() {
+    if [ "${CREATE_USER}" = "y" ]; then
+        if id -u "$APP_USER" >/dev/null 2>&1; then
+            ok "User $APP_USER exists"
+        else
+            say "Creating system user $APP_USER"
+            $SUDO useradd -r -m -d "/home/${APP_USER}" -s /usr/sbin/nologin "$APP_USER"
+        fi
+        $SUDO chown -R "$APP_USER":"$APP_USER" "$APP_DIR"
+    fi
+}
+
+create_db() {
+    say "Configuring PostgreSQL database and role"
+    local DB_PASS
+    if run_as_user postgres psql -Atqc "SELECT 1 FROM pg_roles WHERE rolname='${DB_USER}'" | grep -q 1; then
+        ok "DB user ${DB_USER} exists"
+    else
+        DB_PASS="$(generate_secret)"
+        run_as_user postgres psql -v ON_ERROR_STOP=1 <<SQL
+CREATE USER ${DB_USER} WITH ENCRYPTED PASSWORD '${DB_PASS}';
+SQL
+        ok "Created DB user ${DB_USER}"
+    fi
+    if run_as_user postgres psql -Atqc "SELECT 1 FROM pg_database WHERE datname='${DB_NAME}'" | grep -q 1; then
+        ok "DB ${DB_NAME} exists"
+    else
+        run_as_user postgres psql -v ON_ERROR_STOP=1 <<SQL
+CREATE DATABASE ${DB_NAME} OWNER ${DB_USER};
+GRANT ALL PRIVILEGES ON DATABASE ${DB_NAME} TO ${DB_USER};
+SQL
+        ok "Created DB ${DB_NAME}"
+    fi
+
+    # Fetch password for existing user if needed
+    if [ -z "${DB_PASS:-}" ]; then
+        # Can't query pg to retrieve password; if ENV exists, we'll use that; else prompt
+        if [ -f "$ENV_FILE" ]; then
+            # shellcheck disable=SC1090
+            source "$ENV_FILE"
+            DB_PASS="$DB_PASSWORD"
+        fi
+        if [ -z "${DB_PASS:-}" ]; then
+            read -rsp "Enter password for existing DB user ${DB_USER}: " DB_PASS; echo
+        fi
+    fi
+    export DB_PASSWORD="$DB_PASS"
+}
+
+create_env() {
+    say "Generating environment file at ${ENV_FILE}"
+    local JWT_SECRET
+    JWT_SECRET=$(generate_secret)
+    $SUDO mkdir -p "$ENV_DIR"
+    $SUDO bash -c "cat > '${ENV_FILE}'" <<EOF
+# FinX environment
+NODE_ENV=production
+PORT=${PORT}
+
+# Database
+DB_HOST=127.0.0.1
+DB_PORT=5432
+DB_NAME=${DB_NAME}
+DB_USER=${DB_USER}
+DB_PASSWORD=${DB_PASSWORD}
+
+# Security
+JWT_SECRET=${JWT_SECRET}
+
+# CORS
+CORS_ORIGIN=${DOMAIN}
+
+# Feature flags
+DISABLE_REGISTRATION=true
+EOF
+    $SUDO chmod 640 "$ENV_FILE"
+    if [ "${CREATE_USER}" = "y" ]; then
+        $SUDO chown ${APP_USER}:root "$ENV_FILE"
+    fi
+    ok "Wrote ${ENV_FILE}"
+}
+
+install_dependencies() {
+    say "Installing backend dependencies"
+    if [ "${CREATE_USER}" = "y" ]; then
+                (
+                    cd "$APP_DIR" && \
+                    if [ -f package-lock.json ] || [ -f npm-shrinkwrap.json ]; then
+                        run_as_user "$APP_USER" npm ci --omit=dev
+                    else
+                        run_as_user "$APP_USER" npm install --omit=dev
+                    fi
+                )
+    else
+                (
+                    cd "$APP_DIR" && \
+                    if [ -f package-lock.json ] || [ -f npm-shrinkwrap.json ]; then
+                        npm ci --omit=dev
+                    else
+                        npm install --omit=dev
+                    fi
+                )
+    fi
+    say "Installing frontend dependencies and building"
+    if [ "${CREATE_USER}" = "y" ]; then
+                (
+                    cd "$APP_DIR/frontend" && \
+                    if [ -f package-lock.json ] || [ -f npm-shrinkwrap.json ]; then
+                        run_as_user "$APP_USER" npm ci
+                    else
+                        run_as_user "$APP_USER" npm install
+                    fi && \
+                    run_as_user "$APP_USER" npm run build && \
+                    # Ensure icons and logos exist in build output (robust against toolchain changes)
+                    run_as_user "$APP_USER" bash -lc 'set -e; \
+                        [ -d public/icons ] && mkdir -p build/icons && cp -rn public/icons/* build/icons/ || true; \
+                        [ -d public/logos ] && mkdir -p build/logos && cp -rn public/logos/* build/logos/ || true; \
+                        [ -f public/icons/favicon.ico ] && cp -n public/icons/favicon.ico build/icons/favicon.ico || true'
+                )
+    else
+                (
+                    cd "$APP_DIR/frontend" && \
+                    if [ -f package-lock.json ] || [ -f npm-shrinkwrap.json ]; then
+                        npm ci
+                    else
+                        npm install
+                    fi && \
+                    npm run build && \
+                    # Ensure icons and logos exist in build output (robust against toolchain changes)
+                    bash -lc 'set -e; \
+                        [ -d public/icons ] && mkdir -p build/icons && cp -rn public/icons/* build/icons/ || true; \
+                        [ -d public/logos ] && mkdir -p build/logos && cp -rn public/logos/* build/logos/ || true; \
+                        [ -f public/icons/favicon.ico ] && cp -n public/icons/favicon.ico build/icons/favicon.ico || true'
+                )
+    fi
+    ok "Dependencies installed and frontend built"
+}
+
+run_migrations() {
+    say "Running database migrations"
+    # shellcheck disable=SC1090
+    set -a; source "$ENV_FILE"; set +a
+    # If repo has no migrations directory or contains no .sql files, skip gracefully
+    local MIG_DIR
+    MIG_DIR="${APP_DIR}/database/migrations"
+    if [ ! -d "$MIG_DIR" ] || ! ls -1 "$MIG_DIR"/*.sql >/dev/null 2>&1; then
+        echo "No migrations directory or SQL files found at $MIG_DIR; skipping."
+        return 0
+    fi
+    if [ "${CREATE_USER}" = "y" ]; then
+                (
+                    cd "$APP_DIR" && \
+                    run_as_user "$APP_USER" env $(grep -E '^[A-Z_]+=' "$ENV_FILE" | xargs) npm run migrate-db
+                )
+    else
+                (
+                    cd "$APP_DIR" && \
+                    env $(grep -E '^[A-Z_]+=' "$ENV_FILE" | xargs) npm run migrate-db
+                )
+    fi
+    ok "Migrations applied"
+}
+
+create_systemd_service() {
+    say "Creating systemd service ${SERVICE_FILE}"
+    local RUN_USER RUN_GROUP
+    if [ "${CREATE_USER}" = "y" ]; then
+        RUN_USER="$APP_USER"; RUN_GROUP="$APP_USER"
+    else
+        RUN_USER="$(whoami)"; RUN_GROUP="$(id -gn)"
+    fi
+    $SUDO bash -c "cat > '${SERVICE_FILE}'" <<EOF
+[Unit]
+Description=FinX API Service
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+WorkingDirectory=${APP_DIR}
+EnvironmentFile=${ENV_FILE}
+ExecStart=$(command -v node) ${APP_DIR}/server.js
+Restart=always
+RestartSec=3
+User=${RUN_USER}
+Group=${RUN_GROUP}
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+
+[Install]
+WantedBy=multi-user.target
+EOF
+    $SUDO systemctl daemon-reload
+    $SUDO systemctl enable "${APP_NAME}.service"
+    ok "Systemd service installed"
+}
+
+create_nginx_site() {
+    [ "${WEB_SERVER}" = "nginx" ] || return 0
+    say "Configuring Nginx site"
+    local SERVER_NAME
+    SERVER_NAME=${DOMAIN:-_}
+    # Ensure a frontend port is chosen
+    if [ -z "${FRONTEND_PORT}" ]; then
+        choose_frontend_port 3000
+    fi
+    $SUDO bash -c "cat > '${NGINX_SITE_AVAILABLE}'" <<'EOF'
+server {
+        listen __WEB_PORT__;
+        server_name __SERVER_NAME__;
+
+    # Serve frontend build
+        root __APP_DIR__/frontend/build;
+        index index.html;
+
+    charset utf-8;
+
+        # Gzip + cache static assets
+        gzip on;
+        gzip_types text/plain text/css application/javascript application/json image/svg+xml application/font-woff2;
+        gzip_min_length 1024;
+
+    location /assets/ {
+                expires 30d;
+                add_header Cache-Control "public, max-age=2592000, immutable";
+                try_files $uri =404;
+        }
+
+    # Icons and logos
+    location /icons/ {
+        expires 365d;
+        add_header Cache-Control "public, max-age=31536000, immutable";
+        try_files $uri =404;
+    }
+    location /logos/ {
+        expires 365d;
+        add_header Cache-Control "public, max-age=31536000, immutable";
+        try_files $uri =404;
+    }
+
+    # Root favicon
+    location = /favicon.ico {
+        expires 365d;
+        add_header Cache-Control "public, max-age=31536000, immutable";
+        try_files $uri =404;
+    }
+
+    # Icon and logo directories
+    location /icons/ {
+        expires 365d;
+        add_header Cache-Control "public, max-age=31536000, immutable";
+        try_files $uri =404;
+    }
+    location /logos/ {
+        expires 365d;
+        add_header Cache-Control "public, max-age=31536000, immutable";
+        try_files $uri =404;
+    }
+
+    # Favicon root path
+    location = /favicon.ico {
+        expires 365d;
+        add_header Cache-Control "public, max-age=31536000, immutable";
+        try_files $uri /icons/favicon.ico =404;
+    }
+
+    # PWA files
+    location = /manifest.webmanifest {
+    # Scope MIME override to this location only
+    types { }
+    default_type application/manifest+json;
+    try_files $uri /manifest.webmanifest =404;
+    }
+    # Hashed manifest emitted by VitePWA lives under /assets
+    location ~ ^/assets/.*\.webmanifest$ {
+        types { }
+        default_type application/manifest+json;
+        try_files $uri =404;
+    }
+        location = /sw.js { try_files $uri /sw.js =404; }
+        location = /workbox-5e62206c.js { try_files $uri /workbox-5e62206c.js =404; }
+
+        # API proxy
+        location /api/ {
+                proxy_pass http://127.0.0.1:__PORT__;
+                proxy_http_version 1.1;
+                proxy_set_header Host $host;
+                proxy_set_header X-Forwarded-Proto $scheme;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header Upgrade $http_upgrade;
+                proxy_set_header Connection "upgrade";
+                proxy_read_timeout 60s;
+        }
+
+    # WebSockets (Socket.IO)
+    location /socket.io/ {
+        proxy_pass http://127.0.0.1:__PORT__;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_read_timeout 60s;
+    }
+
+        # SPA fallback
+    location / {
+        try_files $uri /index.html;
+    }
+}
+EOF
+    # Replace placeholders
+    $SUDO sed -i "s#__SERVER_NAME__#${SERVER_NAME}#g" "$NGINX_SITE_AVAILABLE"
+    $SUDO sed -i "s#__APP_DIR__#${APP_DIR//\//\/}#g" "$NGINX_SITE_AVAILABLE"
+    $SUDO sed -i "s#__PORT__#${PORT}#g" "$NGINX_SITE_AVAILABLE"
+    $SUDO sed -i "s#__WEB_PORT__#${FRONTEND_PORT}#g" "$NGINX_SITE_AVAILABLE"
+
+    # Enable site
+    [ -e "$NGINX_SITE_ENABLED" ] || $SUDO ln -s "$NGINX_SITE_AVAILABLE" "$NGINX_SITE_ENABLED"
+    $SUDO nginx -t
+    $SUDO systemctl reload nginx
+    ok "Nginx configured for ${SERVER_NAME}"
+}
+
+create_apache_site() {
+    [ "${WEB_SERVER}" = "apache" ] || return 0
+    say "Configuring Apache site"
+    local SERVER_NAME
+    SERVER_NAME=${DOMAIN:-localhost}
+    local APACHE_SITE="/etc/apache2/sites-available/${APP_NAME}.conf"
+    # Ensure a frontend port is chosen
+    if [ -z "${FRONTEND_PORT}" ]; then
+        choose_frontend_port 3000
+    fi
+    # Ensure Apache listens on the chosen port
+    if ! grep -RhoE "^Listen[[:space:]]+${FRONTEND_PORT}($|[[:space:]])" /etc/apache2/ports.conf 2>/dev/null | grep -q .; then
+        echo "Listen ${FRONTEND_PORT}" | $SUDO tee -a /etc/apache2/ports.conf >/dev/null
+    fi
+    $SUDO bash -c "cat > '${APACHE_SITE}'" <<'EOF'
+<VirtualHost *:__WEB_PORT__>
+        ServerName __SERVER_NAME__
+        DocumentRoot __APP_DIR__/frontend/build
+
+    <Directory "__APP_DIR__/frontend/build">
+        # Disable MultiViews to prevent content negotiation returning HTML for JS files
+        Options -MultiViews +Indexes +FollowSymLinks
+        AllowOverride None
+        Require all granted
+    </Directory>
+
+    # Ensure icons and logos are served from the build directory even if other rewrites interfere
+    Alias /icons/ "__APP_DIR__/frontend/build/icons/"
+    Alias /logos/ "__APP_DIR__/frontend/build/logos/"
+    <Directory "__APP_DIR__/frontend/build/icons">
+        Require all granted
+        Options -MultiViews +FollowSymLinks
+    </Directory>
+    <Directory "__APP_DIR__/frontend/build/logos">
+        Require all granted
+        Options -MultiViews +FollowSymLinks
+    </Directory>
+
+    # MIME types for modern assets
+    AddType application/javascript .js .mjs
+    AddType application/manifest+json .webmanifest
+    AddType text/css .css
+
+        # Cache static assets
+        <LocationMatch "^/assets/">
+                Header set Cache-Control "public, max-age=2592000, immutable"
+        </LocationMatch>
+
+    # Icons and logos
+    <LocationMatch "^/(icons|logos)/">
+        Header set Cache-Control "public, max-age=31536000, immutable"
+    </LocationMatch>
+
+    # Favicon root path
+    <Files "favicon.ico">
+        Header set Cache-Control "public, max-age=31536000, immutable"
+    </Files>
+
+        # PWA files
+        <FilesMatch "^(manifest\.webmanifest|sw\.js|workbox-.*\.js)$">
+                Header set Cache-Control "no-cache"
+        </FilesMatch>
+
+    # SPA fallback (only when request is not a real file or directory)
+        RewriteEngine On
+        # Do not rewrite API or WebSocket endpoints
+        RewriteCond %{REQUEST_URI} !^/api/
+        RewriteCond %{REQUEST_URI} !^/socket\.io/
+        # Do not rewrite static assets or PWA files
+    RewriteCond %{REQUEST_URI} !^/assets/
+    RewriteCond %{REQUEST_URI} !^/icons/
+    RewriteCond %{REQUEST_URI} !^/logos/
+        RewriteCond %{REQUEST_URI} !^/sw\.js$
+        RewriteCond %{REQUEST_URI} !^/workbox-.*\.js$
+        RewriteCond %{REQUEST_URI} !\.(?:js|css|png|jpg|jpeg|svg|gif|webp|ico|woff|woff2|ttf|eot|webmanifest)$
+        # Only rewrite if the request isn't a real file or directory
+        RewriteCond %{REQUEST_FILENAME} !-f
+        RewriteCond %{REQUEST_FILENAME} !-d
+        RewriteRule ^ /index.html [L]
+
+        # API proxy
+        ProxyPreserveHost On
+        ProxyPass /api http://127.0.0.1:__PORT__/api
+        ProxyPassReverse /api http://127.0.0.1:__PORT__/api
+
+    # WebSockets (Socket.IO)
+    ProxyPass "/socket.io/"  "ws://127.0.0.1:__PORT__/socket.io/"
+    ProxyPassReverse "/socket.io/"  "ws://127.0.0.1:__PORT__/socket.io/"
+
+        # Gzip
+        AddOutputFilterByType DEFLATE text/html text/plain text/css application/javascript application/json image/svg+xml
+</VirtualHost>
+EOF
+    $SUDO sed -i "s#__SERVER_NAME__#${SERVER_NAME}#g" "$APACHE_SITE"
+    $SUDO sed -i "s#__APP_DIR__#${APP_DIR//\//\/}#g" "$APACHE_SITE"
+    $SUDO sed -i "s#__PORT__#${PORT}#g" "$APACHE_SITE"
+    $SUDO sed -i "s#__WEB_PORT__#${FRONTEND_PORT}#g" "$APACHE_SITE"
+
+    $SUDO a2enmod proxy proxy_http proxy_wstunnel headers rewrite deflate mime expires >/dev/null 2>&1 || true
+    $SUDO a2ensite "${APP_NAME}.conf" >/dev/null 2>&1 || true
+    $SUDO apache2ctl configtest
+    $SUDO systemctl reload apache2
+    ok "Apache configured for ${SERVER_NAME}"
+}
+
+start_services() {
+    say "Starting ${APP_NAME} service"
+    $SUDO systemctl restart "${APP_NAME}.service"
+    $SUDO systemctl status "${APP_NAME}.service" --no-pager -l || true
+}
+
+seed_admin_and_capture_credentials() {
+    say "Seeding admin (first install) and capturing credentials"
+    # Export env for Node process
+    set -a; source "$ENV_FILE"; set +a
+    local TMP_LOG
+    TMP_LOG="$(mktemp -t finx-init-db-XXXX.log)"
+    local INIT_RC
+    if [ "${CREATE_USER}" = "y" ]; then
+        (
+            cd "$APP_DIR" && \
+            run_as_user "$APP_USER" env $(grep -E '^[A-Z_]+=' "$ENV_FILE" | xargs) npm run init-db
+        ) >"$TMP_LOG" 2>&1
+        INIT_RC=$?
+    else
+        (
+            cd "$APP_DIR" && \
+            env $(grep -E '^[A-Z_]+=' "$ENV_FILE" | xargs) npm run init-db
+        ) >"$TMP_LOG" 2>&1
+        INIT_RC=$?
+    fi
+
+    if [ "${DEBUG_SETUP:-}" = "1" ]; then
+        say "init-db exit code: ${INIT_RC}"
+        say "init-db log file: ${TMP_LOG}"
+        echo "----- BEGIN init-db LOG (first 200 lines) -----"
+        sed -n '1,200p' "$TMP_LOG" || true
+        echo "----- END init-db LOG -----"
+    fi
+
+    # Extract friendly-printed credentials from seeder output (if a new admin was created)
+    ADMIN_EMAIL=$(grep -m1 -E '^\s*Email:\s*' "$TMP_LOG" | sed -E 's/^\s*Email:\s*//') || ADMIN_EMAIL=""
+    ADMIN_PASSWORD=$(grep -m1 -E '^\s*Password:\s*' "$TMP_LOG" | sed -E 's/^\s*Password:\s*//') || ADMIN_PASSWORD=""
+
+    # Fallback: parse JSON array output if pretty lines weren't found
+    if [ -z "$ADMIN_EMAIL" ] || [ -z "$ADMIN_PASSWORD" ]; then
+        if grep -q "\[\s*{\s*\"email\"" "$TMP_LOG"; then
+            ADMIN_EMAIL=$(grep -oE '"email"\s*:\s*"[^"]+"' "$TMP_LOG" | head -n1 | sed -E 's/.*"email"\s*:\s*"([^"]+)".*/\1/')
+            ADMIN_PASSWORD=$(grep -oE '"password"\s*:\s*"[^"]+"' "$TMP_LOG" | head -n1 | sed -E 's/.*"password"\s*:\s*"([^"]+)".*/\1/')
+        fi
+    fi
+    if [ -n "${ADMIN_EMAIL}" ] && [ -n "${ADMIN_PASSWORD}" ]; then
+        CREDENTIALS_FOUND="y"
+    else
+        if [ "${DEBUG_SETUP:-}" = "1" ]; then
+            warn "Could not parse admin credentials from init-db output. Diagnostics:"
+            echo " - Found 'Admin Credentials' header: $(grep -c 'Admin Credentials' "$TMP_LOG" || true)"
+            echo " - Found 'Email:' lines: $(grep -c '^\s*Email:' "$TMP_LOG" || true)"
+            echo " - Found 'Password:' lines: $(grep -c '^\s*Password:' "$TMP_LOG" || true)"
+            echo " - Found JSON creds blocks: $(grep -c '"email".*"password"' "$TMP_LOG" || true)"
+            echo "----- TAIL init-db LOG (last 80 lines) -----"
+            tail -n 80 "$TMP_LOG" || true
+            echo "----- END TAIL -----"
+        fi
+        CREDENTIALS_FOUND="n"
+    fi
+    # Preserve log when debugging; otherwise clean up
+    if [ "${DEBUG_SETUP:-}" = "1" ]; then
+        warn "DEBUG_SETUP=1 set, preserving log at ${TMP_LOG}"
+    else
+        rm -f "$TMP_LOG"
+    fi
+}
+
+summary() {
+    echo
+    ok "Installation complete"
+    echo ""
+    echo "Environment: ${ENV_FILE}"
+    echo "Service: systemctl status ${APP_NAME}"
+    echo "API: http://localhost:${PORT}/health"
+    case "${WEB_SERVER}" in
+        nginx)
+            echo "Frontend served via Nginx at: http://${DOMAIN:-localhost}:${FRONTEND_PORT}/" ;;
+        apache)
+            echo "Frontend served via Apache at: http://${DOMAIN:-localhost}:${FRONTEND_PORT}/" ;;
+        *)
+            echo "Serve the frontend build directory (frontend/build) with any web server; API on port ${PORT}" ;;
+    esac
+    if [ "${CREDENTIALS_FOUND:-n}" = "y" ]; then
+        echo ""
+        echo "Admin credentials (shown once):"
+        echo "  Email: ${ADMIN_EMAIL}"
+        echo "  Password: ${ADMIN_PASSWORD}"
+        echo "Save these now; they won't be shown again."
+    fi
+}
+
+main() {
+    need_sudo
+    detect_os
+    prompt_inputs
+    ensure_repo
+    install_node
+    install_postgres
+    install_web_server
+    # Pick a frontend port before creating vhosts
+    choose_frontend_port 3000
+    create_user_if_needed
+    create_db
+    create_env
+    install_dependencies
+    run_migrations
+    seed_admin_and_capture_credentials
+    create_systemd_service
+    create_nginx_site
+    create_apache_site
+    start_services
+    summary
+}
+
+main "$@"

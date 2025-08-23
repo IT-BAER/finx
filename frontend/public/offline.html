@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FinX - Continue Offline</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+        color: white;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 20px;
+      }
+
+      .container {
+        max-width: 400px;
+        width: 100%;
+      }
+
+      .icon {
+        width: 80px;
+        height: 80px;
+        margin: 0 auto 24px;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 32px;
+      }
+
+      h1 {
+        font-size: 24px;
+        font-weight: 600;
+        margin-bottom: 12px;
+      }
+
+      p {
+        font-size: 16px;
+        opacity: 0.9;
+        line-height: 1.5;
+        margin-bottom: 32px;
+      }
+
+      .btn {
+        background: rgba(255, 255, 255, 0.2);
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        color: white;
+        padding: 12px 24px;
+        border-radius: 8px;
+        font-size: 16px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        display: inline-block;
+        margin: 0 8px 16px;
+      }
+
+      .btn:hover {
+        background: rgba(255, 255, 255, 0.3);
+        border-color: rgba(255, 255, 255, 0.5);
+        transform: translateY(-2px);
+      }
+
+      .btn-primary {
+        background: rgba(255, 255, 255, 0.9);
+        color: #0891b2;
+        border-color: rgba(255, 255, 255, 0.9);
+      }
+
+      .btn-primary:hover {
+        background: white;
+        color: #0891b2;
+      }
+
+      .features {
+        margin-top: 40px;
+        text-align: left;
+      }
+
+      .feature {
+        display: flex;
+        align-items: center;
+        margin-bottom: 16px;
+        font-size: 14px;
+        opacity: 0.8;
+      }
+
+      .feature-icon {
+        width: 20px;
+        height: 20px;
+        margin-right: 12px;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+      }
+
+      .status {
+        margin-top: 20px;
+        padding: 12px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 8px;
+        font-size: 14px;
+      }
+
+      .online {
+        background: rgba(34, 197, 94, 0.2);
+        border: 1px solid rgba(34, 197, 94, 0.3);
+      }
+
+      .offline {
+        background: rgba(251, 146, 60, 0.2);
+        border: 1px solid rgba(251, 146, 60, 0.3);
+      }
+
+      @media (prefers-color-scheme: dark) {
+        body {
+          background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="icon">📱</div>
+      <h1>Continue Using FinX</h1>
+      <p>
+        You're currently offline, but FinX works great without an internet
+        connection! Your data is cached and any changes will sync when you
+        reconnect.
+      </p>
+
+      <div>
+        <button class="btn btn-primary" onclick="goToApp()">
+          Continue to App
+        </button>
+        <button class="btn" onclick="window.location.reload()">
+          Check Connection
+        </button>
+      </div>
+
+      <div class="status offline" id="status">
+        <strong>Status:</strong> <span id="statusText">Offline</span>
+      </div>
+
+      <div class="features">
+        <div class="feature">
+          <div class="feature-icon">💾</div>
+          <span>All your data is safely cached locally</span>
+        </div>
+        <div class="feature">
+          <div class="feature-icon">➕</div>
+          <span>Add and edit transactions offline</span>
+        </div>
+        <div class="feature">
+          <div class="feature-icon">📊</div>
+          <span>View reports and analytics</span>
+        </div>
+        <div class="feature">
+          <div class="feature-icon">🔄</div>
+          <span>Changes sync automatically when online</span>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      function updateStatus() {
+        const statusEl = document.getElementById("status");
+        const statusTextEl = document.getElementById("statusText");
+
+        if (navigator.onLine) {
+          statusEl.className = "status online";
+          statusTextEl.textContent = "Online - Redirecting...";
+          setTimeout(() => {
+            window.location.href = "/";
+          }, 1000);
+        } else {
+          statusEl.className = "status offline";
+          statusTextEl.textContent = "Offline";
+        }
+      }
+
+      function goToApp() {
+        // Try to go to the main app
+        window.location.href = "/";
+      }
+
+      // Check status immediately
+      updateStatus();
+
+      // Check every 3 seconds
+      setInterval(updateStatus, 3000);
+
+      // Listen for online event
+      window.addEventListener("online", updateStatus);
+      window.addEventListener("offline", updateStatus);
+
+      // Auto-retry when page becomes visible
+      document.addEventListener("visibilitychange", () => {
+        if (!document.hidden) {
+          updateStatus();
+        }
+      });
+    </script>
+  </body>
+</html>

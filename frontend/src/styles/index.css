@@ -1,0 +1,1010 @@
+/* Tailwind base includes a modern reset.css for consistent styling across browsers */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #f9fafb; /* gray-50 */
+  --text: #111827; /* gray-900 */
+  --surface: #ffffff; /* white */
+  --surface-muted: #f3f4f6; /* gray-100 */
+  --border: #e5e7eb; /* gray-200 */
+  --muted: #6b7280; /* gray-500 */
+  --accent: #2563eb; /* blue-600 */
+  --accent-600: #1d4ed8; /* blue-700 */
+  --accent-400: #60a5fa; /* blue-400 */
+  --accent-contrast: #ffffff;
+  --success: #16a34a; /* green-600 */
+  --warning: #ca8a04; /* yellow-600 */
+  --danger: #dc2626; /* red-600 */
+  --button-inner-bg: #ffffff; /* white for light mode */
+}
+
+/* When using palette + dark mode together, override neutrals while keeping accent family. */
+/* Default palette dark neutrals */
+:root[data-theme="default"].dark {
+  --bg: #0b1220; /* near gray-950 with blue-ish tint */
+  --text: #e5e7eb; /* gray-200 */
+  --surface: #111827; /* gray-900 */
+  --surface-muted: #1f2937; /* gray-800 */
+  --border: #374151; /* gray-700 */
+  --muted: #9ca3af; /* gray-400 */
+}
+
+/* Remove old standalone dark theme block (we now combine palette + .dark) */
+
+/* Default dark theme elements */
+:root[data-theme="default"].dark .card {
+  background-color: color-mix(
+    in srgb,
+    var(--surface) 70%,
+    #000
+  ); /* 30% darker */
+}
+:root[data-theme="default"].dark footer {
+  background-color: color-mix(
+    in srgb,
+    var(--surface) 70%,
+    #000
+  ); /* 30% darker to match header */
+}
+
+/* Extra themes */
+:root[data-theme="ocean"] {
+  --bg: #f0f9ff; /* sky-50 */
+  --text: #0f172a; /* slate-900 */
+  --surface: #ffffff;
+  --surface-muted: #e0f2fe; /* sky-100 */
+  --border: #bae6fd; /* sky-200 */
+  --muted: #334155; /* slate-700 */
+  --accent: #0284c7; /* sky-600 */
+  --accent-600: #0369a1; /* sky-700 */
+  --accent-400: #38bdf8; /* sky-400 */
+  --accent-contrast: #ffffff;
+  --success: #0ea5e9;
+  --warning: #0284c7;
+  --danger: #ef4444;
+}
+/* Ocean dark neutrals */
+:root[data-theme="ocean"].dark {
+  --bg: #071a26; /* deep ocean */
+  --text: #e2e8f0; /* slate-200 */
+  --surface: #0b2533; /* darker cyan-slate */
+  --surface-muted: #113445; /* cyan-slate */
+  --border: #1f4660;
+  --muted: #93a4b8;
+}
+
+:root[data-theme="forest"] {
+  --bg: #f7fee7; /* lime-50 */
+  --text: #052e16; /* green-950 */
+  --surface: #ffffff;
+  --surface-muted: #ecfccb; /* lime-100 */
+  --border: #d9f99d; /* lime-200 */
+  --muted: #14532d; /* green-900 */
+  --accent: #16a34a; /* green-600 */
+  --accent-600: #15803d; /* green-700 */
+  --accent-400: #34d399; /* emerald-400 */
+  --accent-contrast: #ffffff;
+  --success: #16a34a;
+  --warning: #ca8a04;
+  --danger: #b91c1c;
+}
+/* Forest dark neutrals */
+:root[data-theme="forest"].dark {
+  --bg: #0a1a10; /* deep forest */
+  --text: #e5f2ea; /* mint-100 */
+  --surface: #0f2417; /* forest-900 */
+  --surface-muted: #153422; /* forest-800 */
+  --border: #205236; /* forest-700 */
+  --muted: #9ac7b0;
+}
+
+:root[data-theme="rose"] {
+  --bg: #fff1f2; /* rose-50 */
+  --text: #111827; /* gray-900 */
+  --surface: #ffffff;
+  --surface-muted: #ffe4e6; /* rose-100 */
+  --border: #fecdd3; /* rose-200 */
+  --muted: #881337; /* rose-900 */
+  --accent: #e11d48; /* rose-600 */
+  --accent-600: #be123c; /* rose-700 */
+  --accent-400: #fb7185; /* rose-400 */
+  --accent-contrast: #ffffff;
+  --success: #16a34a;
+  --warning: #ca8a04;
+  --danger: #e11d48;
+}
+/* Rose dark neutrals */
+:root[data-theme="rose"].dark {
+  --bg: #1a0b10; /* deep rose */
+  --text: #fde2e7; /* rose-100 */
+  --surface: #2a0f19; /* rose-900-ish */
+  --surface-muted: #3a1623; /* rose-800-ish */
+  --border: #5b2034; /* rose-700 */
+  --muted: #f8b8c3; /* rose-300 */
+}
+
+/* Helpers bound to CSS vars */
+.theme-bg {
+  background-color: var(--bg);
+}
+.theme-surface {
+  background-color: var(--surface);
+}
+.theme-surface-muted {
+  background-color: var(--surface-muted);
+}
+.theme-text {
+  color: var(--text);
+}
+.theme-muted {
+  color: var(--muted);
+}
+.theme-border {
+  border-color: var(--border);
+}
+.theme-accent {
+  color: var(--accent);
+}
+.theme-accent-bg {
+  background-color: var(--accent);
+  color: var(--accent-contrast);
+}
+.theme-accent-bg:hover {
+  background-color: var(--accent-600);
+}
+.theme-accent-ring {
+  --tw-ring-color: var(--accent-400);
+}
+
+/* Themed header/footer/background wrappers */
+header,
+nav {
+  background-color: color-mix(in srgb, var(--surface) 95%, transparent);
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
+}
+footer {
+  background-color: color-mix(in srgb, var(--surface) 95%, transparent);
+  color: var(--muted);
+  border-top: 1px solid var(--border);
+}
+
+/* Footer palette tweaks */
+:root[data-theme="ocean"] footer {
+  background-color: color-mix(in srgb, var(--surface) 92%, var(--accent));
+}
+:root[data-theme="ocean"].dark footer {
+  background-color: color-mix(in srgb, var(--surface) 85%, var(--accent));
+}
+
+:root[data-theme="forest"] footer {
+  background-color: color-mix(in srgb, var(--surface) 92%, var(--accent));
+}
+:root[data-theme="forest"].dark footer {
+  background-color: color-mix(in srgb, var(--surface) 85%, var(--accent));
+}
+
+:root[data-theme="rose"] footer {
+  background-color: color-mix(in srgb, var(--surface) 92%, var(--accent));
+}
+:root[data-theme="rose"].dark footer {
+  background-color: color-mix(in srgb, var(--surface) 80%, var(--accent));
+}
+
+/* Ensure buttons align with variables across themes */
+/* Remove inherited color to avoid readability issues; rely on variant styles */
+
+/* Icon tinting via CSS variables (mapped per theme) */
+:root {
+  --icon-filter: invert(22%) sepia(4%) saturate(232%) hue-rotate(178deg)
+    brightness(92%) contrast(90%);
+  --icon-filter-accent: invert(26%) sepia(94%) saturate(1649%)
+    hue-rotate(199deg) brightness(94%) contrast(96%);
+  --icon-filter-strong: invert(9%) sepia(3%) saturate(462%) hue-rotate(182deg)
+    brightness(92%) contrast(96%);
+  --icon-filter-danger: invert(24%) sepia(92%) saturate(3257%)
+    hue-rotate(347deg) brightness(94%) contrast(97%);
+}
+.dark {
+  --icon-filter: invert(100%) sepia(0%) saturate(2%) hue-rotate(182deg)
+    brightness(118%) contrast(100%);
+  --icon-filter-accent: invert(67%) sepia(77%) saturate(640%) hue-rotate(188deg)
+    brightness(111%) contrast(101%);
+  --icon-filter-strong: invert(100%) sepia(0%) saturate(2%) hue-rotate(182deg)
+    brightness(130%) contrast(100%);
+  --icon-filter-danger: invert(61%) sepia(65%) saturate(2771%)
+    hue-rotate(331deg) brightness(112%) contrast(103%);
+  --button-inner-bg: #1a1a1a; /* dark gray for dark mode */
+}
+:root[data-theme="ocean"] {
+  --icon-filter-accent: invert(36%) sepia(97%) saturate(1095%)
+    hue-rotate(174deg) brightness(92%) contrast(94%);
+}
+:root[data-theme="forest"] {
+  --icon-filter-accent: invert(43%) sepia(60%) saturate(799%) hue-rotate(86deg)
+    brightness(90%) contrast(96%);
+}
+:root[data-theme="rose"] {
+  --icon-filter-accent: invert(19%) sepia(94%) saturate(4427%)
+    hue-rotate(334deg) brightness(96%) contrast(97%);
+}
+
+.icon-tint {
+  filter: var(--icon-filter, none);
+  transition: filter 0.15s ease-in-out;
+}
+.icon-tint-accent {
+  filter: var(--icon-filter-accent, var(--icon-filter, none));
+  transition:
+    filter 0.15s ease-in-out,
+    opacity 0.15s ease-in-out;
+}
+.icon-tint-strong {
+  filter: var(--icon-filter-strong, var(--icon-filter, none));
+  transition:
+    filter 0.15s ease-in-out,
+    opacity 0.15s ease-in-out;
+}
+.icon-tint-danger {
+  filter: var(--icon-filter-danger, var(--icon-filter, none));
+  transition:
+    filter 0.15s ease-in-out,
+    opacity 0.15s ease-in-out;
+}
+
+/* Mask-based icon helper:
+   Renders a monochrome SVG as a colored silhouette using CSS mask (WebKit + standard).
+   Use the Icon component which sets mask-image to the SVG URL and applies variant classes.
+*/
+.icon-mask {
+  display: inline-block;
+  background-color: var(--accent);
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  -webkit-mask-size: contain;
+  mask-repeat: no-repeat;
+  mask-position: center;
+  mask-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+  transition:
+    background-color 0.15s ease-in-out,
+    opacity 0.15s ease-in-out;
+}
+
+/* Size helpers (Icon.jsx maps size prop to these) */
+.icon-sm {
+  width: 16px;
+  height: 16px;
+}
+.icon-md {
+  width: 24px;
+  height: 24px;
+}
+.icon-lg {
+  width: 36px;
+  height: 36px;
+}
+
+/* Variant color mapping (uses CSS variables defined per theme)
+   Increased contrast and aligned with navigation icon styling:
+   - Use stronger accent token for higher contrast
+   - Apply slightly increased opacity to read better on surfaces
+   - Apply theme-driven filter variables in dark mode to match inverted/bright nav images
+*/
+.icon-mask.variant-accent {
+  filter: var(--icon-filter-accent);
+}
+.icon-mask.variant-strong {
+  background-color: var(--accent-600);
+  opacity: 0.98;
+  filter: var(--icon-filter-accent);
+}
+.icon-mask.variant-danger {
+  background-color: var(--danger) !important;
+  opacity: 0.98;
+  filter: none !important;
+}
+.icon-mask.variant-default {
+  background-color: var(--muted);
+  opacity: 0.92;
+  filter: var(--icon-filter);
+}
+
+/* Allow passing custom sizing via utility classes as well */
+.icon-mask.h-9 {
+  height: 2.25rem;
+}
+.icon-mask.w-9 {
+  width: 2.25rem;
+}
+
+.icon {
+  display: inline-block;
+}
+
+.icon-md {
+  width: 24px;
+  height: 24px;
+}
+
+.icon-lg {
+  width: 32px;
+  height: 32px;
+}
+
+.icon-circle {
+  @apply p-2 rounded-full bg-gray-100/10 border border-gray-200/30 shadow-sm hover:shadow-md transition-all duration-300;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dark .icon-circle {
+  background-color: rgb(22 26 33 / 0.5);
+  border-color: rgb(255 255 255 / 0.1);
+}
+
+/* Button variants using variables (keeps Tailwind utilities in place) */
+.btn-primary {
+  background: linear-gradient(90deg, var(--accent), var(--accent-600));
+  color: var(--accent-contrast);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.15);
+}
+.btn-primary:hover {
+  filter: brightness(0.95);
+}
+.btn-secondary {
+  background: linear-gradient(90deg, var(--surface-muted), var(--surface));
+  color: var(--text);
+}
+.btn-danger {
+  background: linear-gradient(
+    90deg,
+    var(--danger),
+    color-mix(in srgb, var(--danger) 85%, #000)
+  );
+  color: #fff;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.18);
+}
+.btn-outline {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: transparent;
+}
+.btn:focus {
+  --tw-ring-color: var(--accent-400);
+}
+
+/* Cards, tables, alerts, etc. adapt to variables */
+.card {
+  background-color: color-mix(in srgb, var(--surface) 90%, transparent);
+  border: 1px solid var(--border);
+  opacity: 0.9;
+}
+.card-header,
+.card-footer {
+  border-color: var(--border);
+}
+.table {
+  --tw-divide-opacity: 1;
+  border-color: var(--border);
+}
+.table-header {
+  background-color: color-mix(in srgb, var(--surface) 80%, #0000);
+  color: var(--muted);
+}
+.table-cell {
+  color: var(--text);
+}
+.alert-success {
+  background-color: color-mix(in srgb, var(--success) 15%, var(--surface));
+  border-color: var(--success);
+  color: var(--success);
+}
+.alert-error {
+  background-color: color-mix(in srgb, var(--danger) 15%, var(--surface));
+  border-color: var(--danger);
+  color: var(--danger);
+}
+.alert-warning {
+  background-color: color-mix(in srgb, var(--warning) 15%, var(--surface));
+  border-color: var(--warning);
+  color: var(--warning);
+}
+.alert-info {
+  background-color: color-mix(in srgb, var(--accent) 15%, var(--surface));
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* Modern Button Styles (performance tuned)
+   - Single-layer shadow with reduced blur & opacity
+   - Use transform for hover lift and will-change: transform to hint the compositor
+*/
+.btn {
+  @apply inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md transition-transform duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  will-change: transform;
+}
+
+.btn:disabled {
+  @apply opacity-75 cursor-not-allowed;
+}
+
+/* Use variable-driven colors for primary (reduced shadow cost)
+   - Keep visual lift but use transform + single-layer shadow on hover
+*/
+.btn-primary {
+  @apply transform transition-transform;
+}
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.09);
+  will-change: transform;
+}
+
+/* Variable-based secondary uses surface colors already set above */
+.btn-secondary {
+}
+
+/* Use variable-driven danger */
+.btn-danger {
+  @apply shadow-lg hover:shadow-xl transform hover:-translate-y-0.5;
+}
+
+/* Outline relies on variables now; keep hover background subtle via surface-muted mix */
+.btn-outline {
+  @apply border; /* Reduced border from border-2 to border */
+}
+
+/* Mobile-specific styles for all buttons - disable hover effects on mobile */
+@media (max-width: 768px) {
+  .btn-primary:hover,
+  .btn-secondary:hover,
+  .btn-danger:hover,
+  .btn-outline:hover {
+    transform: none;
+    box-shadow: none;
+    filter: none;
+    background-color: inherit;
+  }
+
+  /* Enhanced tap/click feedback for mobile */
+  .btn:active {
+    transform: scale(0.98);
+  }
+}
+
+/* Floating Action Button (lighter shadow)
+   - Single soft shadow, transform-based hover (GPU friendly)
+*/
+.fab {
+  @apply fixed bottom-20 right-4 w-14 h-14 rounded-full flex items-center justify-center text-white bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 transition-transform duration-200 z-50;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.10);
+  will-change: transform;
+}
+
+.fab:hover {
+  transform: scale(1.05);
+}
+
+/* Mobile Bottom Menu */
+.mobile-menu {
+  @apply fixed bottom-0 left-0 right-0 shadow-lg z-50;
+  background-color: color-mix(in srgb, var(--surface) 95%, transparent);
+  border-top: 1px solid var(--border);
+}
+
+.mobile-menu-shadow {
+  box-shadow:
+    0 -10px 25px -17px rgba(0, 0, 0, 0.2),
+    0 -5px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+.mobile-menu-item {
+  @apply flex flex-col items-center justify-center p-2 text-xs text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200;
+}
+
+.mobile-menu-item.active {
+  @apply text-blue-600 dark:text-blue-400;
+}
+
+.mobile-menu-icon {
+  @apply w-6 h-6 mb-1;
+}
+
+/* Modern Card Styles (optimized for performance)
+   - Use a single soft shadow and transform lift on hover.
+   - Avoid multi-layer heavy shadows that force expensive paints.
+*/
+.card {
+  @apply rounded-xl transition-transform duration-200 overflow-hidden;
+  background-color: var(--surface);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
+}
+.card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
+  will-change: transform;
+}
+
+.card-header {
+  @apply px-6 py-4 border-b border-gray-200 dark:border-gray-700;
+}
+
+.card-body {
+  @apply p-6;
+}
+
+.card-footer {
+  @apply px-6 py-4 border-t border-gray-200 dark:border-gray-700;
+}
+
+/* Modern Form Styles */
+.form-group {
+  @apply mb-5 relative;
+}
+
+.form-label {
+  @apply block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 transition-all duration-200;
+}
+
+.form-input {
+  @apply w-full px-4 h-[40px] border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white transition-colors duration-200;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+}
+
+.form-input-with-prefix {
+  @apply pl-10 h-[40px];
+}
+
+/* Mobile Form Styles */
+@media (max-width: 640px) {
+  .form-group {
+    @apply mb-4;
+  }
+
+  .form-input {
+    @apply w-full px-4 h-[45px] border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200;
+  }
+
+  .form-input-with-prefix {
+    @apply pl-10 h-[45px];
+  }
+}
+
+/* Floating Label Input */
+.floating-input {
+  @apply pt-2 pb-2;
+}
+
+.floating-label {
+  @apply absolute left-4 -top-3 text-gray-500 dark:text-gray-400 transition-all duration-200 pointer-events-none;
+}
+
+.floating-input:focus + .floating-label,
+.floating-input:not(:placeholder-shown) + .floating-label {
+  @apply -top-5 text-xs text-blue-500 dark:text-blue-400;
+}
+
+/* Alert Styles */
+.alert {
+  @apply p-4 rounded-lg mb-4 transition-all duration-300;
+}
+
+.alert-success {
+  @apply bg-green-100 border border-green-400 text-green-700 dark:bg-green-900/30 dark:border-green-700 dark:text-green-300;
+}
+
+.alert-error {
+  @apply bg-red-100 border border-red-400 text-red-700 dark:bg-red-900/30 dark:border-red-700 dark:text-red-300;
+}
+
+.alert-warning {
+  @apply bg-yellow-100 border border-yellow-400 text-yellow-700 dark:bg-yellow-900/30 dark:border-yellow-700 dark:text-yellow-300;
+}
+
+.alert-info {
+  @apply bg-blue-100 border border-blue-400 text-blue-700 dark:bg-blue-900/30 dark:border-blue-700 dark:text-blue-300;
+}
+
+/* Modern Table Styles */
+.table {
+  @apply min-w-full divide-y divide-gray-200 dark:divide-gray-700;
+}
+
+.table-header {
+  @apply px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider bg-gray-50 dark:bg-gray-700/50;
+}
+
+.table-cell {
+  @apply px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200;
+}
+
+.table-row {
+  @apply hover:bg-gray-50 dark:hover:bg-gray-700/50;
+}
+
+.table-action-cell {
+  @apply px-6 py-4 whitespace-nowrap text-sm font-medium flex items-center space-x-4;
+}
+
+.table-action-button {
+  @apply p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors duration-200;
+}
+
+/* Mobile Table Styles */
+@media (max-width: 640px) {
+  .table-action-cell {
+    @apply space-x-2;
+  }
+
+  .table-action-button {
+    @apply p-3;
+  }
+
+  .table-cell {
+    @apply px-4 py-3 text-xs;
+  }
+
+  .table-header {
+    @apply px-4 py-2 text-xs;
+  }
+}
+
+/* Modern Badge Styles */
+.badge {
+  @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+}
+
+.badge-primary {
+  @apply bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200;
+}
+
+.badge-success {
+  @apply bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200;
+}
+
+.badge-warning {
+  @apply bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200;
+}
+
+.badge-danger {
+  @apply bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200;
+}
+
+/* Modern Progress Bar */
+.progress-bar {
+  @apply h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden;
+}
+
+.progress-fill {
+  @apply h-full bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full transition-all duration-500 ease-out;
+}
+
+/* Modern Spinner */
+.spinner {
+  @apply animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500;
+}
+
+/* Modern Divider */
+.divider {
+  @apply relative my-6;
+}
+
+.divider::after {
+  @apply absolute inset-0 flex items-center;
+  content: "";
+}
+
+.divider::before {
+  @apply absolute inset-0 flex items-center;
+  content: "";
+}
+
+.divider::after {
+  @apply border-t border-gray-300 dark:border-gray-600 w-full;
+}
+
+.divider-content {
+  @apply relative px-4 bg-white dark:bg-gray-800 text-sm text-gray-500 dark:text-gray-400;
+}
+
+/* Global Styles */
+body {
+  background-color: transparent;
+  color: var(--text);
+  @apply transition-colors duration-300;
+  font-family:
+    "Inter",
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    "Roboto",
+    "Oxygen",
+    "Ubuntu",
+    "Cantarell",
+    "Fira Sans",
+    "Droid Sans",
+    "Helvetica Neue",
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.dark body {
+  color: var(--text);
+}
+
+.main-content {
+  @apply py-6 px-4 sm:px-6;
+}
+/* Mobile specific styles */
+@media (max-width: 640px) {
+  .main-content {
+    @apply py-2 px-0;
+  }
+}
+
+.container {
+  @apply max-w-7xl mx-auto;
+}
+
+/* Animation Classes */
+.fade-in {
+  @apply opacity-0 translate-y-4;
+  animation: fadeIn 0.5s ease-out forwards;
+}
+
+@keyframes fadeIn {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.slide-in {
+  @apply opacity-0 translate-x-4;
+  animation: slideIn 0.3s ease-out forwards;
+}
+
+@keyframes slideIn {
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Scale animations */
+.scale-hover {
+  transition: transform 0.2s ease-in-out;
+}
+
+.scale-hover:hover {
+  transform: scale(1.05);
+}
+
+.scale-active {
+  transition: transform 0.2s ease-in-out;
+}
+
+.scale-active:active {
+  transform: scale(0.95);
+}
+
+/* Smooth transitions */
+.transition-all {
+  transition: all cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+}
+
+.transition-colors {
+  transition:
+    background-color,
+    border-color,
+    color,
+    fill,
+    stroke cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+}
+
+.transition-opacity {
+  transition: opacity cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+}
+
+.transition-transform {
+  transition: transform cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+}
+
+/* Specific background color transition for table rows */
+.table-row {
+  transition: background-color 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dark .table-row {
+  transition: background-color 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Bounce animations */
+.bounce {
+  animation: bounce 0.6s ease-in-out;
+}
+
+@keyframes bounce {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+/* Pulse animations */
+.pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* Shake animations */
+.shake {
+  animation: shake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+@keyframes shake {
+  10%,
+  90% {
+    transform: translateX(-1px);
+  }
+  20%,
+  80% {
+    transform: translateX(2px);
+  }
+  30%,
+  50%,
+  70% {
+    transform: translateX(-4px);
+  }
+  40%,
+  60% {
+    transform: translateX(4px);
+  }
+}
+
+/* Responsive Utilities */
+@media (max-width: 640px) {
+  .btn {
+    @apply px-3 py-1.5 text-sm;
+  }
+
+  .card {
+    @apply rounded-lg;
+  }
+
+  .card-body {
+    @apply p-2;
+  }
+
+  .form-input {
+    @apply px-3 py-2;
+  }
+
+  .form-input-with-prefix {
+    @apply pl-6;
+  }
+}
+
+/* Dark Mode Overrides */
+/* Removed general dark card override to allow theme-specific dark cards to take full effect */
+
+/* Palette-specific card backgrounds in dark mode */
+
+/* Optional subtle card variants by palette (light mode keeps neutral surface) */
+:root[data-theme="ocean"].dark .card {
+  /* Adjusted to be less dark */
+  background-color: color-mix(in srgb, var(--surface) 40%, #000);
+  border-color: color-mix(in srgb, var(--border) 80%, #000);
+  opacity: 0.95;
+}
+:root[data-theme="forest"].dark .card {
+  /* Adjusted to be less dark */
+  background-color: color-mix(in srgb, var(--surface) 40%, #000);
+  border-color: color-mix(in srgb, var(--border) 80%, #000);
+  opacity: 0.95;
+}
+:root[data-theme="rose"].dark .card {
+  /* Adjusted to be less dark */
+  background-color: color-mix(in srgb, var(--surface) 40%, #000);
+  border-color: color-mix(in srgb, var(--border) 80%, #000);
+  opacity: 0.95;
+}
+:root[data-theme="rose"] .card {
+  background-color: color-mix(in srgb, var(--surface) 90%, transparent);
+  border-color: color-mix(in srgb, var(--border) 90%, transparent);
+  opacity: 0.9;
+}
+
+.dark .form-input {
+  @apply border-gray-600 text-white;
+  background-color: rgb(55 65 81 / 0.3);
+}
+
+.dark .form-input:focus {
+  @apply ring-2 ring-blue-500 ring-opacity-50;
+}
+
+.dark .table-header {
+  @apply bg-gray-700/50;
+}
+
+.dark\:bg-gray-700\/30 {
+  background-color: rgba(55, 65, 81, 0.3);
+}
+
+.dark .table-row {
+  @apply hover:bg-gray-700/50;
+}
+
+/* Gradient Backgrounds */
+.gradient-bg {
+  background: radial-gradient(
+    1200px circle at 0% 0%,
+    color-mix(in srgb, var(--accent) 8%, var(--bg)) 0%,
+    var(--bg) 60%
+  );
+}
+
+.gradient-card {
+  @apply bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-800/80;
+}
+
+/* Modern Typography */
+.display-1 {
+  @apply text-4xl md:text-5xl font-bold tracking-tight;
+}
+
+.display-2 {
+  @apply text-3xl md:text-4xl font-bold tracking-tight;
+}
+
+.display-3 {
+  @apply text-2xl md:text-3xl font-bold tracking-tight;
+}
+
+.text-gradient {
+  background-image: linear-gradient(90deg, var(--accent), var(--accent-600));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Modern Shadows - Enhanced (performance tuned)
+   - Prefer single-layer shadows with controlled blur & opacity.
+   - These provide similar depth while reducing composite/paint cost.
+*/
+.shadow-soft {
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
+}
+
+.shadow-soft-lg {
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.08);
+}
+
+.shadow-soft-xl {
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.10);
+}

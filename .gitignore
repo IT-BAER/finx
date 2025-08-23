@@ -1,0 +1,95 @@
+# Dependencies
+/node_modules
+/frontend/node_modules
+
+# Build artifacts
+/build
+/dist
+/frontend/dist
+/frontend/build
+
+# Environment variables
+# Track .env so users can edit placeholders easily; ignore other variants
+.env.*
+!.env
+!.env.example
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Cache
+.npm
+.eslintcache
+.vite
+.yarn/cache
+.pnpm-store
+
+# IDE configuration
+.vscode
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.editorconfig
+.nvmrc
+
+
+# OS generated files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Icon?
+Desktop.ini
+$RECYCLE.BIN/
+*.stackdump
+*.orig
+*.tmp
+*.temp
+*.diff
+*.patch
+*.bak
+*.swp
+*.swx
+*~
+
+# Re-include app icons folder (Windows ignorecase makes `Icon?` match `icons`)
+!frontend/public/icons/
+!frontend/public/icons/**
+
+# Frontend caches
+.parcel-cache
+frontend/.vite
+frontend/.cache
+frontend/.eslintcache
+frontend/.swc
+frontend/.turbo
+
+# Test artifacts
+/coverage
+.nyc_output
+
+# Development and documentation files
+.editorconfig
+.nvmrc
+# docs are part of the repository
+# docs/
+frontend/dev-dist/
+.clinerules/
+.kiro/
+.tests/
+tmp/
+temp/
+/.DS_Store
+/.history
+/.husky/
+/.idea/
+/.vscode/
+.github/copilot-instructions.md
+.github/instructions

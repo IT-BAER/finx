@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en" class="reduce-effects">
+  <head>
+    <meta charset="utf-8" />
+
+    <!-- Primary Meta Tags -->
+    <title>FinX - Personal Finance Tracker</title>
+    <meta name="title" content="FinX - Personal Finance Tracker" />
+    <meta
+      name="description"
+      content="Modern personal finance tracking application with comprehensive analytics and budgeting tools. Track expenses, manage budgets, and gain insights into your financial health."
+    />
+    <meta
+      name="keywords"
+      content="finance, budget, expense tracker, personal finance, money management, financial planning"
+    />
+    <meta name="author" content="FinX Team" />
+
+    <!-- Viewport and Mobile Optimization -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="FinX" />
+    <meta name="application-name" content="FinX" />
+
+    <!-- Theme Colors -->
+    <meta name="theme-color" content="#ffffff" />
+    <meta name="msapplication-TileColor" content="#ffffff" />
+    <meta name="msapplication-navbutton-color" content="#ffffff" />
+    <meta
+      name="apple-mobile-web-app-status-bar-style"
+      content="black-translucent"
+    />
+
+    <!-- Dynamic Theme Color Script -->
+    <script>
+      // Function to update theme color based on current theme
+      function updateThemeColor() {
+        // Get current theme from localStorage or default to 'default'
+        const theme = localStorage.getItem("theme") || "default";
+        const darkMode = localStorage.getItem("darkMode") === "true";
+
+        // Define theme colors for light and dark modes
+        const themeColors = {
+          default: { light: "#ffffff", dark: "#111827" },
+          ocean: { light: "#ffffff", dark: "#0b2533" },
+          forest: { light: "#ffffff", dark: "#0f2417" },
+          rose: { light: "#ffffff", dark: "#2a0f19" },
+        };
+
+        // Get the appropriate color based on theme and mode
+        const color =
+          (themeColors[theme] &&
+            themeColors[theme][darkMode ? "dark" : "light"]) ||
+          "#ffffff";
+
+        // Update theme-color meta tag
+        let themeColorMeta = document.querySelector('meta[name="theme-color"]');
+        if (themeColorMeta) {
+          themeColorMeta.content = color;
+        } else {
+          themeColorMeta = document.createElement("meta");
+          themeColorMeta.name = "theme-color";
+          themeColorMeta.content = color;
+          document.head.appendChild(themeColorMeta);
+        }
+      }
+
+      // Update theme color on load
+      updateThemeColor();
+
+      // Listen for storage changes (when theme changes in other tabs)
+      window.addEventListener("storage", function (e) {
+        if (e.key === "theme" || e.key === "darkMode") {
+          updateThemeColor();
+        }
+      });
+    </script>
+
+    <!-- Icons -->
+    <link rel="icon" href="/icons/favicon.ico" sizes="16x16" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/logos/logo-32.png" />
+    <link rel="apple-touch-icon" href="/logos/logo-192.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/logos/logo-192.png" />
+    <link rel="mask-icon" href="/logos/logo-192.png" color="#06b6d4" />
+
+    <!-- Microsoft Tiles -->
+    <meta
+      name="msapplication-TileImage"
+      content="/logos/logo-192-maskable.png"
+    />
+    <meta
+      name="msapplication-square70x70logo"
+      content="/logos/logo-192-maskable.png"
+    />
+    <meta
+      name="msapplication-square150x150logo"
+      content="/logos/logo-192-maskable.png"
+    />
+    <meta
+      name="msapplication-wide310x150logo"
+      content="/logos/logo-512-maskable.png"
+    />
+    <meta
+      name="msapplication-square310x310logo"
+      content="/logos/logo-512-maskable.png"
+    />
+
+  <!-- PWA Manifest is injected by vite-plugin-pwa during build -->
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="FinX - Personal Finance Tracker" />
+    <meta
+      property="og:description"
+      content="Modern personal finance tracking application with comprehensive analytics and budgeting tools"
+    />
+    <meta property="og:image" content="/logos/logo-512.png" />
+    <meta property="og:url" content="/" />
+    <meta property="og:site_name" content="FinX" />
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:title" content="FinX - Personal Finance Tracker" />
+    <meta
+      property="twitter:description"
+      content="Modern personal finance tracking application with comprehensive analytics and budgeting tools"
+    />
+    <meta property="twitter:image" content="/logos/logo-512.png" />
+
+    <!-- Security -->
+    <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+    <meta http-equiv="X-XSS-Protection" content="1; mode=block" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+
+    <!-- Preconnect to improve performance -->
+    <link rel="preconnect" href="/" />
+    <link rel="dns-prefetch" href="/" />
+  <!-- Removed icon preloads to avoid warnings on routes where they aren't used immediately -->
+    <style>
+      /* Reduce jank on first paint while CSS hydrates */
+      html.preload-css *, html.preload-css *::before, html.preload-css *::after {
+        transition: none !important;
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+      }
+    </style>
+  </head>
+  <body>
+    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <div id="root" class="min-h-screen flex flex-col"></div>
+    <script>
+      // Temporarily disable transitions until next frame to keep initial scroll smooth
+      document.documentElement.classList.add('preload-css');
+      requestAnimationFrame(() => {
+        document.documentElement.classList.remove('preload-css');
+      });
+    </script>
+  <!-- Preload and load core CSS early to avoid initial jank on first paint -->
+  <link rel="preload" as="style" href="/src/styles/index.css" />
+  <link rel="stylesheet" href="/src/styles/index.css" fetchpriority="high" />
+    <script type="module" src="/src/index.jsx"></script>
+  </body>
+</html>

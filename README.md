@@ -1,0 +1,236 @@
+<div align="center">
+
+# FinX — Personal Finance Manager (PWA)
+
+[![Node.js](https://img.shields.io/badge/Node.js-20.x-green.svg)](https://nodejs.org/)
+[![Express](https://img.shields.io/badge/Backend-Express-informational.svg)](https://expressjs.com/)
+[![React](https://img.shields.io/badge/Frontend-React%20%2B%20Vite-61DAFB.svg)](https://react.dev/)
+[![PostgreSQL](https://img.shields.io/badge/DB-PostgreSQL-336791.svg)](https://www.postgresql.org/)
+![PWA](https://img.shields.io/badge/PWA-Ready-blueviolet.svg)
+
+Modern, offline-capable personal finance app with sharing, recurring transactions, and fast mobile UX.
+
+</div>
+
+## 📚 Table of Contents
+
+<p align="center">
+   <a href="#-key-features">✨ Features</a> •
+   <a href="#-requirements">🧰 Requirements</a> •
+   <a href="#-quick-install">🚀 Install</a> •
+   <a href="#-management">🛠️ Management</a> •
+   <a href="#-uninstall">🧹 Uninstall</a> •
+   <a href="#-troubleshooting">🚨 Troubleshooting</a> •
+   <a href="#-tested-systems">🖥️ Tested</a> •
+   <a href="#-security">🔒 Security</a> •
+   <a href="#-learn-more">📚 More</a> •
+   <a href="#-license">📄 License</a> •
+   <a href="#-support-development">💜 Support</a> •
+   <a href="#-credits">👏 Credits</a>
+  
+</p>
+
+<br>
+
+## ✨ Key Features
+
+- Offline-first PWA: read endpoints cached, queued mutations when offline
+- Fast mobile UX: early CSS delivery, passive listeners, tuned SW auto-update
+- Transactions with categories, sources, targets; imports with duplicate detection
+- Recurring rules and background processor (systemd scheduler supported)
+- Sharing with fine-grained can_edit access; visibility honored server-side
+- Admin taxonomy management (categories/sources/targets)
+- Clean Express API with JWT auth; PostgreSQL persistence
+
+<br>
+
+## 🧰 Requirements
+
+- Docker Desktop (Windows/macOS) or Docker Engine (Linux) with Docker Compose v2
+- Open ports: 3000 (frontend), 5000 (backend)
+- Internet access to pull images; ~300MB+ free disk space for images and DB volume
+- Optional for development (not required for Docker run): Node.js 20+
+
+<br>
+
+## 🚀 Quick Install
+
+### 🐋 Docker Compose (recommended)
+
+```bash
+git clone https://github.com/IT-BAER/finx.git
+cd finx
+
+# 1) Edit the environment file with your values
+#    Required keys: DB_NAME, DB_USER, DB_PASSWORD, JWT_SECRET
+#    Optional: DISABLE_REGISTRATION=true (recommended for closed deployments)
+#    File: .env (already present in the repo)
+
+# 2) Start services
+docker-compose up -d --build
+
+# 3) First run initialization (usually automatic). If needed, run manually:
+# docker-compose exec backend npm run init-db
+
+```
+
+App: http://localhost:3000 • API: proxied at /api
+
+<br>
+
+### 🐧 Debian/Ubuntu (no Docker) — Interactive Installer
+
+```bash
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/IT-BAER/finx/main/setup.sh)"
+```
+
+What it does: installs Node.js LTS and PostgreSQL, creates DB/user, writes `/etc/finx/finx.env`, builds the frontend, creates a `systemd` service `finx.service`, and configures Nginx or Apache on request. See `docs/DEPLOY-DEBIAN.md` for details.
+
+<br>
+
+### 💻 Development (Windows/macOS/Linux)
+
+```bash
+# Backend + Frontend dev helpers
+npm install && (cd frontend && npm install)
+npm run dev-start
+# Or full helper that prints LAN URL
+./scripts/dev-full.sh
+```
+
+Frontend on http://localhost:3000 with API proxied to http://localhost:5000.
+
+<br>
+
+## 🛠️ Management
+
+### Docker
+```bash
+docker-compose ps
+docker-compose logs -f backend frontend
+docker-compose exec backend npm run migrate-db
+```
+
+### Linux (systemd)
+```bash
+sudo systemctl status finx
+sudo journalctl -u finx -f
+sudo systemctl restart finx
+```
+
+<br>
+
+## 🧹 Uninstall
+
+### Debian/Ubuntu (setup.sh installs)
+
+```bash
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/IT-BAER/finx/main/uninstall.sh)"
+```
+
+Removes by default:
+- systemd service `finx.service`
+- Nginx/Apache site configs (and reloads the server)
+- PostgreSQL database and role for FinX
+- `/etc/finx` environment directory
+- Application directory (defaults to `/opt/finx`)
+- Dedicated `finx` system user (if it matches FinX’s service user)
+
+Note:
+- Apache defaults (`Listen 80`/`Listen 443`) are preserved; only custom `Listen` ports created by the installer are removed.
+
+Flags to keep resources:
+- `--keep-db` `--keep-user` `--keep-env` `--keep-code` • `--purge` to force code deletion if the path looks non-standard
+
+Examples:
+```bash
+# Keep DB and user, remove everything else
+sudo bash uninstall.sh --keep-db --keep-user
+
+# Force delete a non-standard install directory
+sudo bash uninstall.sh --purge
+```
+
+### Docker Compose
+
+```bash
+docker-compose down -v
+```
+
+This stops and removes containers, network, and the DB volume.
+
+<br>
+
+## 🚨 Troubleshooting
+
+**Service won’t start (Linux):**
+```bash
+sudo systemctl status finx --no-pager
+sudo journalctl -u finx --no-pager -n 200
+```
+
+**DB connection:** verify values in `/etc/finx/finx.env` (or `.env` in dev). Ensure PostgreSQL is running and credentials match.
+
+**Migrations:**
+```bash
+npm run migrate-db
+```
+
+**Port conflicts:** API uses `PORT` (default 5000). Change in env file or stop other services.
+
+<br>
+
+## 🖥️ Tested Systems
+
+| System | Version | API | Frontend | PWA |
+|---|---|---|---|---|
+| Debian | 12+ | ✅ | ✅ | ✅ |
+| Ubuntu | 22.04+ | ✅ | ✅ | ✅ |
+| Docker Desktop (Windows 11) | latest | ✅ | ✅ | ✅ |
+| WSL2 (dev) | Ubuntu 22.04 | ✅ | ✅ | ✅ |
+| Android (Chrome) | 16 | ✅ | ✅ | ✅ |
+| Chrome (Desktop) | latest | ✅ | ✅ | ✅ |
+
+<br>
+
+## 🔒 Security
+
+- Set a strong `JWT_SECRET` in env
+- Recommended: run behind HTTPS (Nginx/Apache reverse proxy)
+- `DISABLE_REGISTRATION=true` for closed deployments
+- Database least privilege: dedicated app user owns app DB only
+- CORS: set `CORS_ORIGIN` to your frontend origin
+
+<br>
+
+## 📚 Learn More
+
+- Debian/Ubuntu installer details: `docs/DEPLOY-DEBIAN.md`
+
+<br>
+
+## 📄 License
+
+No license specified yet.
+
+<br>
+
+## 💜 Support Development
+
+If this project helps you, consider supporting future work (coffee fuels coding):
+
+<div align="center">
+<a href="https://www.buymeacoffee.com/itbaer" target="_blank"><img src="https://github.com/user-attachments/assets/64107f03-ba5b-473e-b8ad-f3696fe06002" alt="Buy Me A Coffee" style="height: 60px; max-width: 217px;"></a>
+<br>
+<a href="https://www.paypal.com/donate/?hosted_button_id=5XXRC7THMTRRS" target="_blank">Donate via PayPal</a>
+</div>
+
+<br>
+
+## 👏 Credits
+
+- React, Vite, Tailwind CSS
+- Express, Node.js
+- PostgreSQL
+- Workbox (via Vite PWA plugin)
+
