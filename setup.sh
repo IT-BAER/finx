@@ -357,23 +357,41 @@ ensure_repo() {
     if [ -d "${INSTALL_DIR}/.git" ]; then
         ok "Existing git repo found at ${INSTALL_DIR}"
         APP_DIR="${INSTALL_DIR}"
-        # Update flow: fetch latest and checkout desired ref
-        if [ -z "${REF}" ]; then
-            say "Fetching latest tags for update"
-            ( cd "${INSTALL_DIR}" && git fetch --tags --prune ) || true
-            local LATEST_TAG
-            LATEST_TAG=$(cd "${INSTALL_DIR}" && git tag --list | sort -V | tail -n1 || true)
-            if [ -n "${LATEST_TAG}" ]; then
-                REF="${LATEST_TAG}"
-                ok "Updating to latest release tag: ${REF}"
+        # Update flow (no tag heuristics):
+        # - If a release REF was detected earlier, checkout that ref; else hard reset to origin/main
+        # Run all git commands as the app user to avoid 'dubious ownership'
+        if [ -n "${REF}" ] && [ -z "${ARCHIVE_URL}" ]; then
+            say "Updating repository to release ref: ${REF}"
+            if [ "${CREATE_USER}" = "y" ]; then
+                (
+                    cd "${INSTALL_DIR}" && \
+                    run_as_user "${APP_USER}" git fetch --all --prune && \
+                    run_as_user "${APP_USER}" git checkout -q "${REF}"
+                ) || warn "Checkout of ${REF} failed; repository remains unchanged"
             else
-                warn "No tags found locally; pulling default branch"
+                (
+                    cd "${INSTALL_DIR}" && \
+                    git fetch --all --prune && \
+                    git checkout -q "${REF}"
+                ) || warn "Checkout of ${REF} failed; repository remains unchanged"
             fi
-        fi
-        if [ -n "${REF}" ]; then
-            ( cd "${INSTALL_DIR}" && git checkout -q "${REF}" ) || true
         else
-            ( cd "${INSTALL_DIR}" && git pull --ff-only || true )
+            say "Updating repository to main branch"
+            if [ "${CREATE_USER}" = "y" ]; then
+                (
+                    cd "${INSTALL_DIR}" && \
+                    run_as_user "${APP_USER}" git fetch origin main || run_as_user "${APP_USER}" git fetch origin && \
+                    run_as_user "${APP_USER}" git checkout -q main || true && \
+                    run_as_user "${APP_USER}" git reset --hard origin/main || true
+                ) || warn "Update to main branch encountered issues; repository may be unchanged"
+            else
+                (
+                    cd "${INSTALL_DIR}" && \
+                    git fetch origin main || git fetch origin && \
+                    git checkout -q main || true && \
+                    git reset --hard origin/main || true
+                ) || warn "Update to main branch encountered issues; repository may be unchanged"
+            fi
         fi
         return 0
     fi
