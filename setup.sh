@@ -290,18 +290,65 @@ ensure_repo() {
         return 0
     fi
 
-    # Path B: Git clone (optionally at a ref)
-    # If no ref provided, try to detect latest tagged release
-    if [ -z "${REF}" ]; then
-        ensure_tool git
-        say "Detecting latest release tag from ${REPO_URL}"
-        local LATEST_TAG
-        LATEST_TAG=$(git ls-remote --tags --refs "${REPO_URL}" 2>/dev/null | awk '{print $2}' | sed 's#refs/tags/##' | sort -V | tail -n1 || true)
-        if [ -n "${LATEST_TAG}" ]; then
-            REF="${LATEST_TAG}"
-            ok "Using latest release tag: ${REF}"
+    # Path B: Git clone (prefer actual releases only, not arbitrary tags)
+    # If no explicit REF/ARCHIVE_URL provided, try to detect a real release via provider API; else fallback to main branch
+    if [ -z "${REF}" ] && [ -z "${ARCHIVE_URL}" ]; then
+        ensure_tool curl
+        # Parse REPO_URL to host/owner/name
+        local _url _host _path _owner _name _api_release_url _api_type
+        _url="${REPO_URL%.git}"
+        # Normalize ssh form git@host:owner/name to https://host/owner/name
+        if echo "${_url}" | grep -qE '^[^/]+@[^:]+:'; then
+            _host=$(printf "%s" "${_url}" | sed -E 's/^[^@]+@([^:]+):.*/\1/')
+            _path=$(printf "%s" "${_url}" | sed -E 's/^[^:]+:(.*)/\1/')
         else
-            warn "No tags detected; falling back to default branch"
+            _host=$(printf "%s" "${_url}" | sed -E 's#^https?://([^/]+)/.*#\1#')
+            _path=$(printf "%s" "${_url}" | sed -E 's#^https?://[^/]+/(.*)$#\1#')
+        fi
+        _owner=$(printf "%s" "${_path}" | awk -F'/' '{print $1}')
+        _name=$(printf "%s" "${_path}" | awk -F'/' '{print $2}')
+        local NO_RELEASE="y"
+        if [ -n "${_host}" ] && [ -n "${_owner}" ] && [ -n "${_name}" ]; then
+            # Try GitHub
+            if [ "${_host}" = "github.com" ]; then
+                _api_release_url="https://api.github.com/repos/${_owner}/${_name}/releases/latest"
+                say "Checking GitHub releases for ${_owner}/${_name}"
+                local api
+                api=$(curl -fsSL "${_api_release_url}" 2>/dev/null || true)
+                if echo "$api" | grep -q '"tag_name"'; then
+                    local tag tarball
+                    tag=$(printf "%s" "$api" | sed -n 's/.*"tag_name"\s*:\s*"\([^"]\+\)".*/\1/p' | head -n1)
+                    tarball=$(printf "%s" "$api" | sed -n 's/.*"tarball_url"\s*:\s*"\([^"]\+\)".*/\1/p' | head -n1)
+                    if [ -n "$tag" ] && [ -n "$tarball" ]; then
+                        REF="$tag"; ARCHIVE_URL="$tarball"; NO_RELEASE="n";
+                        ok "Found latest GitHub release: ${REF}"
+                    fi
+                fi
+            else
+                # Try Gitea API (common for self-hosted at ${_host})
+                _api_release_url="https://${_host}/api/v1/repos/${_owner}/${_name}/releases"
+                say "Checking releases via ${_host} API"
+                local api
+                api=$(curl -fsSL "${_api_release_url}" 2>/dev/null || true)
+                if echo "$api" | grep -q '\[{'; then
+                    # Pick first release that's not draft/prerelease if possible
+                    # Crude parse without jq: find first block with "draft":false and "prerelease":false
+                    local block
+                    block=$(printf "%s" "$api" | tr '\n' ' ' | sed 's/\],/\]\n/g' | sed -n '1,1p')
+                    # Extract tag_name and (zip|tar)ball
+                    local tag tarball zipball
+                    tag=$(printf "%s" "$api" | sed -n 's/.*"draft"\s*:\s*false[^\}]*"prerelease"\s*:\s*false[^\}]*"tag_name"\s*:\s*"\([^"]\+\)".*/\1/p' | head -n1)
+                    tarball=$(printf "%s" "$api" | sed -n 's/.*"tarball_url"\s*:\s*"\([^"]\+\)".*/\1/p' | head -n1)
+                    zipball=$(printf "%s" "$api" | sed -n 's/.*"zipball_url"\s*:\s*"\([^"]\+\)".*/\1/p' | head -n1)
+                    if [ -n "$tag" ]; then
+                        REF="$tag"; ARCHIVE_URL="${tarball:-$zipball}"; NO_RELEASE="n";
+                        ok "Found latest release: ${REF}"
+                    fi
+                fi
+            fi
+        fi
+        if [ "${NO_RELEASE}" = "y" ]; then
+            warn "No actual releases found; will clone from 'main' branch"
         fi
     fi
 
@@ -331,8 +378,8 @@ ensure_repo() {
         return 0
     fi
 
-    if [ -n "${REF}" ]; then
-        # Clone and checkout specific ref (branch, tag, or commit)
+    if [ -n "${REF}" ] && [ -z "${ARCHIVE_URL}" ]; then
+        # Clone and checkout specific ref (branch or commit)
         if [ "${CREATE_USER}" = "y" ]; then
             run_as_user "${APP_USER}" git clone "${REPO_URL}" "${INSTALL_DIR}"
             ( cd "${INSTALL_DIR}" && run_as_user "${APP_USER}" git checkout "${REF}" )
@@ -341,11 +388,17 @@ ensure_repo() {
             ( cd "${INSTALL_DIR}" && git checkout "${REF}" )
         fi
     else
-        # Default shallow clone of default branch for speed
+        # Prefer cloning 'main'; if it fails, fall back to provider default branch
         if [ "${CREATE_USER}" = "y" ]; then
-            run_as_user "${APP_USER}" git clone --depth 1 "${REPO_URL}" "${INSTALL_DIR}"
+            if ! run_as_user "${APP_USER}" git clone --depth 1 -b main "${REPO_URL}" "${INSTALL_DIR}" 2>/dev/null; then
+                warn "Branch 'main' not found; cloning default branch"
+                run_as_user "${APP_USER}" git clone --depth 1 "${REPO_URL}" "${INSTALL_DIR}"
+            fi
         else
-            git clone --depth 1 "${REPO_URL}" "${INSTALL_DIR}"
+            if ! git clone --depth 1 -b main "${REPO_URL}" "${INSTALL_DIR}" 2>/dev/null; then
+                warn "Branch 'main' not found; cloning default branch"
+                git clone --depth 1 "${REPO_URL}" "${INSTALL_DIR}"
+            fi
         fi
     fi
     APP_DIR="${INSTALL_DIR}"
