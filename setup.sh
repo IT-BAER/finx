@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 set -euo pipefail
+set -E  # enable ERR trap inheritance
 
 # FinX Debian/Ubuntu Installer (interactive + idempotent)
 # - Installs Node.js LTS, PostgreSQL, Nginx (optional)
@@ -25,6 +26,22 @@ NGINX_SITE_ENABLED="/etc/nginx/sites-enabled/${APP_NAME}.conf"
 FRONTEND_PORT=""
 UPDATE_MODE="n"
 
+# Creation flags for rollback
+CREATED_SYSTEM_USER="n"
+CREATED_INSTALL_DIR="n"
+CREATED_ENV_FILE="n"
+CREATED_SERVICE="n"
+CREATED_NGINX_SITE="n"
+CREATED_APACHE_SITE="n"
+APPENDED_APACHE_PORT="n"
+CREATED_DB_USER="n"
+CREATED_DB="n"
+STARTED_SERVICE="n"
+COMPLETED="n"
+
+APACHE_SITE_FILE="/etc/apache2/sites-available/${APP_NAME}.conf"
+APACHE_PORTS_CONF="/etc/apache2/ports.conf"
+
 BLUE="\033[1;34m"; GREEN="\033[1;32m"; YELLOW="\033[1;33m"; RED="\033[1;31m"; NC="\033[0m"
 say() { echo -e "${BLUE}⇒${NC} $*"; }
 ok()  { echo -e "${GREEN}✔${NC} $*"; }
@@ -42,6 +59,73 @@ need_sudo() {
     else
         SUDO=""
     fi
+}
+
+setup_traps() {
+    # Install traps after sudo detection so cleanup can use $SUDO
+    trap 'on_error' ERR
+    trap 'on_interrupt' INT TERM
+}
+
+on_error() {
+    err "Setup failed. Rolling back partial changes..."
+    cleanup "error"
+    exit 1
+}
+
+on_interrupt() {
+    warn "Setup interrupted. Rolling back partial changes..."
+    cleanup "interrupt"
+    exit 130
+}
+
+cleanup() {
+    local reason="${1:-unknown}"
+    # Stop service if we started it
+    if [ "$STARTED_SERVICE" = "y" ] && [ -f "$SERVICE_FILE" ]; then
+        $SUDO systemctl stop "${APP_NAME}.service" || true
+    fi
+    # Disable and remove systemd service if we created it this run
+    if [ "$CREATED_SERVICE" = "y" ] && [ -f "$SERVICE_FILE" ]; then
+        $SUDO systemctl disable "${APP_NAME}.service" >/dev/null 2>&1 || true
+        $SUDO rm -f "$SERVICE_FILE" || true
+        $SUDO systemctl daemon-reload || true
+    fi
+    # Remove nginx site if we created it
+    if [ "$CREATED_NGINX_SITE" = "y" ]; then
+        [ -L "$NGINX_SITE_ENABLED" ] && $SUDO rm -f "$NGINX_SITE_ENABLED" || true
+        [ -f "$NGINX_SITE_AVAILABLE" ] && $SUDO rm -f "$NGINX_SITE_AVAILABLE" || true
+        command -v nginx >/dev/null 2>&1 && $SUDO nginx -t >/dev/null 2>&1 && $SUDO systemctl reload nginx || true
+    fi
+    # Remove apache site and revert port if we created/appended
+    if [ "$CREATED_APACHE_SITE" = "y" ]; then
+        [ -f "$APACHE_SITE_FILE" ] && $SUDO a2dissite "${APP_NAME}.conf" >/dev/null 2>&1 || true
+        [ -f "$APACHE_SITE_FILE" ] && $SUDO rm -f "$APACHE_SITE_FILE" || true
+        if [ "$APPENDED_APACHE_PORT" = "y" ] && [ -f "$APACHE_PORTS_CONF" ]; then
+            $SUDO sed -i "/^Listen[[:space:]]\+${FRONTEND_PORT}$/d" "$APACHE_PORTS_CONF" || true
+        fi
+        command -v apache2ctl >/dev/null 2>&1 && $SUDO apache2ctl configtest >/dev/null 2>&1 && $SUDO systemctl reload apache2 || true
+    fi
+    # Remove env file if created
+    if [ "$CREATED_ENV_FILE" = "y" ] && [ -f "$ENV_FILE" ]; then
+        $SUDO rm -f "$ENV_FILE" || true
+    fi
+    # Drop database and role if we created them
+    if [ "$CREATED_DB" = "y" ]; then
+        run_as_user postgres psql -v ON_ERROR_STOP=1 -c "DROP DATABASE IF EXISTS ${DB_NAME};" || true
+    fi
+    if [ "$CREATED_DB_USER" = "y" ]; then
+        run_as_user postgres psql -v ON_ERROR_STOP=1 -c "DROP ROLE IF EXISTS ${DB_USER};" || true
+    fi
+    # Remove app directory if we created it
+    if [ "$CREATED_INSTALL_DIR" = "y" ] && [ -n "${INSTALL_DIR_DEFAULT}" ] && [ -d "${FINX_INSTALL_DIR:-${INSTALL_DIR_DEFAULT}}" ]; then
+        $SUDO rm -rf "${FINX_INSTALL_DIR:-${INSTALL_DIR_DEFAULT}}" || true
+    fi
+    # Remove system user if we created it
+    if [ "$CREATED_SYSTEM_USER" = "y" ]; then
+        $SUDO userdel -r "$APP_USER" >/dev/null 2>&1 || true
+    fi
+    warn "Rollback finished (${reason})."
 }
 
 # Run a command as a given system user, compatible with both sudo and pure-root contexts
@@ -72,6 +156,7 @@ ensure_system_user() {
     fi
     say "Creating system user $APP_USER"
     $SUDO useradd -r -m -d "/home/${APP_USER}" -s /usr/sbin/nologin "$APP_USER"
+    CREATED_SYSTEM_USER="y"
 }
 
 generate_secret() {
@@ -238,7 +323,10 @@ ensure_repo() {
     ARCHIVE_URL="${FINX_ARCHIVE_URL:-}"
     REF="${FINX_REF:-}"
 
-    $SUDO mkdir -p "${INSTALL_DIR}"
+    if [ ! -d "${INSTALL_DIR}" ]; then
+        $SUDO mkdir -p "${INSTALL_DIR}"
+        CREATED_INSTALL_DIR="y"
+    fi
     if [ "${CREATE_USER}" = "y" ]; then
         $SUDO chown -R "${APP_USER}:${APP_USER}" "${INSTALL_DIR}"
     fi
@@ -496,6 +584,7 @@ create_db() {
 CREATE USER ${DB_USER} WITH ENCRYPTED PASSWORD '${DB_PASS}';
 SQL
         ok "Created DB user ${DB_USER}"
+        CREATED_DB_USER="y"
     fi
     if run_as_user postgres psql -Atqc "SELECT 1 FROM pg_database WHERE datname='${DB_NAME}'" | grep -q 1; then
         ok "DB ${DB_NAME} exists"
@@ -505,6 +594,7 @@ CREATE DATABASE ${DB_NAME} OWNER ${DB_USER};
 GRANT ALL PRIVILEGES ON DATABASE ${DB_NAME} TO ${DB_USER};
 SQL
         ok "Created DB ${DB_NAME}"
+        CREATED_DB="y"
     fi
 
     # Fetch password for existing user if needed
@@ -566,6 +656,7 @@ EOF
         $SUDO chown ${APP_USER}:root "$ENV_FILE"
     fi
     ok "Wrote ${ENV_FILE}"
+    CREATED_ENV_FILE="y"
 }
 
 install_dependencies() {
@@ -677,6 +768,7 @@ EOF
     $SUDO systemctl daemon-reload
     $SUDO systemctl enable "${APP_NAME}.service"
     ok "Systemd service installed"
+    CREATED_SERVICE="y"
 }
 
 create_nginx_site() {
@@ -826,6 +918,7 @@ EOF
     $SUDO nginx -t
     $SUDO systemctl reload nginx
     ok "Nginx configured for ${SERVER_NAME}"
+    CREATED_NGINX_SITE="y"
 }
 
 create_apache_site() {
@@ -846,6 +939,7 @@ create_apache_site() {
     # Ensure Apache listens on the chosen port
     if ! grep -RhoE "^Listen[[:space:]]+${FRONTEND_PORT}($|[[:space:]])" /etc/apache2/ports.conf 2>/dev/null | grep -q .; then
         echo "Listen ${FRONTEND_PORT}" | $SUDO tee -a /etc/apache2/ports.conf >/dev/null
+        APPENDED_APACHE_PORT="y"
     fi
     $SUDO bash -c "cat > '${APACHE_SITE}'" <<'EOF'
 <VirtualHost *:__WEB_PORT__>
@@ -936,12 +1030,14 @@ EOF
     $SUDO apache2ctl configtest
     $SUDO systemctl reload apache2
     ok "Apache configured for ${SERVER_NAME}"
+    CREATED_APACHE_SITE="y"
 }
 
 start_services() {
     say "Starting ${APP_NAME} service"
     $SUDO systemctl restart "${APP_NAME}.service"
     $SUDO systemctl status "${APP_NAME}.service" --no-pager -l || true
+    STARTED_SERVICE="y"
 }
 
 seed_admin_and_capture_credentials() {
@@ -1033,6 +1129,7 @@ summary() {
 
 main() {
     need_sudo
+    setup_traps
     detect_os
     if [ -f "$ENV_FILE" ] || [ -f "$SERVICE_FILE" ]; then
         UPDATE_MODE="y"
@@ -1063,6 +1160,9 @@ main() {
     fi
     start_services
     summary
+    COMPLETED="y"
+    # Clear traps on success
+    trap - ERR INT TERM
 }
 
 main "$@"
