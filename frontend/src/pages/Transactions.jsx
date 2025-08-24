@@ -276,15 +276,20 @@ const Transactions = () => {
     };
   }, [pageSize]);
 
-  // Ensure the mobile sentinel uses the same observer logic as the lastTransactionRef
+  // Ensure the mobile sentinel uses the same observer logic as the lastTransactionRef (mobile only)
   useEffect(() => {
     if (loading) return;
-    // If mobile sentinel exists, observe it with same options
+
+    const isMobile = typeof window !== "undefined" && window.innerWidth <= 768;
+    if (!isMobile) return; // Do not override desktop observer
+
+    // If mobile sentinel exists and is visible, observe it with same options
     const node = mobileSentinelRef.current;
     if (!node) return;
+    const visible = !!(node.offsetParent !== null);
+    if (!visible) return; // Hidden via CSS (e.g., md:hidden)
 
-    if (observer.current) observer.current.disconnect();
-
+    // Determine swipeable root for mobile containers
     const swipeableRoot = (() => {
       try {
         const el = document.querySelector(".swipeable-container");
@@ -303,7 +308,8 @@ const Transactions = () => {
       return null;
     })();
 
-    observer.current = new IntersectionObserver(
+    // Create a dedicated observer for the mobile sentinel so desktop row observer remains intact
+    const mobileObserver = new IntersectionObserver(
       (entries) => {
         if (entries[0]?.isIntersecting && hasMore) {
           loadMore();
@@ -311,9 +317,9 @@ const Transactions = () => {
       },
       { root: swipeableRoot, rootMargin: "0px 0px 200px 0px", threshold: 0.1 },
     );
-    observer.current.observe(node);
+    mobileObserver.observe(node);
 
-    return () => observer.current?.disconnect();
+    return () => mobileObserver.disconnect();
   }, [loading, hasMore, loadMore]);
 
   const handleDelete = async (id) => {
