@@ -510,6 +510,42 @@ class OfflineStorage {
           };
           await this.cacheTransactionForEditing(updated);
         }
+
+        // Also update the local transactions list and clear the _isOffline flag
+        const userId = this.getCurrentUserId();
+        if (userId) {
+          const key = `transactions_user_${userId}`;
+          const localTransactions = (await this.getOfflineData(key)) || [];
+          const numId = parseInt(transactionId, 10);
+          const idx = localTransactions.findIndex(
+            (t) => t.id === numId || t._tempId === numId,
+          );
+          if (idx !== -1) {
+            const merged = {
+              ...localTransactions[idx],
+              ...(result.transaction || {}),
+              _isOffline: false,
+              source_name:
+                result.transaction?.source_name ||
+                localTransactions[idx].source_name ||
+                localTransactions[idx].source ||
+                null,
+              target_name:
+                result.transaction?.target_name ||
+                localTransactions[idx].target_name ||
+                localTransactions[idx].target ||
+                null,
+            };
+            localTransactions[idx] = merged;
+            await this.storeOfflineData(key, localTransactions);
+          }
+        }
+
+        // Notify UI to refresh
+        try {
+          window.dispatchEvent(new CustomEvent("transactionsSynced"));
+          window.dispatchEvent(new CustomEvent("dataRefreshNeeded"));
+        } catch (e) {}
       }
     }
 

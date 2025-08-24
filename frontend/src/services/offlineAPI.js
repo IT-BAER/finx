@@ -34,7 +34,12 @@ class OfflineAPI {
           duration: 3000,
         });
       }
-      // Don't call processSyncQueue here - offlineStorage handles it
+      // Proactively trigger queue processing to sync edits quickly
+      try {
+        offlineStorage.processSyncQueue();
+      } catch (e) {
+        console.warn("Could not start sync queue immediately", e);
+      }
       // Cache all data for offline use when coming back online and user is authenticated
       // Use debounce to prevent multiple calls
       if (this.cacheTimeout) {
@@ -804,10 +809,9 @@ class OfflineAPI {
       }
 
       console.log("Cleanup: Removed", duplicatesToRemove.length, "duplicates");
-
-      // Also clear the sync queue to prevent further duplicates
-      await offlineStorage.clearSyncQueue();
-      console.log("Cleanup: Cleared sync queue");
+  // Important: Do NOT clear the sync queue here; it may contain valid
+  // PUT/DELETE operations we still need to sync. We'll let the normal
+  // sync process handle reconciliation.
     } catch (error) {
       console.error("Error cleaning up duplicates:", error);
     }
