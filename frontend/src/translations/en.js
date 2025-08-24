@@ -169,6 +169,10 @@ export default {
   pleaseFillAllRequiredFields: "Please fill all required fields",
   pleaseEnterValidAmount: "Please enter a valid amount",
   failedToAddTransaction: "Failed to add transaction",
+  changesQueuedOffline: "You're offline. Changes are queued and will sync when you're back online.",
+  recurringTransactionUpdated: "Recurring rule updated",
+  recurringTransactionRemoved: "Recurring rule removed",
+  pleaseProvideSource: "Please provide a source",
 
   // Reports
   reportsAndAnalytics: "Reports & Analytics",

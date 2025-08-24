@@ -412,6 +412,16 @@ class OfflineAPI {
         target_name: data.target || null,
       };
       await this.updateLocalTransaction(id, localTransaction);
+
+      // Also update the cached single-transaction entry used by the editor
+      try {
+        await offlineStorage.cacheTransactionForEditing({
+          id: numericId,
+          ...localTransaction,
+        });
+      } catch (e) {
+        console.warn("Failed to cache transaction for offline editing", e);
+      }
       return { ...localTransaction, queued: true }; // Return the updated local data
     }
 
@@ -467,6 +477,10 @@ class OfflineAPI {
         ...originalTransaction,
         ...updatedTransaction,
       };
+      await offlineStorage.storeOfflineData(key, transactions);
+    } else {
+      // Not present locally (e.g., editing an existing online transaction while offline) -> add it
+      transactions.push({ ...updatedTransaction });
       await offlineStorage.storeOfflineData(key, transactions);
     }
   }
@@ -567,10 +581,22 @@ class OfflineAPI {
       localTransactions.forEach((localTx) => {
         // Skip if this transaction is already in the map (from online)
         if (transactionMap.has(localTx.id)) {
-          console.log(
-            "Skipping duplicate local transaction with ID:",
-            localTx.id,
-          );
+          // If local item represents an offline edit, prefer it over the cached online copy
+          if (localTx._isOffline) {
+            console.log(
+              "Overriding online transaction with local offline edit:",
+              localTx.id,
+            );
+            transactionMap.set(localTx.id, {
+              ...localTx,
+              _dataSource: "local",
+            });
+          } else {
+            console.log(
+              "Skipping duplicate local transaction with ID:",
+              localTx.id,
+            );
+          }
           return;
         }
 
