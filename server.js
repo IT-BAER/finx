@@ -68,6 +68,11 @@ app.get("/", (req, res) => {
 
 // Health checks
 app.get("/health", (req, res) => res.status(200).send("OK"));
+// API Health (for frontend connectivity checks)
+app.get("/api/health", (req, res) => {
+  // Lightweight JSON response, avoid DB to stay responsive
+  res.status(200).json({ ok: true, time: Date.now() });
+});
 app.get("/ready", async (req, res) => {
   try {
     // Simple DB connection check

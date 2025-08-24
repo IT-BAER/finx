@@ -1,11 +1,14 @@
 import { useState, useEffect, useCallback } from "react";
 import offlineAPI from "../services/offlineAPI.js";
+import { getIsOnline } from "../services/connectivity.js";
 import toast from "react-hot-toast";
 
 export const useOfflineAPI = () => {
-  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [isOnline, setIsOnline] = useState(
+    typeof window !== "undefined" ? getIsOnline() : true,
+  );
   const [syncStatus, setSyncStatus] = useState({
-    isOnline: navigator.onLine,
+    isOnline: typeof window !== "undefined" ? getIsOnline() : true,
     pendingSync: 0,
     hasOfflineData: false,
   });
@@ -19,22 +22,16 @@ export const useOfflineAPI = () => {
 
     updateStatus();
 
-    const handleOnline = () => {
-      setIsOnline(true);
+    const handleConn = (e) => {
+      const nowOnline = !!(e && e.detail && e.detail.isOnline);
+      setIsOnline(nowOnline);
       updateStatus();
     };
 
-    const handleOffline = () => {
-      setIsOnline(false);
-      updateStatus();
-    };
-
-    window.addEventListener("online", handleOnline);
-    window.addEventListener("offline", handleOffline);
+    window.addEventListener("serverConnectivityChange", handleConn);
 
     return () => {
-      window.removeEventListener("online", handleOnline);
-      window.removeEventListener("offline", handleOffline);
+      window.removeEventListener("serverConnectivityChange", handleConn);
     };
   }, []);
 

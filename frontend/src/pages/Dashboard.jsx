@@ -288,7 +288,8 @@ const Dashboard = () => {
   const refreshDashboardData = async () => {
     try {
       // Only refresh data when online
-      if (navigator.onLine) {
+      const { getIsOnline } = await import("../services/connectivity.js");
+      if (getIsOnline()) {
         const data = await loadDashboardData();
         setDashboardData(data);
 

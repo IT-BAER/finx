@@ -6,10 +6,12 @@
 const DB_NAME = "FinXOfflineDB";
 const DB_VERSION = 1;
 
+import connectivity, { getIsOnline } from "../services/connectivity.js";
+
 class OfflineStorage {
   constructor() {
     this.db = null;
-    this.isOnline = navigator.onLine;
+  this.isOnline = typeof window !== "undefined" ? getIsOnline() : true;
     this.syncQueue = [];
     this.initDB();
     this.setupEventListeners();
@@ -57,15 +59,16 @@ class OfflineStorage {
   }
 
   setupEventListeners() {
-    window.addEventListener("online", () => {
-      this.isOnline = true;
-      console.log("Going online - triggering sync...");
-      this.processSyncQueue();
-    });
-
-    window.addEventListener("offline", () => {
-      this.isOnline = false;
-      console.log("Going offline...");
+    // React to server connectivity changes instead of device online status
+    window.addEventListener("serverConnectivityChange", (e) => {
+      const nowOnline = !!(e && e.detail && e.detail.isOnline);
+      this.isOnline = nowOnline;
+      if (nowOnline) {
+        console.log("Server reachable - triggering sync...");
+        this.processSyncQueue();
+      } else {
+        console.log("Server unreachable - offline mode");
+      }
     });
   }
 

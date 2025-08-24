@@ -244,23 +244,15 @@ function App() {
   const [isAppReady, setIsAppReady] = useState(false);
   const [showContent, setShowContent] = useState(false);
   const [pageContentReady, setPageContentReady] = useState(false);
-  const [isOnline, setIsOnline] = useState(navigator.onLine);
-
-  // Handle network status
-  const handleNetworkChange = useCallback(() => {
-    setIsOnline(navigator.onLine);
-  }, []);
-
-  // Handle network events
+  // Track server connectivity instead of device online
   useEffect(() => {
-    window.addEventListener("online", handleNetworkChange);
-    window.addEventListener("offline", handleNetworkChange);
-
-    return () => {
-      window.removeEventListener("online", handleNetworkChange);
-      window.removeEventListener("offline", handleNetworkChange);
+    const handler = (e) => {
+      // Could set local state if App UI needs it later
+      // const nowOnline = !!(e && e.detail && e.detail.isOnline);
     };
-  }, [handleNetworkChange]);
+    window.addEventListener("serverConnectivityChange", handler);
+    return () => window.removeEventListener("serverConnectivityChange", handler);
+  }, []);
 
   // Register service worker
   useEffect(() => {

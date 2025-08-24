@@ -183,9 +183,12 @@ export const clearAllCaches = async () => {
   }
 };
 
+import { getIsOnline } from "../services/connectivity.js";
+
 /**
  * Get app info for PWA
  */
+
 export const getAppInfo = () => {
   return {
     name: "FinX",
@@ -194,7 +197,7 @@ export const getAppInfo = () => {
     displayMode: getDisplayMode(),
     platform: navigator.platform,
     userAgent: navigator.userAgent,
-    online: navigator.onLine,
+  online: typeof window !== "undefined" ? getIsOnline() : true,
     serviceWorkerSupported: isServiceWorkerSupported(),
   };
 };
@@ -204,7 +207,7 @@ export const getAppInfo = () => {
  */
 export const shareApp = async (data = {}) => {
   const shareData = {
-    title: "FinX - Personal Finance Manager",
+  title: "FinX - Personal Finance Manager",
     text: "Check out FinX, a modern personal finance management app!",
     url: window.location.origin,
     ...data,

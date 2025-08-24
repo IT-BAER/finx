@@ -80,6 +80,14 @@ export default defineConfig(({ mode }) => {
           navigateFallback: "/index.html",
           navigateFallbackDenylist: [/^\/_/, /\/api\//],
           runtimeCaching: [
+            // Health endpoint - always network only to reflect true server status
+            {
+              urlPattern: /\/api\/health$/,
+              handler: "NetworkOnly",
+              options: {
+                cacheName: "health-no-cache",
+              },
+            },
             // App shell - always cache first, update in background
             {
               urlPattern: /^https?:\/\/[^\/]+\/?$/,

@@ -93,7 +93,8 @@ const Reports = () => {
   const refreshReportsData = async () => {
     try {
       // Only refresh data when online
-      if (navigator.onLine) {
+      const { getIsOnline } = await import("../services/connectivity.js");
+      if (getIsOnline()) {
         const { startDate, endDate } = getDateRange();
         const allTransactions = await offlineAPI.getAllTransactions();
 

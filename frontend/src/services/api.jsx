@@ -2,6 +2,7 @@ import axios from "axios";
 import { getAuthToken } from "../utils/auth";
 import cache, { getCachedData, setCachedData, cacheKeys } from "../utils/cache";
 import offlineStorage from "../utils/offlineStorage.js";
+import { getIsOnline } from "./connectivity.js";
 // Removed prefetchData import to avoid circular dependency
 // Rate limiting removed temporarily
 // Removed prefetchData import to avoid circular dependency
@@ -185,7 +186,7 @@ export const transactionAPI = {
     }`;
 
     // If offline, try persistent cache in IndexedDB
-    if (typeof navigator !== "undefined" && !navigator.onLine) {
+  if (typeof window !== "undefined" && !getIsOnline()) {
       const persisted = await offlineStorage.getCachedAPIResponse(persistentKey);
       if (persisted) {
         return { data: persisted };
@@ -219,7 +220,7 @@ export const transactionAPI = {
     }`;
 
     // If offline, try persistent cache in IndexedDB
-    if (typeof navigator !== "undefined" && !navigator.onLine) {
+  if (typeof window !== "undefined" && !getIsOnline()) {
       const persisted = await offlineStorage.getCachedAPIResponse(persistentKey);
       if (persisted) {
         return { data: persisted };

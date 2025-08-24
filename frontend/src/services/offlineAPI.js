@@ -6,6 +6,7 @@
 import axios from "axios";
 import offlineStorage from "../utils/offlineStorage.js";
 import cache, { cacheKeys } from "../utils/cache.js";
+import connectivity, { getIsOnline } from "./connectivity.js";
 
 // Remove toast import since we'll use the global toastWithHaptic
 
@@ -13,7 +14,7 @@ const API_BASE_URL = "/api";
 
 class OfflineAPI {
   constructor() {
-    this.isOnline = navigator.onLine;
+  this.isOnline = typeof window !== "undefined" ? getIsOnline() : true;
     this.cacheTimeout = null;
     this.setupEventListeners();
     this.setupAxiosInterceptors();
@@ -27,47 +28,51 @@ class OfflineAPI {
   }
 
   setupEventListeners() {
-    window.addEventListener("online", () => {
-      this.isOnline = true;
-      if (window.toastWithHaptic?.success) {
-        window.toastWithHaptic.success("Back online! Syncing data...", {
-          duration: 3000,
-        });
-      }
-      // Proactively trigger queue processing to sync edits quickly
-      try {
-        offlineStorage.processSyncQueue();
-      } catch (e) {
-        console.warn("Could not start sync queue immediately", e);
-      }
-      // Cache all data for offline use when coming back online and user is authenticated
-      // Use debounce to prevent multiple calls
-      if (this.cacheTimeout) {
-        clearTimeout(this.cacheTimeout);
-      }
-      this.cacheTimeout = setTimeout(async () => {
-        if (this.isAuthenticated()) {
-          // Clean up duplicates first
-          await this.cleanupDuplicateTransactions();
-          // Then cache fresh data
-          await this.cacheAllOfflineData();
+    // Listen to server connectivity events
+    window.addEventListener("serverConnectivityChange", (e) => {
+      const nowOnline = !!(e && e.detail && e.detail.isOnline);
+      this.isOnline = nowOnline;
+      if (nowOnline) {
+        if (window.toastWithHaptic?.success) {
+          window.toastWithHaptic.success("Back online! Syncing data...", {
+            duration: 3000,
+          });
         }
-        this.cacheTimeout = null;
-        // Dispatch event to refresh all pages when back online
-        // window.dispatchEvent(new CustomEvent('appBackOnline'));
-
-        // After syncing, clear the main API cache to force a refresh
-        cache.remove(cacheKeys.DASHBOARD_DATA);
-        cache.remove(cacheKeys.REPORT_DATA);
-        window.dispatchEvent(new CustomEvent("dataRefreshNeeded"));
-      }, 1000);
+        try {
+          offlineStorage.processSyncQueue();
+        } catch (err) {
+          console.warn("Could not start sync queue immediately", err);
+        }
+        if (this.cacheTimeout) {
+          clearTimeout(this.cacheTimeout);
+        }
+        this.cacheTimeout = setTimeout(async () => {
+          if (this.isAuthenticated()) {
+            await this.cleanupDuplicateTransactions();
+            await this.cacheAllOfflineData();
+          }
+          this.cacheTimeout = null;
+          cache.remove(cacheKeys.DASHBOARD_DATA);
+          cache.remove(cacheKeys.REPORT_DATA);
+          window.dispatchEvent(new CustomEvent("dataRefreshNeeded"));
+        }, 1000);
+      } else {
+        if (window.toastWithHaptic?.info) {
+          window.toastWithHaptic.info(
+            "Server unavailable. Working in offline mode.",
+            { duration: 5000 },
+          );
+        }
+      }
     });
 
+    // Fallback: also mirror browser offline to immediate feedback
     window.addEventListener("offline", () => {
       this.isOnline = false;
-      if (window.toastWithHaptic?.info) {
+      if (window.toastWithHaptic?.success) {
+        // Use info variant when browser reports offline
         window.toastWithHaptic.info(
-          "You are offline. Changes will be synced when you reconnect.",
+          "You are offline. Changes will sync when server is back.",
           { duration: 5000 },
         );
       }
@@ -115,7 +120,7 @@ class OfflineAPI {
         return response;
       },
       (error) => {
-        if (!this.isOnline && error.code === "ERR_NETWORK") {
+        if (!this.isOnline && (error.code === "ERR_NETWORK" || error.message === "Network Error")) {
           // Handle offline error gracefully
           console.log("Network error while offline, using cached data");
         }

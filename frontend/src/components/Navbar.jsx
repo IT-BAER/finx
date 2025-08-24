@@ -712,18 +712,20 @@ const NavDropdownItem = ({
 
 /* Custom Dark/Light Mode Switch with Offline Indicator */
 const Switch = ({ id, checked, onChange }) => {
-  const [isOnline, setIsOnline] = React.useState(navigator.onLine);
+  const [isOnline, setIsOnline] = React.useState(
+    typeof window !== "undefined" && window.__connectivity
+      ? window.__connectivity.getOnline()
+      : true,
+  );
 
   React.useEffect(() => {
-    const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
-
-    window.addEventListener("online", handleOnline);
-    window.addEventListener("offline", handleOffline);
-
+    const handleConn = (e) => {
+      const nowOnline = !!(e && e.detail && e.detail.isOnline);
+      setIsOnline(nowOnline);
+    };
+    window.addEventListener("serverConnectivityChange", handleConn);
     return () => {
-      window.removeEventListener("online", handleOnline);
-      window.removeEventListener("offline", handleOffline);
+      window.removeEventListener("serverConnectivityChange", handleConn);
     };
   }, []);
 

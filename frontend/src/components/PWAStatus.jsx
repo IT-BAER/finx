@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from "react";
+import { getIsOnline } from "../services/connectivity.js";
 
 const PWAStatus = () => {
   const [isInstalled, setIsInstalled] = useState(false);
-  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [isOnline, setIsOnline] = useState(
+    typeof window !== "undefined" ? getIsOnline() : true,
+  );
 
   useEffect(() => {
     // Check if app is installed
@@ -26,14 +29,15 @@ const PWAStatus = () => {
       setIsInstalled(true);
     };
 
-    // Listen for online/offline
-    const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
+    // Listen for server connectivity
+    const handleConn = (e) => {
+      const nowOnline = !!(e && e.detail && e.detail.isOnline);
+      setIsOnline(nowOnline);
+    };
 
     window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
     window.addEventListener("appinstalled", handleAppInstalled);
-    window.addEventListener("online", handleOnline);
-    window.addEventListener("offline", handleOffline);
+  window.addEventListener("serverConnectivityChange", handleConn);
 
     return () => {
       window.removeEventListener(
@@ -41,8 +45,7 @@ const PWAStatus = () => {
         handleBeforeInstallPrompt,
       );
       window.removeEventListener("appinstalled", handleAppInstalled);
-      window.removeEventListener("online", handleOnline);
-      window.removeEventListener("offline", handleOffline);
+  window.removeEventListener("serverConnectivityChange", handleConn);
     };
   }, []);
 
