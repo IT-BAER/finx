@@ -133,7 +133,8 @@ const updateUser = async (req, res) => {
       first_name,
       last_name,
       theme,
-      dark_mode,
+  dark_mode,
+  email,
     } = req.body;
 
     // Build dynamic query based on provided fields
@@ -171,6 +172,28 @@ const updateUser = async (req, res) => {
       index++;
     }
 
+    // Handle email change (self-service): validate uniqueness
+    if (email !== undefined) {
+      const nextEmail = String(email).trim().toLowerCase();
+      if (!nextEmail) {
+        return res.status(400).json({ message: "Email is required" });
+      }
+      // Only check if different from current
+      const current = await User.findById(req.user.id);
+      if (!current) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      if (current.email.toLowerCase() !== nextEmail) {
+        const existing = await User.findByEmail(nextEmail);
+        if (existing && Number(existing.id) !== Number(req.user.id)) {
+          return res.status(400).json({ message: "User already exists" });
+        }
+        fields.push(`email = $${index}`);
+        values.push(nextEmail);
+        index++;
+      }
+    }
+
     // If no fields to update, return current user data
     if (fields.length === 0) {
       const user = await User.findById(req.user.id);
@@ -201,7 +224,7 @@ const updateUser = async (req, res) => {
       RETURNING *
     `;
 
-    const result = await db.query(query, values);
+  const result = await db.query(query, values);
 
     if (result.rows.length === 0) {
       return res.status(404).json({ message: "User not found" });
