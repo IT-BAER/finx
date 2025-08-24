@@ -54,9 +54,9 @@ Modern, offline-capable personal finance app with sharing, recurring transaction
 
 <br>
 
-## 🚀 Quick Install
+## 🚀 Quick Install/Update
 
-### 🐋 Docker Compose (recommended)
+### 🐋 Docker Compose
 
 ```bash
 git clone https://github.com/IT-BAER/finx.git
@@ -79,7 +79,7 @@ App: http://localhost:3000 • API: proxied at /api
 
 <br>
 
-### 🐧 Debian/Ubuntu (no Docker) — Interactive Installer
+### 🐧 Debian/Ubuntu (no Docker) — Interactive Installer/Updater
 
 ```bash
 sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/IT-BAER/finx/main/setup.sh)"
