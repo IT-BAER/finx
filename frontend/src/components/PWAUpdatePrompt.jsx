@@ -1,6 +1,5 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import toast from "react-hot-toast";
 import { trackPWAEvent } from "../utils/pwa.js";
 /**
  * PWAUpdatePrompt
@@ -11,9 +10,13 @@ import { trackPWAEvent } from "../utils/pwa.js";
  * - On "Update Now" clears UI caches, tells SW to skipWaiting, and waits for controllerchange before reloading.
  */
 
+// Prevent showing the update prompt multiple times within the same session
+let hasShownUpdatePrompt = false;
+
 const PWAUpdatePrompt = () => {
   const [showUpdatePrompt, setShowUpdatePrompt] = useState(false);
   const [waitingWorker, setWaitingWorker] = useState(null);
+  const updatingRef = useRef(false);
 
   useEffect(() => {
     if ("serviceWorker" in navigator) {
@@ -32,8 +35,11 @@ const PWAUpdatePrompt = () => {
                 navigator.serviceWorker.controller
               ) {
                 setWaitingWorker(newWorker);
-                setShowUpdatePrompt(true);
-                trackPWAEvent("sw_update_found");
+                if (!hasShownUpdatePrompt) {
+                  hasShownUpdatePrompt = true;
+                  setShowUpdatePrompt(true);
+                  trackPWAEvent("sw_update_found");
+                }
               }
             });
           });
@@ -43,13 +49,15 @@ const PWAUpdatePrompt = () => {
   }, []);
 
   const handleUpdate = async () => {
-    if (!waitingWorker) return;
+    if (!waitingWorker || updatingRef.current) return;
+    updatingRef.current = true;
 
     setShowUpdatePrompt(false);
 
-    const toastId = toast.loading("Preparing update — clearing UI cache...", {
-      duration: 10000,
-    });
+    const toastId = window.toastWithHaptic.loading(
+      "Preparing update — clearing UI cache...",
+      { duration: 10000, id: "pwa-update" },
+    );
 
     try {
       // Clear UI caches so new SW can precache fresh UI assets
@@ -100,8 +108,11 @@ const PWAUpdatePrompt = () => {
           "controllerchange",
           onControllerChange,
         );
-        toast.dismiss(toastId);
-        toast.success("App updated — reloading...", { duration: 1500 });
+        window.toastWithHaptic.dismiss(toastId);
+        window.toastWithHaptic.success("App updated — reloading...", {
+          duration: 1500,
+          id: "pwa-update-success",
+        });
         setTimeout(() => window.location.reload(), 600);
       };
       navigator.serviceWorker.addEventListener(
@@ -112,15 +123,21 @@ const PWAUpdatePrompt = () => {
       // fallback timeout if no controllerchange
       setTimeout(() => {
         if (!reloaded) {
-          toast.dismiss(toastId);
-          toast.success("Applying update — reloading...", { duration: 1500 });
+          window.toastWithHaptic.dismiss(toastId);
+          window.toastWithHaptic.success("Applying update — reloading...", {
+            duration: 1500,
+            id: "pwa-update-success",
+          });
           window.location.reload();
         }
       }, 8000);
     } catch (err) {
       console.error("PWA update failed:", err);
-      toast.dismiss(toastId);
-      toast.error("Update failed — please refresh the page manually.");
+      window.toastWithHaptic.dismiss(toastId);
+      window.toastWithHaptic.error(
+        "Update failed — please refresh the page manually.",
+        { id: "pwa-update-failed" },
+      );
     }
   };
 
