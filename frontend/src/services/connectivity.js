@@ -2,10 +2,13 @@
 // Modern PWA best practice: consider app online only when server is reachable
 
 const HEALTH_URL = "/api/health";
-const DEFAULT_INTERVAL_MS = 15000; // 15s between checks
-const SHORT_RETRY_MS = 5000; // after a failure, quicker follow-ups
-const FAILURE_THRESHOLD = 3; // switch offline after N consecutive failures
-const CONTROLLER = new AbortController();
+// Allow tuning via env (vite) while providing sensible fast defaults
+const ENV = typeof import.meta !== "undefined" && import.meta.env ? import.meta.env : {};
+const DEFAULT_INTERVAL_MS = Number(ENV.VITE_CONN_DEFAULT_MS) || 8000; // from 15s -> 8s
+const SHORT_RETRY_MS = Number(ENV.VITE_CONN_SHORT_RETRY_MS) || 2000; // from 5s -> 2s
+const OFFLINE_RETRY_MS = Number(ENV.VITE_CONN_OFFLINE_RETRY_MS) || 3000; // poll a bit faster while offline
+const FAILURE_THRESHOLD = Number(ENV.VITE_CONN_FAILURE_THRESHOLD) || 2; // from 3 -> 2
+const TIMEOUT_MS = Number(ENV.VITE_CONN_TIMEOUT_MS) || 2500; // from 4s -> 2.5s
 
 class Connectivity {
   constructor() {
@@ -19,18 +22,27 @@ class Connectivity {
     this.start = this.start.bind(this);
     this.stop = this.stop.bind(this);
     this.checkNow = this.checkNow.bind(this);
+    this._nextDelay = this._nextDelay.bind(this);
 
     // Listen to browser online/offline to trigger immediate check
     if (typeof window !== "undefined") {
       window.addEventListener("online", () => this.checkNow());
       window.addEventListener("offline", () => this._setOffline("browser-offline"));
+      // Also react on focus/visibility to speed up perceived recovery/downgrade
+      const onFocus = () => this.checkNow();
+      window.addEventListener("focus", onFocus);
+      if (typeof document !== "undefined" && document.addEventListener) {
+        document.addEventListener("visibilitychange", () => {
+          if (document.visibilityState === "visible") this.checkNow();
+        });
+      }
     }
   }
 
   async _fetchHealth() {
     try {
       const controller = new AbortController();
-      const id = setTimeout(() => controller.abort(), 4000); // 4s timeout
+      const id = setTimeout(() => controller.abort(), TIMEOUT_MS); // tightened timeout
       const res = await fetch(HEALTH_URL, {
         method: "GET",
         cache: "no-store",
@@ -44,6 +56,16 @@ class Connectivity {
     } catch (e) {
       return false;
     }
+  }
+
+  _jitter(ms) {
+    // add +/-20% jitter to avoid thundering herd
+    const factor = 0.9 + Math.random() * 0.2; // 0.9 - 1.1
+    return Math.max(250, Math.round(ms * factor));
+  }
+
+  _nextDelay() {
+    return this._jitter(this.intervalMs);
   }
 
   _emit(status) {
@@ -71,6 +93,8 @@ class Connectivity {
       this.isServerOnline = false;
       this._emit(false);
     }
+    // While offline, keep checking a bit faster for recovery
+    this.intervalMs = OFFLINE_RETRY_MS;
   }
 
   async _tick() {
@@ -86,7 +110,7 @@ class Connectivity {
     }
     // schedule next
     if (this.timer) clearTimeout(this.timer);
-    this.timer = setTimeout(this._tick, this.intervalMs);
+    this.timer = setTimeout(this._tick, this._nextDelay());
   }
 
   start() {
@@ -100,7 +124,7 @@ class Connectivity {
       clearTimeout(this.timer);
       this.timer = null;
     }
-    try { CONTROLLER.abort(); } catch {}
+  // nothing else to stop; next call to start/checkNow will resume
   }
 
   async checkNow() {
