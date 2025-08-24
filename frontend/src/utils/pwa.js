@@ -207,8 +207,8 @@ export const getAppInfo = () => {
  */
 export const shareApp = async (data = {}) => {
   const shareData = {
-  title: "FinX - Personal Finance Manager",
-    text: "Check out FinX, a modern personal finance management app!",
+    title: "FinX - Personal Finance Tracker",
+    text: "Check out FinX, a modern personal finance tracking app!",
     url: window.location.origin,
     ...data,
   };

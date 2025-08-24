@@ -100,10 +100,10 @@ export default defineConfig(({ mode }) => {
                 },
               },
             },
-            // API data - prefer fresh values; use NetworkFirst with short TTL to allow offline fallback
+      // API data - prefer fresh values; use NetworkFirst with short TTL to allow offline fallback
             {
               urlPattern:
-                /^https?:\/\/[^\/]+\/api\/(transactions|categories|sources|targets|users)/,
+        /^https?:\/\/[^\/]+\/api\/(transactions|categories|sources|targets|users)/,
               handler: "NetworkFirst",
               options: {
                 cacheName: "api-data-cache",
@@ -126,19 +126,7 @@ export default defineConfig(({ mode }) => {
                 ],
               },
             },
-            // Auth endpoints - network first but cache for offline
-            {
-              urlPattern: /^https?:\/\/[^\/]+\/api\/(auth|login|register)/,
-              handler: "NetworkFirst",
-              options: {
-                cacheName: "auth-cache",
-                expiration: {
-                  maxEntries: 20,
-                  maxAgeSeconds: 60 * 60 * 2, // 2 hours
-                },
-                networkTimeoutSeconds: 5,
-              },
-            },
+            // Do NOT cache auth endpoints
             // Icons - critical for offline functionality
             {
               urlPattern: /\/icons\/.*\.svg$/,

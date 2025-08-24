@@ -25,7 +25,7 @@ const createTransaction = async (req, res) => {
       return res.status(400).json({ message: "Amount and type are required" });
     }
 
-    // Handle category
+    // Handle category (per-user)
     let categoryId = null;
     if (category) {
       try {
@@ -173,7 +173,11 @@ const getTransactions = async (req, res) => {
     }
 
     // Otherwise, return all accessible data (mine + any shared to me) with pagination
-    const accessibleUserIds = await getAccessibleUserIds(req.user.id, "all");
+    let accessibleUserIds = await getAccessibleUserIds(req.user.id, "all");
+    // Safety guard: always include requester to avoid empty IN ()
+    if (!Array.isArray(accessibleUserIds) || accessibleUserIds.length === 0) {
+      accessibleUserIds = [req.user.id];
+    }
 
     // Build a single query to fetch transactions for all accessible users
     const placeholders = accessibleUserIds
@@ -199,26 +203,23 @@ const getTransactions = async (req, res) => {
     const rows = result.rows;
 
     // Compute per-owner edit capability for requester based on sharing_permissions
-    const distinctOwnerIds = [...new Set(rows.map((r) => r.user_id))];
+  const distinctOwnerIds = [...new Set(rows.map((r) => r.user_id))];
     const otherOwners = distinctOwnerIds.filter(
       (uid) => Number(uid) !== Number(req.user.id),
     );
 
     let permsByOwner = {};
     if (otherOwners.length > 0) {
+      // Parameter $1 is the requester (shared_with_user_id), owners start at $2..$N
       const ownersPlaceholders = otherOwners
-        .map((_, i) => `$${i + 3}`)
+        .map((_, i) => `$${i + 2}`)
         .join(", ");
       const permQuery = `
         SELECT owner_user_id, permission_level, source_filter
         FROM sharing_permissions
         WHERE shared_with_user_id = $1 AND owner_user_id IN (${ownersPlaceholders})
       `;
-      const permRes = await db.query(permQuery, [
-        req.user.id,
-        ...accessibleUserIds,
-        ...otherOwners,
-      ]);
+      const permRes = await db.query(permQuery, [req.user.id, ...otherOwners]);
       permsByOwner = permRes.rows.reduce((acc, r) => {
         const level = String(r.permission_level || "")
           .trim()
@@ -556,8 +557,9 @@ const getDashboardData = async (req, res) => {
       ? [singleUserId]
       : await getAccessibleUserIds(req.user.id, "all");
 
-    // For income tracking disabled we need per-user flags; if mixed, treat income as enabled when any user has it enabled.
-    // We will compute aggregates per user and then combine.
+  // For income tracking disabled we need per-user flags. In aggregated (multi-user) view,
+  // always include income to avoid hiding items inconsistently vs the transactions list.
+  // Only honor the flag when explicitly viewing a single user (asUserId).
 
     // Calculate date ranges
     let start, end;
@@ -598,8 +600,10 @@ const getDashboardData = async (req, res) => {
     let dailyExpensesMap = new Map(); // date -> total
     let incomeByDateMap = new Map(); // date -> total
 
+    const aggregatedView = !singleUserId || userIds.length > 1;
     for (const uid of userIds) {
-      const incomeDisabled = await isIncomeDisabled(uid);
+      // In aggregated view we include incomes regardless of owner preference
+      const incomeDisabled = aggregatedView ? false : await isIncomeDisabled(uid);
       const s = await Transaction.getSummary(
         uid,
         startDateStr,
@@ -653,7 +657,7 @@ const getDashboardData = async (req, res) => {
         dailyExpensesMap.set(key, prev + Number(row.total || 0));
       }
 
-      if (!incomeDisabled) {
+  if (!incomeDisabled) {
         const ibd = await Transaction.getIncomeByDate(
           uid,
           startDateStr,

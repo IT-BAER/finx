@@ -33,20 +33,14 @@ function buildSearchAndOwnerFilters({ table, q, user_id }) {
   const params = [];
   let idx = 1;
 
-  // Categories are global now (no user_id). Keep owner filter only for sources/targets.
-  if (user_id && table !== "categories") {
+  // Categories are per-user; allow owner filtering on all tables when provided
+  if (user_id) {
     where.push(`${table}.user_id = $${idx++}`);
     params.push(Number(user_id));
   }
   if (q) {
-    // Use normalized name when table is categories; otherwise plain name
-    if (table === "categories") {
-      where.push(`${table}.name_norm LIKE LOWER(TRIM($${idx++}))`);
-      params.push(`%${q.trim()}%`);
-    } else {
-      where.push(`${table}.name ILIKE $${idx++}`);
-      params.push(`%${q.trim()}%`);
-    }
+    where.push(`${table}.name ILIKE $${idx++}`);
+    params.push(`%${q.trim()}%`);
   }
 
   const whereClause = where.length > 0 ? `WHERE ${where.join(" AND ")}` : "";
@@ -79,44 +73,26 @@ async function listEntities(table, req, res) {
     let listQuery;
     let countQuery;
 
-    if (table === "categories") {
-      listQuery = `
-        SELECT 
-          t.id,
-          t.name
-        FROM ${table} t
-        ${whereClause.replaceAll(`${table}.`, "t.")}
-        ORDER BY t.name ${safeSortDir}
-        LIMIT $${params.length + 1}
-        OFFSET $${params.length + 2};
-      `;
-      countQuery = `
-        SELECT COUNT(*)::int AS total
-        FROM ${table} t
-        ${whereClause.replaceAll(`${table}.`, "t.")};
-      `;
-    } else {
-      listQuery = `
-        SELECT 
-          t.id, 
-          t.user_id, 
-          t.name,
-          u.first_name,
-          u.last_name,
-          u.email
-        FROM ${table} t
-        JOIN users u ON u.id = t.user_id
-        ${whereClause.replaceAll(`${table}.`, "t.")}
-        ORDER BY ${safeSortBy === "owner" ? "u.last_name NULLS LAST, u.first_name NULLS LAST, u.email" : "t.name"} ${safeSortDir}
-        LIMIT $${params.length + 1}
-        OFFSET $${params.length + 2};
-      `;
-      countQuery = `
-        SELECT COUNT(*)::int AS total
-        FROM ${table} t
-        ${whereClause.replaceAll(`${table}.`, "t.")};
-      `;
-    }
+    listQuery = `
+      SELECT 
+        t.id, 
+        t.user_id, 
+        t.name,
+        u.first_name,
+        u.last_name,
+        u.email
+      FROM ${table} t
+      JOIN users u ON u.id = t.user_id
+      ${whereClause.replaceAll(`${table}.`, "t.")}
+      ORDER BY ${safeSortBy === "owner" ? "u.last_name NULLS LAST, u.first_name NULLS LAST, u.email" : "t.name"} ${safeSortDir}
+      LIMIT $${params.length + 1}
+      OFFSET $${params.length + 2};
+    `;
+    countQuery = `
+      SELECT COUNT(*)::int AS total
+      FROM ${table} t
+      ${whereClause.replaceAll(`${table}.`, "t.")};
+    `;
 
     const [listRes, countRes] = await Promise.all([
       db.query(listQuery, [...params, pageSize, offset]),
@@ -124,31 +100,18 @@ async function listEntities(table, req, res) {
     ]);
 
     // Map response
-    let data;
-    if (table === "categories") {
-      data = listRes.rows.map((r) => ({
+    const data = listRes.rows.map((r) => {
+      const fn = (r.first_name || "").trim();
+      const ln = (r.last_name || "").trim();
+      const name = [fn, ln].filter(Boolean).join(" ");
+      const owner_display = name ? `${name} (${r.email})` : r.email;
+      return {
         id: r.id,
         name: r.name,
-        // Global owner label for categories
-        owner_display: "Global",
-      }));
-    } else {
-      data = listRes.rows.map((r) => {
-        const fn = (r.first_name || "").trim();
-        const ln = (r.last_name || "").trim();
-        const name = [fn, ln].filter(Boolean).join(" ");
-        const owner_display = name ? `${name} (${r.email})` : r.email;
-        return {
-          id: r.id,
-          user_id: r.user_id,
-          name: r.name,
-          owner_display,
-          first_name: r.first_name,
-          last_name: r.last_name,
-          email: r.email,
-        };
-      });
-    }
+        owner_user_id: r.user_id,
+        owner_display,
+      };
+    });
 
     return res.json({
       success: true,
@@ -227,7 +190,7 @@ async function deleteEntityWithReassign({ table, refColumn, req, res }) {
       return res.status(404).json({ message: "Not found" });
     }
 
-    // If reassignment requested, optionally validate same owner when applicable (not for categories)
+    // If reassignment requested, validate same owner for all tables (categories/sources/targets)
     if (reassignTo != null) {
       if (Number(reassignTo) === Number(id)) {
         await db.query("ROLLBACK");
@@ -235,22 +198,20 @@ async function deleteEntityWithReassign({ table, refColumn, req, res }) {
           .status(400)
           .json({ message: "Cannot reassign to the same entity" });
       }
-      if (table !== "categories") {
-        const ownerId = curRes.rows[0].user_id;
-        const targetRes = await db.query(
-          `SELECT id, user_id FROM ${table} WHERE id = $1`,
-          [reassignTo],
-        );
-        if (targetRes.rows.length === 0) {
-          await db.query("ROLLBACK");
-          return res.status(404).json({ message: "Reassign target not found" });
-        }
-        if (Number(targetRes.rows[0].user_id) !== Number(ownerId)) {
-          await db.query("ROLLBACK");
-          return res
-            .status(400)
-            .json({ message: "Reassign target must belong to the same user" });
-        }
+      const ownerId = curRes.rows[0].user_id;
+      const targetRes = await db.query(
+        `SELECT id, user_id FROM ${table} WHERE id = $1`,
+        [reassignTo],
+      );
+      if (targetRes.rows.length === 0) {
+        await db.query("ROLLBACK");
+        return res.status(404).json({ message: "Reassign target not found" });
+      }
+      if (Number(targetRes.rows[0].user_id) !== Number(ownerId)) {
+        await db.query("ROLLBACK");
+        return res
+          .status(400)
+          .json({ message: "Reassign target must belong to the same user" });
       }
 
       // Reassign references in transactions
@@ -380,39 +341,9 @@ module.exports = {
   getSystemStats,
   cleanupSampleData,
   removeSampleData: cleanupSampleData,
-  // Categories (global: no owner join/filter in listEntities)
+  // Categories
   listCategories: (req, res) => listEntities("categories", req, res),
-  // Global rename: no owner uniqueness, use normalized unique constraint
-  renameCategory: async (req, res) => {
-    const { id } = req.params;
-    const { name } = req.body;
-
-    if (!name || !String(name).trim()) {
-      return res.status(400).json({ message: "Name is required" });
-    }
-
-    try {
-      const curRes = await db.query(`SELECT id FROM categories WHERE id = $1`, [
-        id,
-      ]);
-      if (curRes.rows.length === 0) {
-        return res.status(404).json({ message: "Not found" });
-      }
-      const updRes = await db.query(
-        `UPDATE categories SET name = $1 WHERE id = $2 RETURNING id, name`,
-        [String(name).trim(), id],
-      );
-      return res.json({ success: true, data: updRes.rows[0] });
-    } catch (err) {
-      if (err.code === "23505") {
-        return res
-          .status(409)
-          .json({ message: "Category name already exists" });
-      }
-      console.error("Admin rename categories error:", err);
-      return res.status(500).json({ message: "Server error" });
-    }
-  },
+  renameCategory: (req, res) => renameEntity("categories", req, res),
   deleteCategory: (req, res) =>
     deleteEntityWithReassign({
       table: "categories",
@@ -420,7 +351,6 @@ module.exports = {
       req,
       res,
     }),
-  // mergeCategory remains but is largely unnecessary after global merge
   mergeCategory,
 
   // Sources
@@ -434,87 +364,9 @@ module.exports = {
       res,
     }),
 
-  // Targets (global like categories)
-  listTargets: async (req, res) => {
-    try {
-      const { q, sortDir } = req.query;
-      const { page, pageSize, offset } = parsePagination(req.query);
-
-      const where = [];
-      const params = [];
-      if (q && String(q).trim()) {
-        params.push(`%${String(q).trim()}%`);
-        where.push(`t.name_norm LIKE LOWER(TRIM($${params.length}))`);
-      }
-      const whereClause = where.length ? `WHERE ${where.join(" AND ")}` : "";
-      const orderDir =
-        String(sortDir || "asc").toLowerCase() === "desc" ? "DESC" : "ASC";
-
-      const listQuery = `
-        SELECT t.id, t.name
-        FROM targets t
-        ${whereClause}
-        ORDER BY t.name ${orderDir}
-        LIMIT $${params.length + 1}
-        OFFSET $${params.length + 2};
-      `;
-      const countQuery = `
-        SELECT COUNT(*)::int AS total
-        FROM targets t
-        ${whereClause};
-      `;
-
-      const [listRes, countRes] = await Promise.all([
-        db.query(listQuery, [...params, pageSize, offset]),
-        db.query(countQuery, params),
-      ]);
-
-      const data = listRes.rows.map((r) => ({
-        id: r.id,
-        name: r.name,
-        owner_display: "Global",
-      }));
-
-      return res.json({
-        success: true,
-        data,
-        pagination: { page, pageSize, total: countRes.rows[0]?.total || 0 },
-      });
-    } catch (err) {
-      console.error("Admin list targets error:", err);
-      return res.status(500).json({ message: "Server error" });
-    }
-  },
-  // Global rename for targets
-  renameTarget: async (req, res) => {
-    const { id } = req.params;
-    const { name } = req.body;
-
-    if (!name || !String(name).trim()) {
-      return res.status(400).json({ message: "Name is required" });
-    }
-
-    try {
-      const curRes = await db.query(`SELECT id FROM targets WHERE id = $1`, [
-        id,
-      ]);
-      if (curRes.rows.length === 0) {
-        return res.status(404).json({ message: "Not found" });
-      }
-      const updRes = await db.query(
-        `UPDATE targets SET name = $1 WHERE id = $2 RETURNING id, name`,
-        [String(name).trim(), id],
-      );
-      return res.json({ success: true, data: updRes.rows[0] });
-    } catch (err) {
-      if (err.code === "23505") {
-        return res.status(409).json({ message: "Target name already exists" });
-      }
-      console.error("Admin rename targets error:", err);
-      return res.status(500).json({ message: "Server error" });
-    }
-  },
-  // Global delete for targets with optional reassignment
+  // Targets
+  listTargets: (req, res) => listEntities("targets", req, res),
+  renameTarget: (req, res) => renameEntity("targets", req, res),
   deleteTarget: (req, res) =>
     deleteEntityWithReassign({
       table: "targets",

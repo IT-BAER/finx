@@ -144,10 +144,8 @@ function ComponentWrapper({ Component }) {
   const { setPageContentReady } = useContext(AppLoadingContext);
   const location = useLocation();
 
-  // On small screens, avoid forcing a large min-height on simple pages like login
-  const disableMinHeight =
-    typeof window !== "undefined" && window.innerWidth <= 768 &&
-    location.pathname === "/login";
+  // For the login page, avoid forcing a large min-height so the layout feels lighter
+  const disableMinHeight = location.pathname === "/login";
 
   useEffect(() => {
     // Component is ready after a short delay
@@ -198,8 +196,8 @@ function ComponentWrapper({ Component }) {
         opacity: isComponentReady ? 1 : 0,
         transition: "opacity 0.3s ease-in-out, transform 0.3s ease-out",
         transform: isComponentReady ? "translateY(0)" : "translateY(10px)",
-        transitionProperty: "opacity, transform",
-  // Remove min-height on mobile login to prevent overly tall containers
+  transitionProperty: "opacity, transform",
+  // Remove min-height on login to prevent overly tall containers
   minHeight: disableMinHeight ? undefined : containerHeight,
         paddingTop: "1rem",
       }}

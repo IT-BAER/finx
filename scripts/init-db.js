@@ -13,11 +13,14 @@ const pool = new Pool({
   ssl: process.env.DB_SSL === "true",
 });
 
-// Initial seed users (only created on fresh install)
+// Initial seed admin (use env if provided)
+const defaultAdminEmail = process.env.DEV_MODE_ADMIN_EMAIL || "admin@finx.local";
+const defaultAdminPassword =
+  process.env.DEV_MODE_ADMIN_PASSWORD || require("crypto").randomBytes(16).toString("hex");
 const seedUsers = [
   {
-    email: "admin@finx.local",
-    password: require("crypto").randomBytes(16).toString("hex"),
+    email: defaultAdminEmail,
+    password: defaultAdminPassword,
     is_admin: true,
   },
 ];
@@ -245,11 +248,10 @@ async function initDatabase() {
       }
     }
 
-    if (isEmptyDatabase || existingAdmin.rowCount === 0) {
-      console.log(
-        "No admin user found. Creating admin user with random credentials...",
-      );
-      const hashedPassword = await bcrypt.hash(adminUser.password, 12); // Increased security
+    // Ensure an admin user exists; prefer the env-specified email/password if provided
+  if (isEmptyDatabase || existingAdmin.rowCount === 0) {
+      console.log("No admin user found. Creating admin user...");
+      const hashedPassword = await bcrypt.hash(adminUser.password, 12);
 
       try {
         await pool.query(
@@ -274,7 +276,39 @@ async function initDatabase() {
       console.log(`   Email: ${adminUser.email}`);
       console.log(`   Password: ${adminUser.password}\n`);
     } else {
-      console.log("Admin user already exists - skipping admin user creation");
+      console.log("Admin user already exists - ensuring dev admin credentials (development only)");
+      // In development, ensure the configured dev admin exists and has the expected password
+      if ((process.env.NODE_ENV || "development") !== "production" && process.env.DEV_MODE_ADMIN_EMAIL) {
+        const email = process.env.DEV_MODE_ADMIN_EMAIL;
+        const pwd = defaultAdminPassword;
+        const existingEnvAdmin = await pool.query(
+          "SELECT id FROM users WHERE LOWER(email) = LOWER($1) LIMIT 1",
+          [email],
+        );
+        const hashed = await bcrypt.hash(pwd, 12);
+        try {
+          if (existingEnvAdmin.rowCount === 0) {
+            console.log(`Creating dev admin ${email} from environment...`);
+            await pool.query(
+              `INSERT INTO users (email, password_hash, is_admin)
+               VALUES ($1, $2, true)`,
+              [email, hashed],
+            );
+          } else {
+            console.log(`Resetting password for dev admin ${email} (development only)...`);
+            await pool.query(
+              `UPDATE users SET password_hash = $2, is_admin = true WHERE LOWER(email) = LOWER($1)`,
+              [email, hashed],
+            );
+          }
+          credentials.push({ email, password: pwd });
+          console.log("\n📝 Dev Admin Credentials:");
+          console.log(`   Email: ${email}`);
+          console.log(`   Password: ${pwd}\n`);
+        } catch (e) {
+          console.error("Error ensuring dev admin credentials:", e.message);
+        }
+      }
     }
 
     // Removed duplicate credentials display

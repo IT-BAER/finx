@@ -2,6 +2,7 @@ import { createContext, useState, useEffect, useContext } from "react";
 import { authAPI } from "../services/api.jsx";
 import { setAuthToken, isAuthenticated } from "../utils/auth.jsx";
 import offlineAPI from "../services/offlineAPI.js";
+import tRaw from "../lib/i18n";
 
 const AuthContext = createContext();
 
@@ -20,34 +21,8 @@ export const AuthProvider = ({ children }) => {
     useState(false);
 
   useEffect(() => {
-    // If Vite frontend DEV mode is enabled, attempt to load the current user
-    // even if there's no token. This pairs with backend DEV_MODE which
-    // bypasses authentication server-side. Only enable when VITE_DEV_MODE === 'true'.
-    // Use a safe runtime check (try/catch) instead of `typeof import` which can break parsing.
-    let VITE_DEV_MODE = false;
-    try {
-      VITE_DEV_MODE = !!(
-        import.meta &&
-        import.meta.env &&
-        import.meta.env.VITE_DEV_MODE === "true"
-      );
-    } catch (e) {
-      VITE_DEV_MODE = false;
-    }
-
-    // Only bypass auth in true development builds
-    const isDevBuild = (() => {
-      try {
-        return import.meta && import.meta.env && import.meta.env.MODE === "development";
-      } catch (_) {
-        return false;
-      }
-    })();
-
-    if (VITE_DEV_MODE && isDevBuild) {
-      // Try to load user from server; backend must also have DEV_MODE=true for this to succeed.
-      loadUser();
-    } else if (isAuthenticated()) {
+  // Only attempt to load the current user when we already have a token
+  if (isAuthenticated()) {
       loadUser();
     } else {
       setLoading(false);
@@ -103,8 +78,8 @@ export const AuthProvider = ({ children }) => {
       setAuthToken(res.data.token);
       setUser(res.data.user);
 
-      // Show login success notification for all users
-      window.toastWithHaptic.success("Login successful!", {
+  // Show login success notification localized
+  window.toastWithHaptic.success(tRaw("loginSuccessful"), {
         duration: 3000,
         position: "top-center",
       });

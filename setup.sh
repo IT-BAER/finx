@@ -622,9 +622,24 @@ create_env() {
     # Build CORS_ORIGIN list locally (avoid relying on outer scope with set -u)
     local ORIGINS=""
     if [ -n "${DOMAIN:-}" ]; then
+        # Use provided domain (both schemes), plus port-qualified HTTP if non-standard port
         ORIGINS="https://${DOMAIN},http://${DOMAIN}"
         if [ -n "${FRONTEND_PORT:-}" ] && [ "${FRONTEND_PORT}" != "80" ] && [ "${FRONTEND_PORT}" != "443" ]; then
             ORIGINS="${ORIGINS},http://${DOMAIN}:${FRONTEND_PORT}"
+        fi
+    else
+        # No domain provided: default to localhost/loopback with the chosen port
+        if [ -n "${FRONTEND_PORT:-}" ]; then
+            if [ "${FRONTEND_PORT}" = "80" ]; then
+                ORIGINS="http://localhost,http://127.0.0.1"
+            elif [ "${FRONTEND_PORT}" = "443" ]; then
+                ORIGINS="https://localhost,https://127.0.0.1"
+            else
+                ORIGINS="http://localhost:${FRONTEND_PORT},http://127.0.0.1:${FRONTEND_PORT}"
+            fi
+        else
+            # Fallback if port is not set for some reason
+            ORIGINS="http://localhost,http://127.0.0.1"
         fi
     fi
     local JWT_SECRET

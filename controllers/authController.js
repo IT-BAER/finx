@@ -5,15 +5,10 @@ const bcrypt = require("bcryptjs");
 
 // Generate JWT token
 const generateToken = (id, rememberMe = false) => {
-  if (rememberMe) {
-    // No expiration when "remember me" is checked
-    return jwt.sign({ id }, process.env.JWT_SECRET);
-  } else {
-    // 1 day expiration when "remember me" is not checked
-    return jwt.sign({ id }, process.env.JWT_SECRET, {
-      expiresIn: 86400, // 1 day in seconds
-    });
-  }
+  // "Remember me" = long-lived but finite token; otherwise short-lived
+  // 90 days vs 1 day
+  const expiresInSeconds = rememberMe ? 90 * 24 * 60 * 60 : 24 * 60 * 60;
+  return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: expiresInSeconds });
 };
 
 // Register user

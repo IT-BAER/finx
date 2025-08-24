@@ -114,7 +114,6 @@ const Login = () => {
                 <Button
                   variant="primary"
                   type="submit"
-                  className="w-full py-3 rounded-full"
                   disabled={loading}
                   haptic="impact"
                 >

@@ -7,6 +7,7 @@ import axios from "axios";
 import offlineStorage from "../utils/offlineStorage.js";
 import cache, { cacheKeys } from "../utils/cache.js";
 import connectivity, { getIsOnline } from "./connectivity.js";
+import { tRaw } from "../lib/i18n";
 
 // Remove toast import since we'll use the global toastWithHaptic
 
@@ -34,7 +35,7 @@ class OfflineAPI {
       this.isOnline = nowOnline;
       if (nowOnline) {
         if (window.toastWithHaptic?.success) {
-          window.toastWithHaptic.success("Back online! Syncing data...", {
+          window.toastWithHaptic.success(tRaw("backOnlineSyncing"), {
             duration: 3000,
           });
         }
@@ -58,10 +59,9 @@ class OfflineAPI {
         }, 1000);
       } else {
         if (window.toastWithHaptic?.info) {
-          window.toastWithHaptic.info(
-            "Server unavailable. Working in offline mode.",
-            { duration: 5000 },
-          );
+          window.toastWithHaptic.info(tRaw("serverUnavailableOfflineMode"), {
+            duration: 5000,
+          });
         }
       }
     });
@@ -71,10 +71,9 @@ class OfflineAPI {
       this.isOnline = false;
       if (window.toastWithHaptic?.success) {
         // Use info variant when browser reports offline
-        window.toastWithHaptic.info(
-          "You are offline. Changes will sync when server is back.",
-          { duration: 5000 },
-        );
+        window.toastWithHaptic.info(tRaw("youAreOfflineWillSync"), {
+          duration: 5000,
+        });
       }
     });
   }
@@ -306,6 +305,31 @@ class OfflineAPI {
   async getTransactions(params = {}) {
     const response = await this.get("/transactions", params);
     return response.transactions || [];
+  }
+
+  // Fetch all online transactions across pages with limit/offset pagination
+  async getAllOnlineTransactions(params = {}) {
+    // If offline, return empty to allow local fallback
+    if (!this.isOnline) {
+      return [];
+    }
+    const pageLimit = Math.min(Number(params.limit) || 100, 200); // cap per-page
+    let offset = Number(params.offset) || 0;
+    const maxPages = 100; // hard cap to prevent runaway loops (up to ~20k records)
+    const all = [];
+    for (let page = 0; page < maxPages; page++) {
+      const batch = await this.get("/transactions", {
+        ...params,
+        limit: pageLimit,
+        offset,
+      });
+      const rows = batch.transactions || batch.data?.transactions || batch || [];
+      if (!Array.isArray(rows) || rows.length === 0) break;
+      all.push(...rows);
+      if (rows.length < pageLimit) break;
+      offset += pageLimit;
+    }
+    return all;
   }
 
   async createTransaction(data) {
@@ -552,13 +576,15 @@ class OfflineAPI {
     return localTransactions
       .filter((t) => !t._isDeleted)
       .slice(-10) // Get last 10 transactions
-      .sort((a, b) => new Date(b.date) - new Date(a.date)); // Sort by date, newest first
+      // Sort by YYYY-MM-DD strings to avoid timezone-induced shifts
+      .sort((a, b) => (b.date || "").localeCompare(a.date || ""));
   }
 
   // Merge online and offline transactions
   async getAllTransactions(params = {}) {
     try {
-      const onlineTransactions = await this.getTransactions(params);
+      // Fetch full online dataset (paginated) instead of a single page
+      const onlineTransactions = await this.getAllOnlineTransactions(params);
       const localTransactions = await this.getLocalTransactions();
 
       console.log(
@@ -650,9 +676,9 @@ class OfflineAPI {
         allTransactions.length,
       );
 
-      // Sort by date, newest first
-      return allTransactions.sort(
-        (a, b) => new Date(b.date) - new Date(a.date),
+      // Sort by YYYY-MM-DD string, newest first (avoids timezone issues)
+  return allTransactions.sort((a, b) =>
+        (b.date || "").localeCompare(a.date || ""),
       );
     } catch (error) {
       console.log(

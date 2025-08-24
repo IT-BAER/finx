@@ -107,8 +107,8 @@ for i in $(seq 1 $MAX_RETRIES); do
     continue
   fi
 
-  # Check database readiness
-  if docker exec finx-db sh -c 'pg_isready -U finx_admin -d finx_prod' >/dev/null 2>&1; then
+  # Check database readiness using env credentials
+  if docker exec finx-db sh -c "pg_isready -U ${DB_USER} -d ${DB_NAME}" >/dev/null 2>&1; then
     DB_CONTAINER_RUNNING=true
     break
   fi
@@ -123,26 +123,36 @@ if [ "$DB_CONTAINER_RUNNING" != "true" ]; then
   exit 1
 fi
 
-# Initialize database with sample data if needed
-echo "📊 Initializing database with sample data if needed..."
-# Use the same check as in start-backend.sh
-echo "Running query: SELECT 1 FROM users WHERE is_admin = 'true'"
-result=$(docker exec finx-db psql -U finx_admin -d finx_prod -c "SELECT 1 FROM users WHERE is_admin = 'true'" 2>&1)
-echo "Query result: $result"
-if ! echo "$result" | grep -q "1 row"; then
-  echo "Initializing database..."
-  for i in {1..5}; do
-    if node scripts/init-db.js; then
-      echo "✅ Database initialized successfully"
-      break
-    fi
-    sleep 5
-    echo "Retrying database initialization... ($i/5)"
-    if [ $i -eq 5 ]; then
-      echo "❌ Failed to initialize database after 5 attempts"
-      exit 1
-    fi
-  done
+# Initialize database and ensure dev admin credentials
+echo "📊 Initializing database (and ensuring dev admin credentials if configured)..."
+
+# Always run init-db when a dev admin email is configured so credentials are ensured in development
+if [ -n "${DEV_MODE_ADMIN_EMAIL}" ]; then
+  echo "Ensuring dev admin \"${DEV_MODE_ADMIN_EMAIL}\" exists with configured credentials..."
+  if ! node scripts/init-db.js; then
+    echo "❌ Database initialization/ensure failed"
+    exit 1
+  fi
+else
+  # Fallback: run only if no admin exists
+  echo "Running query: SELECT 1 FROM users WHERE is_admin = true"
+  result=$(docker exec finx-db psql -U ${DB_USER} -d ${DB_NAME} -c "SELECT 1 FROM users WHERE is_admin = true" 2>&1)
+  echo "Query result: $result"
+  if ! echo "$result" | grep -q "1 row"; then
+    echo "Initializing database..."
+    for i in {1..5}; do
+      if node scripts/init-db.js; then
+        echo "✅ Database initialized successfully"
+        break
+      fi
+      sleep 5
+      echo "Retrying database initialization... ($i/5)"
+      if [ $i -eq 5 ]; then
+        echo "❌ Failed to initialize database after 5 attempts"
+        exit 1
+      fi
+    done
+  fi
 fi
 
 # Start backend server (localhost only for security)

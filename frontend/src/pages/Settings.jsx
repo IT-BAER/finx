@@ -215,7 +215,7 @@ const Settings = () => {
   };
 
   return (
-    <div className="container mx-auto px-4 pt-6 pb-4 min-h-0">
+  <div className="container mx-auto px-4 pb-4 min-h-0">
       <h1 className="display-2 mb-8">{t("settingsTitle")}</h1>
 
       <Modal

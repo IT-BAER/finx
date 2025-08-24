@@ -12,16 +12,16 @@ const router = express.Router();
 // All routes are protected
 router.use(auth);
 
-// Create category
+// Create category (per-user)
 router.post("/", createCategory);
 
-// Get all categories
+// Get categories (mine or accessible user via query)
 router.get("/", getCategories);
 
-// Update category
+// Update category (ownership enforced)
 router.put("/:id", updateCategory);
 
-// Delete category
+// Delete category (ownership enforced)
 router.delete("/:id", deleteCategory);
 
 module.exports = router;

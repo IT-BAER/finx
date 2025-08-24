@@ -7,12 +7,26 @@ dotenv.config();
 
 // Initialize app
 const app = express();
+// Remove X-Powered-By header explicitly (helmet also hides it, this is belt-and-suspenders)
+app.disable("x-powered-by");
+
+// Require JWT secret at startup (warn/fail in production)
+if (!process.env.JWT_SECRET) {
+  const msg = "JWT_SECRET is not set. Set a strong secret in environment.";
+  if (process.env.NODE_ENV === "production") {
+  console.error(msg);
+  // Do not start without a JWT secret in production
+  process.exit(1);
+  } else {
+    console.warn(msg);
+  }
+}
 
 // Trust proxy for rate limiting
 app.set("trust proxy", 1);
 
 // Configure CORS for development and production
-// Prefer explicit origins via CORS_ORIGIN (comma-separated) or allow all in dev
+// Prefer explicit origins via CORS_ORIGIN (comma-separated); allow all only in dev
 const allowedOrigins = (process.env.CORS_ORIGIN || "")
   .split(",")
   .map((s) => s.trim())
@@ -20,8 +34,9 @@ const allowedOrigins = (process.env.CORS_ORIGIN || "")
 const corsOptions = {
   origin: (origin, callback) => {
     if (!origin) return callback(null, true); // non-browser clients
-    if (process.env.NODE_ENV === "development") return callback(null, true);
-    if (allowedOrigins.length === 0) return callback(null, true); // fallback for reverse proxies
+  if (process.env.NODE_ENV === "development") return callback(null, true);
+  // In production, require explicit allowlist
+  if (allowedOrigins.length === 0) return callback(new Error("CORS not allowed"));
     if (allowedOrigins.includes(origin)) return callback(null, true);
     return callback(new Error("CORS not allowed"));
   },
@@ -38,7 +53,30 @@ const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 const compression = require("compression");
 
-app.use(helmet());
+app.use(
+  helmet({
+    // Set a conservative CSP; adjust if you add external hosts
+    contentSecurityPolicy: {
+      useDefaults: true,
+      directives: {
+        "default-src": ["'self'"],
+        "img-src": ["'self'", "data:", "blob:"],
+        "object-src": ["'none'"],
+        "base-uri": ["'self'"],
+        // Disallow embedding to prevent clickjacking
+        "frame-ancestors": ["'none'"],
+      },
+    },
+    // Avoid leaking referrer information across origins
+    referrerPolicy: { policy: "no-referrer" },
+  }),
+);
+
+// Add Vary: Origin for CORS dynamic origins
+app.use((req, res, next) => {
+  res.vary("Origin");
+  next();
+});
 app.use(compression());
 
 // General rate limiting - more appropriate for web applications

@@ -1,6 +1,6 @@
 <div align="center">
 
-# FinX — Personal Finance Manager (PWA)
+# FinX — Personal Finance Tracker (PWA)
 
 [![Node.js](https://img.shields.io/badge/Node.js-20.x-green.svg)](https://nodejs.org/)
 [![Express](https://img.shields.io/badge/Backend-Express-informational.svg)](https://expressjs.com/)

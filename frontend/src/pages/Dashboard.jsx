@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import offlineAPI from "../services/offlineAPI.js";
+import { transactionAPI } from "../services/api.jsx";
 import { useNavigate } from "react-router-dom";
 import Button from "../components/Button.jsx";
 
@@ -14,289 +14,151 @@ import { useTheme } from "../contexts/ThemeContext.jsx";
 import { motion } from "framer-motion";
 
 // Helper function to get YYYY-MM-DD from a date object in local timezone
+const parseLocalDate = (value) => {
+  if (typeof value === "string" && /\d{4}-\d{2}-\d{2}/.test(value)) {
+    const [y, m, d] = value.split("-").map((v) => parseInt(v, 10));
+    return new Date(y, m - 1, d);
+  }
+  return new Date(value);
+};
+
 const toYYYYMMDD = (date) => {
-  const d = new Date(date);
+  const d = parseLocalDate(date);
   const year = d.getFullYear();
   const month = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 };
 
-// Function to load dashboard data (moved outside component for prefetch hook)
 async function loadDashboardData() {
-  try {
-    // Get all transactions for dashboard calculations
-    const allTransactions = await offlineAPI.getAllTransactions();
+  const now = new Date();
+  const weekStart = new Date(now);
+  weekStart.setDate(now.getDate() - 6);
+  const weekStartStr = toYYYYMMDD(weekStart);
+  const weekEndStr = toYYYYMMDD(now);
 
-    // Get last 7 days data for daily expenses and balance trend charts (including today)
-    const now = new Date();
-    const sevenDaysAgo = new Date(now);
-    sevenDaysAgo.setDate(now.getDate() - 6); // This gives us 7 days including today
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const monthStartStr = toYYYYMMDD(monthStart);
+  const monthEndStr = toYYYYMMDD(now);
 
-    // Filter transactions for the last 7 days
-    const recentTransactions = allTransactions.filter((tx) => {
-      const txDate = new Date(tx.date);
-      return txDate >= sevenDaysAgo && txDate <= now;
-    });
+  const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
+  const isTablet =
+    typeof window !== "undefined" &&
+    window.innerWidth >= 768 &&
+    window.innerWidth < 1024;
+  const monthsToFetch = isMobile ? 3 : isTablet ? 6 : 12;
+  const ivsStart = new Date(
+    now.getFullYear(),
+    now.getMonth() - (monthsToFetch - 1),
+    1,
+  );
+  const ivsEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  const ivsStartStr = toYYYYMMDD(ivsStart);
+  const ivsEndStr = toYYYYMMDD(ivsEnd);
 
-    // Calculate daily expenses for the last 7 days
-    const dailyExpenses = [];
-    for (let i = 0; i < 7; i++) {
-      const date = new Date(sevenDaysAgo);
-      date.setDate(sevenDaysAgo.getDate() + i);
-      const dateStr = toYYYYMMDD(date);
+  const [weeklyRes, monthlyRes, ivsRes] = await Promise.all([
+    transactionAPI.getDashboardData({ startDate: weekStartStr, endDate: weekEndStr }),
+    transactionAPI.getDashboardData({ startDate: monthStartStr, endDate: monthEndStr }),
+    transactionAPI.getDashboardData({ startDate: ivsStartStr, endDate: ivsEndStr }),
+  ]);
 
-      // Normalize transaction dates for comparison
-      const total =
-        recentTransactions
-          .filter((tx) => {
-            // Convert transaction date to YYYY-MM-DD format for comparison
-            const txDateStr = toYYYYMMDD(tx.date);
-            return txDateStr === dateStr && tx.type === "expense";
-          })
-          .reduce((sum, tx) => sum + parseFloat(tx.amount || 0), 0) || 0;
+  const weekly = weeklyRes.data?.data || weeklyRes.data;
+  const monthly = monthlyRes.data?.data || monthlyRes.data;
+  const ivs = ivsRes.data?.data || ivsRes.data;
 
-      dailyExpenses.push({ date: dateStr || "", total: total || 0 });
-    }
+  const incomeByDate = (ivs.incomeByDate || []).map((d) => ({
+    ...d,
+    total: parseFloat(d.total || 0),
+  }));
+  const expensesByDate = (ivs.dailyExpenses || []).map((d) => ({
+    ...d,
+    total: parseFloat(d.total || 0),
+  }));
 
-    // Calculate summary data for the current month
-    const currentMonth = new Date().getMonth();
-    const currentYear = new Date().getFullYear();
-
-    const monthlyTransactions = allTransactions.filter((tx) => {
-      const txDate = new Date(tx.date);
-      return (
-        txDate.getMonth() === currentMonth &&
-        txDate.getFullYear() === currentYear
-      );
-    });
-
-    const total_income =
-      monthlyTransactions
-        .filter((tx) => tx.type === "income")
-        .reduce((sum, tx) => sum + parseFloat(tx.amount || 0), 0) || 0;
-
-    const total_expenses =
-      monthlyTransactions
-        .filter((tx) => tx.type === "expense")
-        .reduce((sum, tx) => sum + parseFloat(tx.amount || 0), 0) || 0;
-
-    const balance =
-      (parseFloat(total_income) || 0) - (parseFloat(total_expenses) || 0) || 0;
-
-    // Get data for income vs expenses chart - responsive based on screen width
-    // For mobile: 3 months, For tablet: 6 months, For desktop: 12 months
-    const isMobile = window.innerWidth < 768;
-    const isTablet = window.innerWidth >= 768 && window.innerWidth < 1024;
-
-    let monthsToFetch;
-    if (isMobile) {
-      monthsToFetch = 3; // 3 months for mobile
-    } else if (isTablet) {
-      monthsToFetch = 6; // 6 months for tablet
-    } else {
-      monthsToFetch = 12; // 12 months for desktop
-    }
-
-    const startDateForIncomeChart = new Date(
-      now.getFullYear(),
-      now.getMonth() - (monthsToFetch - 1),
-      1,
-    );
-    const endDateForIncomeChart = new Date(
-      now.getFullYear(),
-      now.getMonth() + 1,
-      0,
-    );
-
-    // Filter transactions for income vs expenses chart
-    const incomeVsExpensesTransactions = allTransactions.filter((tx) => {
-      const txDate = new Date(tx.date);
-      return (
-        txDate >= startDateForIncomeChart && txDate <= endDateForIncomeChart
-      );
-    });
-
-    // Calculate income by date for the period
-    const incomeByDate = [];
-    const expensesByDate = [];
-
-    // Group transactions by date
-    const transactionsByDate = {};
-    incomeVsExpensesTransactions.forEach((tx) => {
-      // Convert transaction date to YYYY-MM-DD format for consistent grouping
-      const txDateStr = toYYYYMMDD(tx.date);
-      if (!transactionsByDate[txDateStr]) {
-        transactionsByDate[txDateStr] = { income: 0, expenses: 0 };
-      }
-      if (tx.type === "income") {
-        transactionsByDate[txDateStr].income += parseFloat(tx.amount || 0);
-      } else {
-        transactionsByDate[txDateStr].expenses += parseFloat(tx.amount || 0);
-      }
-    });
-
-    // Convert to arrays
-    Object.keys(transactionsByDate).forEach((date) => {
-      incomeByDate.push({
-        date: date || "",
-        total: parseFloat(transactionsByDate[date].income) || 0,
-      });
-      expensesByDate.push({
-        date: date || "",
-        total: parseFloat(transactionsByDate[date].expenses) || 0,
-      });
-    });
-
-    // Calculate expenses by category for recent transactions
-    const expenseByCategory = {};
-    recentTransactions
-      .filter((tx) => tx.type === "expense")
-      .forEach((tx) => {
-        const category = tx.category_name || "Uncategorized";
-        if (!expenseByCategory[category]) {
-          expenseByCategory[category] = 0;
-        }
-        expenseByCategory[category] += parseFloat(tx.amount || 0);
-      });
-
-    // Convert to array format
-    const expenseByCategoryArray = Object.keys(expenseByCategory)
-      .map((category_name) => ({
-        category_name: category_name || "Uncategorized",
-        total: parseFloat(expenseByCategory[category_name]) || 0,
-      }))
-      .sort((a, b) => (parseFloat(b.total) || 0) - (parseFloat(a.total) || 0));
-
-    // Calculate weekly expenses
-    const weeklyExpenses = {
-      total_expenses:
-        recentTransactions
-          .filter((tx) => tx.type === "expense")
-          .reduce((sum, tx) => sum + parseFloat(tx.amount || 0), 0) || 0,
-      days_with_expenses:
-        dailyExpenses.filter((day) => (day.total || 0) > 0).length || 0,
-    };
-
-    return {
-      summary: { total_income, total_expenses, balance },
-      dailyExpenses: dailyExpenses.map((item) => ({
-        ...item,
-        total: item.total || 0,
-      })),
-      expenseByCategory: expenseByCategoryArray,
-      weeklyExpenses,
-      incomeByDate,
-      // For recent transactions, we'll use the filtered recent transactions
-      recentTransactions: recentTransactions
-        .sort((a, b) => new Date(b.date) - new Date(a.date))
-        .slice(0, 5)
-        .map((tx) => ({
-          ...tx,
-          id: tx.id || 0,
-          amount: tx.amount || 0,
-          category_name: tx.category_name || "",
-          description: tx.description || "",
-          date: tx.date || toYYYYMMDD(new Date()),
-          type: tx.type || "expense",
-        })),
-      // For income vs expenses chart data
-      incomeVsExpensesData: {
-        incomeByDate: incomeByDate.map((item) => ({
-          ...item,
-          total: item.total || 0,
-          date: item.date || toYYYYMMDD(new Date()),
-        })),
-        dailyExpenses: expensesByDate.map((item) => ({
-          ...item,
-          total: item.total || 0,
-          date: item.date || toYYYYMMDD(new Date()),
-        })),
-      },
-    };
-  } catch (err) {
-    console.error("Error loading dashboard data:", err);
-    throw new Error("Failed to load dashboard data");
-  }
+  return {
+    summary: monthly.summary || { total_income: 0, total_expenses: 0, balance: 0 },
+    dailyExpenses: (weekly.dailyExpenses || []).map((d) => ({
+      date: d.date,
+      total: parseFloat(d.total || 0),
+    })),
+    // Use monthly expense by category to reflect entire current month
+    expenseByCategory: monthly.expenseByCategory || [],
+    weeklyExpenses: weekly.weeklyExpenses || { total_expenses: 0, days_with_expenses: 0 },
+    incomeByDate: incomeByDate,
+    // Use monthly recent transactions to align with 'current month' expectations
+    recentTransactions: (monthly.recentTransactions || weekly.recentTransactions || []).map((tx) => ({
+      ...tx,
+      id: tx.id || 0,
+      amount: tx.amount || 0,
+      category_name: tx.category_name || "",
+      description: tx.description || "",
+      date: tx.date || toYYYYMMDD(new Date()),
+      type: tx.type || "expense",
+    })),
+    incomeVsExpensesData: {
+      incomeByDate: incomeByDate,
+      dailyExpenses: expensesByDate,
+    },
+  };
 }
 
 const Dashboard = () => {
-  const { t, formatDate, formatCurrency, language } = useTranslation();
-  const { isIncomeTrackingDisabled } = useAuth();
-  const { dark } = useTheme();
   const navigate = useNavigate();
-  const isCurrentPage = useRef(true);
+  const { t, language, formatCurrency, formatDate } = useTranslation();
+  const { user } = useAuth();
+  const { dark } = useTheme();
 
-  // Temporarily disable prefetching to fix refresh loop
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const isPrefetched = false;
+  // removed prefetch indicator
+  const isCurrentPage = useRef(true);
 
-  useEffect(() => {
-    loadDashboardDataWrapper();
-
-    // Set up visibility change listener for background data refresh
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible" && isCurrentPage.current) {
-        // Refresh data when page becomes visible
-        loadDashboardDataWrapper();
-      }
-    };
-
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-
-    // Listen for global data refresh events
-    const handleDataRefresh = () => {
-      loadDashboardDataWrapper();
-    };
-    window.addEventListener("dataRefreshNeeded", handleDataRefresh);
-
-    return () => {
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-      window.removeEventListener("dataRefreshNeeded", handleDataRefresh);
-    };
-  }, []);
+  const isIncomeTrackingDisabled = !!user?.income_tracking_disabled;
 
   const loadDashboardDataWrapper = async () => {
     try {
       setLoading(true);
       const data = await loadDashboardData();
+      if (!isCurrentPage.current) return;
       setDashboardData(data);
     } catch (err) {
+      if (!isCurrentPage.current) return;
       setError("Failed to load dashboard data");
       console.error("Error loading dashboard data:", err);
     } finally {
+      if (!isCurrentPage.current) return;
       setLoading(false);
     }
   };
 
-  // Reload data when window is resized to adjust the number of months
   useEffect(() => {
-    const handleResize = () => {
-      loadDashboardDataWrapper();
-    };
+    isCurrentPage.current = true;
+    loadDashboardDataWrapper();
 
-    window.addEventListener("resize", handleResize);
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        refreshDashboardData();
+      }
+    };
+    const handleDataRefresh = () => refreshDashboardData();
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("dataRefreshNeeded", handleDataRefresh);
 
     return () => {
-      window.removeEventListener("resize", handleResize);
+      isCurrentPage.current = false;
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("dataRefreshNeeded", handleDataRefresh);
     };
   }, []);
 
-  // Function to refresh data in the background - only when online
   const refreshDashboardData = async () => {
     try {
-      // Only refresh data when online
       const { getIsOnline } = await import("../services/connectivity.js");
       if (getIsOnline()) {
         const data = await loadDashboardData();
+        if (!isCurrentPage.current) return;
         setDashboardData(data);
-
-        // Show a subtle notification if data was updated
-        if (!loading) {
-          console.log("Dashboard data refreshed in background");
-        }
       }
     } catch (err) {
       console.error("Error refreshing dashboard data:", err);
@@ -325,48 +187,7 @@ const Dashboard = () => {
     return Math.ceil(((d - yearStart) / 86400000 + 1) / 7);
   };
 
-  // Chart options
-  const barChartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: {
-        position: "top",
-        labels: {
-          color: "#6b7280",
-          font: {
-            size: 12,
-          },
-        },
-      },
-      title: {
-        display: false,
-      },
-      datalabels: {
-        display: false,
-      },
-    },
-    scales: {
-      y: {
-        display: false, // Hide y-axis for consistency
-        beginAtZero: true,
-        grid: {
-          color: "rgba(0, 0, 0, 0.05)",
-        },
-        ticks: {
-          color: "#6b7280",
-        },
-      },
-      x: {
-        grid: {
-          display: false,
-        },
-        ticks: {
-          color: "#6b7280",
-        },
-      },
-    },
-  };
+  // Income vs Expenses chart removed from dashboard
 
   const dailyExpensesChartOptions = {
     responsive: true,
@@ -538,7 +359,7 @@ const Dashboard = () => {
 
   if (loading) {
     return (
-      <div className="container mx-auto px-4 pt-6 pb-4">
+  <div className="container mx-auto px-4 pb-4">
         <div className="flex justify-center items-center h-64">
           <div className="spinner"></div>
         </div>
@@ -548,100 +369,13 @@ const Dashboard = () => {
 
   if (error) {
     return (
-      <div className="container mx-auto px-4 pt-6 pb-4">
+  <div className="container mx-auto px-4 pb-4">
         <div className="alert alert-error">{error}</div>
       </div>
     );
   }
 
-  // Process data for last 3 months for income vs expenses chart
-  // Calculate monthly income and expenses from the daily data
-  let monthlyLabels = [];
-  let monthlyIncomeData = [];
-  let monthlyExpensesData = [];
-
-  if (
-    dashboardData?.incomeVsExpensesData?.dailyExpenses &&
-    dashboardData?.incomeVsExpensesData?.incomeByDate
-  ) {
-    // Create maps for quick lookup
-    const incomeByDateMap = {};
-    dashboardData.incomeVsExpensesData.incomeByDate.forEach((item) => {
-      incomeByDateMap[item.date] = parseFloat(item.total || 0);
-    });
-
-    const expensesByDateMap = {};
-    dashboardData.incomeVsExpensesData.dailyExpenses.forEach((item) => {
-      expensesByDateMap[item.date] = parseFloat(item.total || 0);
-    });
-
-    // Get the date range dynamically based on fetched data
-    const now = new Date();
-    const endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-
-    // Create data for each month in the range
-    const monthlyIncomeMap = {};
-    const monthlyExpensesMap = {};
-
-    // Process each day in the fetched data range
-    const allDates = [
-      ...Object.keys(incomeByDateMap),
-      ...Object.keys(expensesByDateMap),
-    ].filter(Boolean);
-
-    allDates.forEach((dateKey) => {
-      const date = new Date(dateKey);
-      // Ensure we are not processing invalid dates
-      if (isNaN(date.getTime())) return;
-
-      const year = date.getFullYear();
-      const month = date.getMonth();
-      const monthKey = `${year}-${String(month + 1).padStart(2, "0")}`;
-
-      if (monthlyIncomeMap[monthKey] === undefined) {
-        monthlyIncomeMap[monthKey] = 0;
-        monthlyExpensesMap[monthKey] = 0;
-      }
-
-      monthlyIncomeMap[monthKey] += incomeByDateMap[dateKey] || 0;
-      monthlyExpensesMap[monthKey] += expensesByDateMap[dateKey] || 0;
-    });
-
-    // Convert to arrays for charting
-    const monthKeys = Object.keys(monthlyIncomeMap).sort();
-    monthlyLabels = monthKeys.map((key) => {
-      const [year, month] = key.split("-");
-      const date = new Date(parseInt(year), parseInt(month) - 1, 1);
-      return date.toLocaleDateString(language === "de" ? "de-DE" : "en-US", {
-        month: "short",
-        year: "2-digit",
-      });
-    });
-    monthlyIncomeData = monthKeys.map((key) => monthlyIncomeMap[key]);
-    monthlyExpensesData = monthKeys.map((key) => monthlyExpensesMap[key]);
-  }
-
-  const monthlyData = {
-    labels: monthlyLabels,
-    datasets: [
-      {
-        label: t("income"),
-        data: monthlyIncomeData,
-        backgroundColor: "rgba(52, 211, 153, 0.7)",
-        borderColor: "rgba(52, 211, 153, 1)",
-        borderWidth: 0,
-        borderRadius: 6,
-      },
-      {
-        label: t("expenses"),
-        data: monthlyExpensesData,
-        backgroundColor: "rgba(248, 113, 113, 0.7)",
-        borderColor: "rgba(248, 113, 113, 1)",
-        borderWidth: 0,
-        borderRadius: 6,
-      },
-    ],
-  };
+  // Income vs Expenses data and chart removed
 
   // Process trend data to show actual balance or expenses trend based on income tracking setting
   let trendLabels = [];
@@ -729,20 +463,7 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="container mx-auto px-4 pt-6 pb-4 min-h-0">
-      {/* Subtle prefetch indicator */}
-      {isPrefetched && (
-        <div className="mb-2 text-xs text-green-600 dark:text-green-400 opacity-75 flex items-center gap-1">
-          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-            <path
-              fillRule="evenodd"
-              d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-              clipRule="evenodd"
-            />
-          </svg>
-          {t("dataPreloaded") || "Data preloaded"}
-        </div>
-      )}
+  <div className="container mx-auto px-4 pb-4 min-h-0">
 
       <div className="flex flex-row items-center justify-between mb-8 gap-4">
         <h1 className="display-2">{t("dashboard")}</h1>
@@ -998,9 +719,10 @@ const Dashboard = () => {
               <div className="w-full" style={{ height: "auto", minHeight: 0 }}>
                 <Pie
                   data={{
-                    labels: dashboardData.expenseByCategory.map(
-                      (item) => item.category_name,
-                    ),
+                    labels: dashboardData.expenseByCategory.map((item) => {
+                      const name = (item.category_name || "").trim();
+                      return name !== "" ? name : (t("uncategorized") || "Uncategorized");
+                    }),
                     datasets: [
                       {
                         data: dashboardData.expenseByCategory.map((item) =>
@@ -1057,19 +779,7 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Income vs Expenses Chart - Moved to bottom */}
-      {!isIncomeTrackingDisabled && (
-        <div className="card mb-8">
-          <div className="card-body">
-            <h2 className="text-xl font-semibold mb-6">
-              {t("incomeVsExpenses")}
-            </h2>
-            <div className="w-full" style={{ height: "auto", minHeight: 0 }}>
-              <Bar data={monthlyData} options={barChartOptions} />
-            </div>
-          </div>
-        </div>
-      )}
+  {/* Income vs Expenses section intentionally removed from dashboard */}
 
       {/* Recent Transactions */}
       <div className="card">

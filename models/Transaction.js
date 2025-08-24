@@ -255,10 +255,10 @@ class Transaction {
 
     query += `
       ORDER BY t.date DESC, t.id DESC
-      LIMIT $${startDate && endDate ? (isIncomeTrackingDisabled ? "4" : "4") : isIncomeTrackingDisabled ? "2" : "2"};
+      LIMIT $${values.length + 1};
     `;
 
-    const result = await db.query(query, values.concat(limit));
+    const result = await db.query(query, [...values, limit]);
     return result.rows.map((row) => new Transaction(row));
   }
 
@@ -273,7 +273,7 @@ class Transaction {
         c.name as category_name,
         SUM(t.amount) as total
       FROM transactions t
-      JOIN categories c ON t.category_id = c.id
+      LEFT JOIN categories c ON t.category_id = c.id
       WHERE t.user_id = $1 AND t.type = 'expense'
     `;
 

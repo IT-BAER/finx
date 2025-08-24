@@ -17,7 +17,8 @@
   "cleanup-db": "node scripts/cleanup-sample-data.js",
   "docker:build": "docker-compose build frontend",
   "docker:up:build": "docker-compose up -d --build",
-    "audit": "npm audit --audit-level moderate",
+  "audit": "npm audit --audit-level moderate",
+  "smoke:transactions": "node scripts/smoke-test-transactions.js",
     "update-deps": "npm update",
     "check": "npm run lint && npm run frontend:build"
   },

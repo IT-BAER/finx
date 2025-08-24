@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import toast from "react-hot-toast";
+import { tRaw } from "../lib/i18n";
 
 const InstallButton = ({ className = "" }) => {
   const [deferredPrompt, setDeferredPrompt] = useState(null);
@@ -28,7 +29,7 @@ const InstallButton = ({ className = "" }) => {
       setIsInstalled(true);
       setCanInstall(false);
       setDeferredPrompt(null);
-      toast.success("FinX has been installed successfully!");
+  toast.success(tRaw("appInstalledSuccessfully"));
     };
 
     window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
@@ -51,12 +52,12 @@ const InstallButton = ({ className = "" }) => {
       const { outcome } = await deferredPrompt.userChoice;
 
       if (outcome === "accepted") {
-        toast.success("Installing FinX...");
+        toast.success(tRaw("installingApp"));
       } else {
-        toast.info("Installation cancelled");
+        toast.info(tRaw("installationCancelled"));
       }
     } catch (error) {
-      toast.error("Installation failed");
+      toast.error(tRaw("installationFailed"));
     }
 
     setDeferredPrompt(null);
@@ -75,7 +76,7 @@ const InstallButton = ({ className = "" }) => {
             clipRule="evenodd"
           />
         </svg>
-        <span className="text-sm font-medium">App Installed</span>
+  <span className="text-sm font-medium">{tRaw("appInstalled")}</span>
       </div>
     );
   }
@@ -98,7 +99,7 @@ const InstallButton = ({ className = "" }) => {
             d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
           />
         </svg>
-        <span className="text-sm">Install not available</span>
+  <span className="text-sm">{tRaw("installNotAvailable")}</span>
       </div>
     );
   }
@@ -121,7 +122,7 @@ const InstallButton = ({ className = "" }) => {
           d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
         />
       </svg>
-      <span>Install App</span>
+  <span>{tRaw("installApp")}</span>
     </button>
   );
 };

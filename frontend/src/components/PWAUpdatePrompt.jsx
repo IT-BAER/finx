@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { trackPWAEvent } from "../utils/pwa.js";
+import { tRaw } from "../lib/i18n";
 /**
  * PWAUpdatePrompt
  *
@@ -55,7 +56,7 @@ const PWAUpdatePrompt = () => {
     setShowUpdatePrompt(false);
 
     const toastId = window.toastWithHaptic.loading(
-      "Preparing update — clearing UI cache...",
+      tRaw("preparingUpdateClearingCache"),
       { duration: 10000, id: "pwa-update" },
     );
 
@@ -109,7 +110,7 @@ const PWAUpdatePrompt = () => {
           onControllerChange,
         );
         window.toastWithHaptic.dismiss(toastId);
-        window.toastWithHaptic.success("App updated — reloading...", {
+  window.toastWithHaptic.success(tRaw("appUpdatedReloading"), {
           duration: 1500,
           id: "pwa-update-success",
         });
@@ -124,7 +125,7 @@ const PWAUpdatePrompt = () => {
       setTimeout(() => {
         if (!reloaded) {
           window.toastWithHaptic.dismiss(toastId);
-          window.toastWithHaptic.success("Applying update — reloading...", {
+          window.toastWithHaptic.success(tRaw("applyingUpdateReloading"), {
             duration: 1500,
             id: "pwa-update-success",
           });
@@ -134,10 +135,9 @@ const PWAUpdatePrompt = () => {
     } catch (err) {
       console.error("PWA update failed:", err);
       window.toastWithHaptic.dismiss(toastId);
-      window.toastWithHaptic.error(
-        "Update failed — please refresh the page manually.",
-        { id: "pwa-update-failed" },
-      );
+      window.toastWithHaptic.error(tRaw("updateFailedPleaseRefresh"), {
+        id: "pwa-update-failed",
+      });
     }
   };
 

@@ -282,7 +282,6 @@ const EditSharing = () => {
                   onClick={() => navigate("/share-data")}
                   variant="secondary"
                   disabled={submitting}
-                  className="text-sm md:text-base px-3 py-2"
                 >
                   {t("cancel")}
                 </Button>
@@ -291,7 +290,6 @@ const EditSharing = () => {
                   variant="primary"
                   disabled={submitting}
                   haptic="impact"
-                  className="text-sm md:text-base px-3 py-2"
                 >
                   {submitting ? t("saving") : t("save")}
                 </Button>

@@ -380,7 +380,7 @@ const Transactions = () => {
   const groupedTransactions = groupTransactionsByDate(transactions);
 
   return (
-    <div className="container mx-auto px-4 pt-6 pb-4 min-h-0">
+  <div className="container mx-auto px-4 pb-4 min-h-0">
       <div className="flex justify-between items-center mb-8">
         <h1 className="display-2">{t("transactions")}</h1>
       </div>
