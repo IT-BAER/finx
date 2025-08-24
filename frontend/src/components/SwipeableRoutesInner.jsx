@@ -95,11 +95,8 @@ export default function SwipeableRoutesInner() {
     const route = SWIPEABLE_ROUTES[newIndex];
     if (!route) return;
 
-    // Maintain previous offline behavior: prevent navigating to heavy pages when offline
-    if (
-      !isOnline &&
-      (route.path === "/reports" || route.path === "/settings")
-    ) {
+  // Maintain previous offline behavior for settings only; allow reports offline (uses cached data)
+  if (!isOnline && route.path === "/settings") {
       // revert to previous slide
       if (typeof swiperInstance.slideTo === "function") {
         swiperInstance.slideTo(currentIndex);
