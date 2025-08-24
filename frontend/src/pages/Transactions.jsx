@@ -16,14 +16,18 @@ const Transactions = () => {
   const isCurrentPage = useRef(true);
   const observer = useRef();
   const mobileSentinelRef = useRef();
+  // Track IDs we've already rendered to avoid duplicates when appending
+  const seenKeysRef = useRef(new Set());
 
   // State for infinite scrolling
   const [rawTransactions, setRawTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [hasMore, setHasMore] = useState(true);
-  const [offset, setOffset] = useState(0);
-  const limit = 20; // Number of transactions to load per request
+  // Keep a server-side offset that counts only online (server) items
+  const [serverOffset, setServerOffset] = useState(0);
+  // Page size depends on device: 20 desktop, 10 mobile
+  const [pageSize, setPageSize] = useState(20);
 
   // Process transactions with permission flags
   const transactions = useMemo(() => {
@@ -66,38 +70,49 @@ const Transactions = () => {
       if (!append) {
         setLoading(true);
       }
-      const requestedLimit = overrideLimit ?? limit;
+      const requestedLimit = overrideLimit ?? pageSize;
       const params = { limit: requestedLimit, offset: offsetValue };
       const data = await offlineAPI.getAllTransactions(params);
+      // We always treat `data` as a single page possibly containing both online and local (offline) items.
+      const pageItems = Array.isArray(data) ? data : [];
 
-      // Handle two possible behaviors from offlineAPI.getAllTransactions:
-      // 1) It respects params and returns at most `requestedLimit` items (server-side paging)
-      // 2) It returns a full dataset (client-side pagination required)
-      let displayed = [];
-      const total = Array.isArray(data) ? data.length : 0;
+      // Determine how many were actually returned by server (ignore local when deciding hasMore/offset)
+      const onlineCount = pageItems.filter((tx) => tx._dataSource !== "local").length;
 
-      if (total > requestedLimit) {
-        // offlineAPI returned a full dataset; paginate client-side
-        const page = data.slice(offsetValue, offsetValue + requestedLimit);
-        displayed = page;
-        if (append) {
-          setRawTransactions((prev) => [...prev, ...page]);
-        } else {
-          setRawTransactions(page);
+      // Helper to compute a stable unique key
+      const getKey = (tx) =>
+        tx?._tempId != null ? `tmp:${tx._tempId}` : `id:${tx?.id}`;
+
+      if (!append) {
+        // Reset seen keys and list on fresh load
+        seenKeysRef.current = new Set();
+        const uniqueFirstPage = [];
+        for (const tx of pageItems) {
+          const k = getKey(tx);
+          if (!seenKeysRef.current.has(k)) {
+            seenKeysRef.current.add(k);
+            uniqueFirstPage.push(tx);
+          }
         }
-        setHasMore(offsetValue + page.length < total);
-        setOffset(offsetValue + page.length);
+        setRawTransactions(uniqueFirstPage);
       } else {
-        // Server respected limit (or total <= requestedLimit)
-        displayed = append ? data : data.slice(0, requestedLimit);
-        if (append) {
-          setRawTransactions((prev) => [...prev, ...displayed]);
-        } else {
-          setRawTransactions(displayed);
+        // Append only unseen items
+        const toAppend = [];
+        for (const tx of pageItems) {
+          const k = getKey(tx);
+          if (!seenKeysRef.current.has(k)) {
+            seenKeysRef.current.add(k);
+            toAppend.push(tx);
+          }
         }
-        setHasMore(total === requestedLimit);
-        setOffset(offsetValue + displayed.length);
+        if (toAppend.length > 0) {
+          setRawTransactions((prev) => [...prev, ...toAppend]);
+        }
       }
+
+      // Update server offset and hasMore based on online items only
+      setServerOffset(offsetValue + onlineCount);
+      setHasMore(isOnline && onlineCount === requestedLimit);
     } catch (err) {
       setError("Failed to load transactions");
       console.error("Error loading transactions:", err);
@@ -113,9 +128,9 @@ const Transactions = () => {
   const loadMore = useCallback(() => {
     if (!isOnline) return; // disable infinite loading while offline
     if (hasMore && !loading) {
-      loadTransactions(offset, true);
+      loadTransactions(serverOffset, true, pageSize);
     }
-  }, [hasMore, loading, offset, isOnline]);
+  }, [hasMore, loading, serverOffset, isOnline, pageSize]);
 
   // Set up intersection observer for infinite scrolling
   // Use a single sentinel element (mobile) or the last row (desktop).
@@ -167,59 +182,70 @@ const Transactions = () => {
 
   // Initial load and react to online/offline state: when offline, load cached items and disable further infinite loads
   useEffect(() => {
-    const initialLimit =
-      typeof window !== "undefined" && window.innerWidth <= 768 ? 10 : null;
+    // Set page size by device once on mount or when viewport changes meaningfully
+    const isMobile = typeof window !== "undefined" && window.innerWidth <= 768;
+    const size = isMobile ? 10 : 20;
+    setPageSize(size);
+    // Reset offset and load first page
     if (!isOnline) {
       // Load only cached items and disable further server loads
-      loadTransactions(0, false, initialLimit);
+      loadTransactions(0, false, size);
       setHasMore(false);
     } else {
       // Normal online initial load
-      loadTransactions(0, false, initialLimit);
+      loadTransactions(0, false, size);
     }
+    setServerOffset(0);
   }, [isOnline]);
 
   // Set up visibility change listener for background data refresh and other event listeners
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible" && isCurrentPage.current) {
-        // Refresh data when page becomes visible
-        loadTransactions();
+  // Refresh first page when page becomes visible
+  setServerOffset(0);
+  loadTransactions(0, false, pageSize);
       }
     };
 
     // Set up custom event listeners for transaction updates
     const handleTransactionAdded = () => {
-      // Reload first page when a transaction is added
-      loadTransactions(0, false);
+  // Reload first page when a transaction is added
+  setServerOffset(0);
+  loadTransactions(0, false, pageSize);
     };
 
     const handleTransactionUpdated = () => {
-      // Reload first page when a transaction is updated
-      loadTransactions(0, false);
+  // Reload first page when a transaction is updated
+  setServerOffset(0);
+  loadTransactions(0, false, pageSize);
     };
 
     const handleTransactionDeleted = () => {
-      // Reload first page when a transaction is deleted
-      loadTransactions(0, false);
+  // Reload first page when a transaction is deleted
+  setServerOffset(0);
+  loadTransactions(0, false, pageSize);
     };
 
     // Listen for when transactions are synced from offline to online
     const handleTransactionsSynced = () => {
-      // Reload first page when transactions are synced
-      loadTransactions(0, false);
+  // Reload first page when transactions are synced
+  setServerOffset(0);
+  loadTransactions(0, false, pageSize);
     };
 
     // Listen for when app comes back online
     const handleAppBackOnline = () => {
-      // Reload first page when app comes back online
-      loadTransactions(0, false);
+  // Reload first page when app comes back online
+  setServerOffset(0);
+  loadTransactions(0, false, pageSize);
     };
 
     // Listen for general data refresh needs
     const handleDataRefreshNeeded = () => {
-      // Reload first page when data refresh is needed
-      loadTransactions(0, false);
+  // Reload first page when data refresh is needed
+  setServerOffset(0);
+  loadTransactions(0, false, pageSize);
     };
 
     document.addEventListener("visibilitychange", handleVisibilityChange);
@@ -248,7 +274,7 @@ const Transactions = () => {
       window.removeEventListener("appBackOnline", handleAppBackOnline);
       window.removeEventListener("dataRefreshNeeded", handleDataRefreshNeeded);
     };
-  }, []);
+  }, [pageSize]);
 
   // Ensure the mobile sentinel uses the same observer logic as the lastTransactionRef
   useEffect(() => {
