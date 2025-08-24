@@ -1,6 +1,7 @@
 import axios from "axios";
 import { getAuthToken } from "../utils/auth";
 import cache, { getCachedData, setCachedData, cacheKeys } from "../utils/cache";
+import offlineStorage from "../utils/offlineStorage.js";
 // Removed prefetchData import to avoid circular dependency
 // Rate limiting removed temporarily
 // Removed prefetchData import to avoid circular dependency
@@ -168,35 +169,71 @@ const clearTransactionCaches = () => {
 
 export const transactionAPI = {
   getDashboardData: async (params) => {
-    // Create a cache key based on params
     const cacheKey = `${cacheKeys.DASHBOARD_DATA}_${JSON.stringify(params || {})}`;
 
-    // Check cache first
+    // In-memory cache first
     const cached = getCachedData(cacheKey);
     if (cached) {
-      return Promise.resolve({ data: { dashboard: cached } });
+      return Promise.resolve({ data: { data: cached } });
     }
 
-    // Fetch from API if not in cache
+    // Persistent cache key used by offlineStorage
+    const persistentKey = `/api/transactions/dashboard${
+      params && Object.keys(params || {}).length
+        ? `?${new URLSearchParams(params).toString()}`
+        : ""
+    }`;
+
+    // If offline, try persistent cache in IndexedDB
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      const persisted = await offlineStorage.getCachedAPIResponse(persistentKey);
+      if (persisted) {
+        return { data: persisted };
+      }
+    }
+
+    // Fetch from API
     const response = await api.get("/transactions/dashboard", { params });
-    // Cache the result for 2 minutes (dashboard data can change frequently)
-    setCachedData(cacheKey, response.data.dashboard, 2 * 60 * 1000);
+    // Write to in-memory cache (2 minutes)
+    setCachedData(cacheKey, response.data.data, 2 * 60 * 1000);
+    // Persist entire response payload for robust offline fallback
+    try {
+      await offlineStorage.cacheAPIResponse(persistentKey, response.data);
+    } catch {}
     return response;
   },
   getReportData: async (params) => {
-    // Create a cache key based on params
     const cacheKey = `${cacheKeys.REPORT_DATA}_${JSON.stringify(params || {})}`;
 
-    // Check cache first
+    // In-memory cache first
     const cached = getCachedData(cacheKey);
     if (cached) {
-      return Promise.resolve({ data: { report: cached } });
+      return Promise.resolve({ data: { data: cached } });
     }
 
-    // Fetch from API if not in cache
+    // Persistent cache key used by offlineStorage
+    const persistentKey = `/api/transactions/dashboard${
+      params && Object.keys(params || {}).length
+        ? `?${new URLSearchParams(params).toString()}`
+        : ""
+    }`;
+
+    // If offline, try persistent cache in IndexedDB
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      const persisted = await offlineStorage.getCachedAPIResponse(persistentKey);
+      if (persisted) {
+        return { data: persisted };
+      }
+    }
+
+    // Fetch from API
     const response = await api.get("/transactions/dashboard", { params });
     // Cache the result for 2 minutes (report data can change frequently)
-    setCachedData(cacheKey, response.data.report, 2 * 60 * 1000);
+    setCachedData(cacheKey, response.data.data, 2 * 60 * 1000);
+    // Persist entire response payload for robust offline fallback
+    try {
+      await offlineStorage.cacheAPIResponse(persistentKey, response.data);
+    } catch {}
     return response;
   },
   create: async (data) => {

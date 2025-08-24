@@ -273,7 +273,15 @@ const Reports = () => {
         if (!reportData) setLoading(true);
         // Fetch real data from the API
         const { startDate, endDate } = getDateRange();
-        const res = await transactionAPI.getReportData({ startDate, endDate });
+        let res;
+        try {
+          res = await transactionAPI.getReportData({ startDate, endDate });
+        } catch (e) {
+          // If offline and no cached API response is available via service, keep previous state
+          console.warn("Reports: using existing state due to offline/no cache", e?.message || e);
+          if (!reportData) setLoading(false);
+          return;
+        }
 
         // Process income vs expenses data based on time range
         let incomeExpensesLabels = [];
@@ -1041,10 +1049,8 @@ const Reports = () => {
 
         if (!reportData) setLoading(false);
       } catch (err) {
-        window.toastWithHaptic.error(
-          "Failed to load report data: " + err.message,
-        );
-        console.error("Error loading report data:", err);
+        // When offline and no cache, don't block UI with an error; just keep prior data
+        console.warn("Reports load error (likely offline):", err?.message || err);
         setLoading(false);
       }
     };

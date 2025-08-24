@@ -974,6 +974,42 @@ class OfflineAPI {
         console.log("Cached individual transactions for offline editing");
       }
 
+      // Pre-cache dashboard/report data for Reports page (weekly, monthly, yearly)
+      try {
+        const now = new Date();
+
+        // Weekly: last 7 days including today
+        const weekEnd = new Date(now);
+        const weekStart = new Date(now);
+        weekStart.setDate(weekEnd.getDate() - 6);
+        const weekParams = {
+          startDate: `${weekStart.getFullYear()}-${String(weekStart.getMonth() + 1).padStart(2, "0")}-${String(weekStart.getDate()).padStart(2, "0")}`,
+          endDate: `${weekEnd.getFullYear()}-${String(weekEnd.getMonth() + 1).padStart(2, "0")}-${String(weekEnd.getDate()).padStart(2, "0")}`,
+        };
+        await this.get("/transactions/dashboard", weekParams);
+
+        // Monthly: current month
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        const monthParams = {
+          startDate: `${monthStart.getFullYear()}-${String(monthStart.getMonth() + 1).padStart(2, "0")}-${String(monthStart.getDate()).padStart(2, "0")}`,
+          endDate: `${monthEnd.getFullYear()}-${String(monthEnd.getMonth() + 1).padStart(2, "0")}-${String(monthEnd.getDate()).padStart(2, "0")}`,
+        };
+        await this.get("/transactions/dashboard", monthParams);
+
+        // Yearly: current year
+        const yearStart = new Date(now.getFullYear(), 0, 1);
+        const yearEnd = new Date(now.getFullYear(), 11, 31);
+        const yearParams = {
+          startDate: `${yearStart.getFullYear()}-01-01`,
+          endDate: `${yearEnd.getFullYear()}-12-31`,
+        };
+        await this.get("/transactions/dashboard", yearParams);
+        console.log("Pre-cached reports dashboard data for weekly/monthly/yearly");
+      } catch (e) {
+        console.warn("Failed to pre-cache reports data", e);
+      }
+
       console.log("All data cached for offline use");
     } catch (error) {
       console.error("Error caching data for offline use:", error);
