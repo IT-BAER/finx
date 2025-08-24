@@ -7,6 +7,7 @@ import {
 import { useTranslation } from "../hooks/useTranslation";
 import DateRangeToggle from "../components/DateRangeToggle.jsx";
 import { useAuth } from "../contexts/AuthContext";
+import { useTheme } from "../contexts/ThemeContext.jsx";
 import offlineAPI from "../services/offlineAPI.js";
 import { transactionAPI } from "../services/api.jsx";
 import { motion } from "framer-motion";
@@ -27,7 +28,8 @@ const Reports = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const { t, formatCurrency, formatDate, language } = useTranslation();
-  const { isDarkMode, isIncomeTrackingDisabled } = useAuth();
+  const { isIncomeTrackingDisabled } = useAuth();
+  const { dark } = useTheme();
   const isCurrentPage = useRef(true);
 
   useEffect(() => {
@@ -1485,10 +1487,10 @@ const Reports = () => {
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
-                      legend: {
+            legend: {
                         position: "right",
                         labels: {
-                          color: isDarkMode ? "#ffffff" : "#374151", // Bright white for dark mode, darker gray for light mode
+              color: dark ? "#ffffff" : "#374151", // Bright white for dark mode, darker gray for light mode
                           font: {
                             size: 12,
                             weight: "600",

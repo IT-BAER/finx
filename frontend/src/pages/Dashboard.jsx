@@ -10,6 +10,7 @@ import {
 } from "../components/LazyChart.jsx";
 import { useTranslation } from "../hooks/useTranslation";
 import { useAuth } from "../contexts/AuthContext";
+import { useTheme } from "../contexts/ThemeContext.jsx";
 import { motion } from "framer-motion";
 
 // Helper function to get YYYY-MM-DD from a date object in local timezone
@@ -221,7 +222,8 @@ async function loadDashboardData() {
 
 const Dashboard = () => {
   const { t, formatDate, formatCurrency, language } = useTranslation();
-  const { isDarkMode, isIncomeTrackingDisabled } = useAuth();
+  const { isIncomeTrackingDisabled } = useAuth();
+  const { dark } = useTheme();
   const navigate = useNavigate();
   const isCurrentPage = useRef(true);
 
@@ -414,11 +416,11 @@ const Dashboard = () => {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
-      legend: {
+    legend: {
         position: "right",
         labels: {
-          // Lighten legend label colors for better readability in the card
-          color: isDarkMode ? "#f3f4f6" : "#4b5563",
+      // Brighten labels in dark mode for better contrast
+      color: dark ? "#ffffff" : "#374151",
           font: {
             size: 12,
             weight: "600",
