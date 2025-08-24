@@ -35,7 +35,7 @@ Modern, offline-capable personal finance app with sharing, recurring transaction
 
 ## ✨ Key Features
 
-- Offline-first PWA: read endpoints cached, queued mutations when offline
+- Offline-first PWA: read endpoints cached, queued mutations when offline; server reachability-based connectivity (polls `/api/health`)
 - Fast mobile UX: early CSS delivery, passive listeners, tuned SW auto-update
 - Transactions with categories, sources, targets; imports with duplicate detection
 - Recurring rules and background processor (systemd scheduler supported)
@@ -220,6 +220,7 @@ npm run migrate-db
 - Swiper 10 (mobile swipeable page navigation)
 - react-hot-toast (notifications)
 - PWA via Vite Plugin PWA (Workbox under the hood, offline caching + update prompts)
+- Connectivity service monitors server health (`/api/health`) and emits `serverConnectivityChange`
 
 ### Backend
 
@@ -236,7 +237,32 @@ npm run migrate-db
 - Sharing/permissions in `utils/access.js` and `models/SharingPermission.js`; controllers compute `can_edit`
 - Frontend API client in `frontend/src/services/api.jsx` (axios, JWT header, 401 redirect)
 - Offline layer in `frontend/src/services/offlineAPI.js` (GET caching + queued mutations)
+- Server connectivity source of truth in `frontend/src/services/connectivity.js` (health polling)
 - Vite dev proxy `/api` → backend (see `frontend/vite.config.js`)
+
+<br>
+
+## 📶 PWA Offline & Connectivity
+
+- The app considers itself “online” only when the server is reachable.
+- A lightweight health endpoint exists at `GET /api/health` returning `{ ok: true, time }`.
+- The service worker is configured to never cache `/api/health` (NetworkOnly), ensuring truthful liveness.
+- Health polling runs in the client:
+   - Default check every ~8s when online, faster retries (~2s) on failures.
+   - Switches to offline after 2 consecutive failed checks (timeout ~2.5s each).
+   - While offline, it polls every ~3s to detect recovery quickly.
+   - Immediate checks on window focus/visibility for snappy recovery/downgrade.
+- Components and data layers subscribe to `serverConnectivityChange` so UI state, caches, and queued mutations react instantly.
+
+Tuning (optional, set in `frontend/.env` or env for the Vite build):
+
+```
+VITE_CONN_DEFAULT_MS=8000          # interval when online
+VITE_CONN_SHORT_RETRY_MS=2000      # retry interval after a failure
+VITE_CONN_OFFLINE_RETRY_MS=3000    # interval while offline
+VITE_CONN_FAILURE_THRESHOLD=2      # consecutive failures to mark offline
+VITE_CONN_TIMEOUT_MS=2500          # per-check timeout
+```
 
 ### Tooling & Ops
 
