@@ -71,8 +71,8 @@ const Transactions = () => {
         setLoading(true);
       }
       const requestedLimit = overrideLimit ?? pageSize;
-      const params = { limit: requestedLimit, offset: offsetValue };
-      const data = await offlineAPI.getAllTransactions(params);
+  const params = { limit: requestedLimit, offset: offsetValue, pageOnly: true };
+  const data = await offlineAPI.getAllTransactions(params);
       // We always treat `data` as a single page possibly containing both online and local (offline) items.
       const pageItems = Array.isArray(data) ? data : [];
 
@@ -380,7 +380,7 @@ const Transactions = () => {
   const groupedTransactions = groupTransactionsByDate(transactions);
 
   return (
-  <div className="container mx-auto px-4 pb-4 min-h-0">
+  <div className="container mx-auto px-4 pt-4 md:pt-0 pb-4 min-h-0">
       <div className="flex justify-between items-center mb-8">
         <h1 className="display-2">{t("transactions")}</h1>
       </div>

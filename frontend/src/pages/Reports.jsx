@@ -1068,7 +1068,7 @@ const Reports = () => {
 
   if (loading) {
     return (
-  <div className="container mx-auto px-4 pb-4">
+  <div className="container mx-auto px-4 pt-4 md:pt-0 pb-4">
         <div className="flex justify-between items-center mb-8">
           <h1 className="display-2">{t("reports")}</h1>
         </div>
@@ -1090,7 +1090,7 @@ const Reports = () => {
     totalIncome > 0 ? ((netSavings / totalIncome) * 100).toFixed(1) : 0;
 
   return (
-  <div className="container mx-auto px-4 pb-4 min-h-0">
+  <div className="container mx-auto px-4 pt-4 md:pt-0 pb-4 min-h-0">
       <div className="flex flex-col md:flex-row md:justify-between mb-8 gap-4">
         <h1 className="display-2">{t("reportsAndAnalytics")}</h1>
         <div className="flex flex-col gap-2">

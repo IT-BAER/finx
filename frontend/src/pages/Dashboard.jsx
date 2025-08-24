@@ -359,7 +359,7 @@ const Dashboard = () => {
 
   if (loading) {
     return (
-  <div className="container mx-auto px-4 pb-4">
+  <div className="container mx-auto px-4 pt-4 md:pt-0 pb-4">
         <div className="flex justify-center items-center h-64">
           <div className="spinner"></div>
         </div>
@@ -369,7 +369,7 @@ const Dashboard = () => {
 
   if (error) {
     return (
-  <div className="container mx-auto px-4 pb-4">
+  <div className="container mx-auto px-4 pt-4 md:pt-0 pb-4">
         <div className="alert alert-error">{error}</div>
       </div>
     );
@@ -463,7 +463,7 @@ const Dashboard = () => {
   };
 
   return (
-  <div className="container mx-auto px-4 pb-4 min-h-0">
+  <div className="container mx-auto px-4 pt-4 md:pt-0 pb-4 min-h-0">
 
       <div className="flex flex-row items-center justify-between mb-8 gap-4">
         <h1 className="display-2">{t("dashboard")}</h1>

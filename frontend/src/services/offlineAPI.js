@@ -582,6 +582,54 @@ class OfflineAPI {
 
   // Merge online and offline transactions
   async getAllTransactions(params = {}) {
+    // Support a single-page mode for list views (e.g., infinite scroll)
+    const { pageOnly } = params || {};
+    if (pageOnly) {
+      try {
+        // Do not pass control params to server
+        const { pageOnly: _omit, ...requestParams } = params || {};
+        // Fetch a single page from server when online
+        let onlineRows = [];
+        if (this.isOnline) {
+          const page = await this.get("/transactions", requestParams);
+          onlineRows = page.transactions || page.data?.transactions || (Array.isArray(page) ? page : []) || [];
+        }
+
+        // Always merge with local offline edits; include them on the first page only
+        const localTransactions = await this.getLocalTransactions();
+        const offset = Number(requestParams.offset) || 0;
+
+        const map = new Map();
+        // Online items first, mark data source
+        for (const tx of onlineRows) {
+          map.set(tx.id, { ...tx, _dataSource: "online" });
+        }
+
+        // Include local items only on the first page to avoid repeating them on subsequent pages
+        if (offset === 0) {
+          for (const localTx of localTransactions) {
+            if (map.has(localTx.id)) {
+              // Prefer local when it's an offline edit of an existing online transaction
+              const existing = map.get(localTx.id);
+              if (localTx._isOffline) {
+                map.set(localTx.id, { ...existing, ...localTx, _dataSource: "local" });
+              }
+              continue;
+            }
+            const key = localTx._tempId || localTx.id;
+            map.set(key, { ...localTx, _dataSource: "local" });
+          }
+        }
+
+        const merged = Array.from(map.values());
+        // Sort by YYYY-MM-DD string, newest first (avoids timezone issues)
+        return merged.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+      } catch (error) {
+        // Fallback to local transactions when offline or on error
+        return this.getLocalTransactions();
+      }
+    }
+
     try {
       // Fetch full online dataset (paginated) instead of a single page
       const onlineTransactions = await this.getAllOnlineTransactions(params);
