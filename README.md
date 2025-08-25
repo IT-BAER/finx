@@ -1,5 +1,8 @@
 <div align="center">
 
+<img src="./finx%20-%20banner.jpg" alt="FinX — Self‑Hosted Personal Finance" style="max-width: 100%; height: auto;" />
+
+
 # FinX — Personal Finance Tracker (PWA)
 
 [![Node.js](https://img.shields.io/badge/Node.js-20.x-green.svg)](https://nodejs.org/)
