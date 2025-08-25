@@ -23,7 +23,7 @@ APP_NAME="finx"
 APP_USER_DEFAULT="finx"
 APP_DIR="$(cd "$(dirname "$0")" && pwd)"
 INSTALL_DIR_DEFAULT="/opt/${APP_NAME}"
-REPO_URL_DEFAULT="https://g.it-baer.net/IT-BAER/finx.git"
+REPO_URL_DEFAULT="https://github.com/IT-BAER/finx.git"
 # Optional versioning controls (can be provided via environment)
 # FINX_REF: branch, tag, or commit to install (e.g., v1.2.3)
 # FINX_ARCHIVE_URL: URL to a release archive (.tar.gz/.tgz/.zip) to install
