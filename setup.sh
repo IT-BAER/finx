@@ -165,6 +165,17 @@ run_as_user() {
     fi
 }
 
+# Run a command as a given user within a specific directory (preserve cwd for that command)
+run_as_user_in_dir() {
+    local _user="$1"; shift
+    local _dir="$1"; shift
+    if [ -n "${SUDO}" ]; then
+        ${SUDO} -u "${_user}" bash -lc "cd $(printf '%q' "${_dir}") && $(printf '%q ' "$@")"
+    else
+        su -s /bin/sh -c "cd $(printf '%q' "${_dir}") && $(printf '%q ' "$@")" "${_user}"
+    fi
+}
+
 detect_os() {
     if [ -f /etc/debian_version ]; then
         ok "Debian/Ubuntu detected"
@@ -718,37 +729,34 @@ install_dependencies() {
     say "Installing backend dependencies"
     if [ "${CREATE_USER}" = "y" ]; then
                 (
-                    cd "$APP_DIR" && \
-                    if [ -f package-lock.json ] || [ -f npm-shrinkwrap.json ]; then
-                        run_as_user "$APP_USER" npm ci --omit=dev
+                    if [ -f "$APP_DIR/package-lock.json" ] || [ -f "$APP_DIR/npm-shrinkwrap.json" ]; then
+                        run_as_user_in_dir "$APP_USER" "$APP_DIR" npm ci --omit=dev
                     else
-                        run_as_user "$APP_USER" npm install --omit=dev
+                        run_as_user_in_dir "$APP_USER" "$APP_DIR" npm install --omit=dev
                     fi
                 )
     else
                 (
-                    cd "$APP_DIR" && \
-                    if [ -f package-lock.json ] || [ -f npm-shrinkwrap.json ]; then
-                        npm ci --omit=dev
+                    if [ -f "$APP_DIR/package-lock.json" ] || [ -f "$APP_DIR/npm-shrinkwrap.json" ]; then
+                        ( cd "$APP_DIR" && npm ci --omit=dev )
                     else
-                        npm install --omit=dev
+                        ( cd "$APP_DIR" && npm install --omit=dev )
                     fi
                 )
     fi
     say "Installing frontend dependencies and building"
     if [ "${CREATE_USER}" = "y" ]; then
                 (
-                    cd "$APP_DIR/frontend" && \
-                    if [ -f package-lock.json ] || [ -f npm-shrinkwrap.json ]; then
-                        run_as_user "$APP_USER" npm ci
+                    if [ -f "$APP_DIR/frontend/package-lock.json" ] || [ -f "$APP_DIR/frontend/npm-shrinkwrap.json" ]; then
+                        run_as_user_in_dir "$APP_USER" "$APP_DIR/frontend" npm ci
                     else
-                        run_as_user "$APP_USER" npm install
+                        run_as_user_in_dir "$APP_USER" "$APP_DIR/frontend" npm install
                     fi && \
                     # Ensure previous build output is removed to avoid stale precache entries
-                    run_as_user "$APP_USER" bash -lc 'rm -rf build' && \
-                    run_as_user "$APP_USER" npm run build && \
+                    run_as_user_in_dir "$APP_USER" "$APP_DIR/frontend" bash -lc 'rm -rf build' && \
+                    run_as_user_in_dir "$APP_USER" "$APP_DIR/frontend" npm run build && \
                     # Ensure icons and logos exist in build output (robust against toolchain changes)
-                    run_as_user "$APP_USER" bash -lc '[ -d public/icons ] && mkdir -p build/icons && cp -rn public/icons/* build/icons/ || true; [ -d public/logos ] && mkdir -p build/logos && cp -rn public/logos/* build/logos/ || true; [ -f public/icons/favicon.ico ] && cp -n public/icons/favicon.ico build/icons/favicon.ico || true'
+                    run_as_user_in_dir "$APP_USER" "$APP_DIR/frontend" bash -lc '[ -d public/icons ] && mkdir -p build/icons && cp -rn public/icons/* build/icons/ || true; [ -d public/logos ] && mkdir -p build/logos && cp -rn public/logos/* build/logos/ || true; [ -f public/icons/favicon.ico ] && cp -n public/icons/favicon.ico build/icons/favicon.ico || true'
                 )
     else
                 (
@@ -781,8 +789,7 @@ run_migrations() {
     fi
     if [ "${CREATE_USER}" = "y" ]; then
                 (
-                    cd "$APP_DIR" && \
-                    run_as_user "$APP_USER" env $(grep -E '^[A-Z_]+=' "$ENV_FILE" | xargs) npm run migrate-db
+                    run_as_user_in_dir "$APP_USER" "$APP_DIR" env $(grep -E '^[A-Z_]+=' "$ENV_FILE" | xargs) npm run migrate-db
                 )
     else
                 (
@@ -1085,8 +1092,7 @@ seed_admin_and_capture_credentials() {
     local INIT_RC
     if [ "${CREATE_USER}" = "y" ]; then
         (
-            cd "$APP_DIR" && \
-            run_as_user "$APP_USER" env $(grep -E '^[A-Z_]+=' "$ENV_FILE" | xargs) npm run init-db
+            run_as_user_in_dir "$APP_USER" "$APP_DIR" env $(grep -E '^[A-Z_]+=' "$ENV_FILE" | xargs) npm run init-db
         ) >"$TMP_LOG" 2>&1
         INIT_RC=$?
     else
