@@ -1175,8 +1175,11 @@ const Reports = () => {
   const netSavings = isIncomeTrackingDisabled
     ? -totalExpensesValue
     : totalIncome - totalExpensesValue;
-  const savingsRate =
-    totalIncome > 0 ? ((netSavings / totalIncome) * 100).toFixed(1) : 0;
+  // Clamp savings rate to a lower limit of 0%
+  const savingsRate = (() => {
+    const raw = totalIncome > 0 ? (netSavings / totalIncome) * 100 : 0;
+    return Math.max(0, raw).toFixed(1);
+  })();
 
   return (
   <div className="container mx-auto px-4 pt-4 md:pt-0 pb-4 min-h-0">
@@ -1393,7 +1396,7 @@ const Reports = () => {
           >
             <div className="card-body">
               <div className="flex items-center">
-                <div className="p-3 rounded-full bg-blue-100 dark:bg-blue-900/30 mr-4">
+                <div className="p-3 rounded-full bg-blue-100 dark:bg-blue-900/30 mr-4 savings-icon-chip">
                   <svg
                     className="w-6 h-6 text-blue-500"
                     fill="none"

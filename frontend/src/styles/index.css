@@ -1038,8 +1038,9 @@ body {
 :root[data-theme="wednesday"] .border-blue-500 { border-color: var(--accent) !important; }
 :root[data-theme="wednesday"] .bg-blue-50 { background-color: color-mix(in srgb, var(--accent) 10%, var(--surface)) !important; }
 :root[data-theme="wednesday"] .bg-blue-50\/50 { background-color: color-mix(in srgb, var(--accent) 10%, var(--surface)) !important; }
-:root[data-theme="wednesday"].dark .bg-blue-900\/20 { background-color: color-mix(in srgb, var(--accent) 20%, transparent) !important; }
-:root[data-theme="wednesday"].dark .bg-blue-900\/10 { background-color: color-mix(in srgb, var(--accent) 14%, transparent) !important; }
+/* Darken blue overlays in dark mode for better balance (used by info/savings chips) */
+:root[data-theme="wednesday"].dark .bg-blue-900\/20 { background-color: color-mix(in srgb, var(--accent) 6%, transparent) !important; }
+:root[data-theme="wednesday"].dark .bg-blue-900\/10 { background-color: color-mix(in srgb, var(--accent) 4%, transparent) !important; }
 /* Extra mappings seen in badges/nav */
 :root[data-theme="wednesday"].dark .bg-blue-900 { background-color: color-mix(in srgb, var(--accent) 28%, #000) !important; }
 :root[data-theme="wednesday"] .text-blue-800 { color: var(--accent-600) !important; }
@@ -1052,7 +1053,13 @@ body {
 :root[data-theme="wednesday"] .bg-blue-100 { background-color: color-mix(in srgb, var(--accent) 14%, #fff) !important; }
 :root[data-theme="wednesday"] .border-blue-400 { border-color: var(--accent-400) !important; }
 :root[data-theme="wednesday"] .text-blue-700 { color: var(--accent-600) !important; }
-:root[data-theme="wednesday"].dark .bg-blue-900\/30 { background-color: color-mix(in srgb, var(--accent) 18%, transparent) !important; }
+:root[data-theme="wednesday"].dark .bg-blue-900\/30 { background-color: color-mix(in srgb, var(--accent) 6%, transparent) !important; }
+
+/* Wednesday dark: make the savings rate icon chip even subtler */
+:root[data-theme="wednesday"].dark .savings-icon-chip {
+  background-color: color-mix(in srgb, var(--accent) 5%, #0d0b18) !important;
+  border: 1px solid color-mix(in srgb, var(--accent) 18%, transparent) !important;
+}
 :root[data-theme="wednesday"].dark .border-blue-700 { border-color: var(--accent-600) !important; }
 :root[data-theme="wednesday"].dark .text-blue-300 { color: var(--accent-400) !important; }
 
