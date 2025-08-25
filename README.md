@@ -103,27 +103,6 @@ App: http://localhost:3000 • API: proxied at /api
 
 <br>
 
-## 🔄 Update/Upgrade
-
-Docker:
-
-```bash
-git pull
-docker compose pull
-docker compose build --no-cache
-docker compose up -d
-docker compose exec backend npm run migrate-db
-```
-
-Debian/Ubuntu installer:
-- Re‑run the one‑liner; it detects an existing install and updates in place.
-
-```bash
-sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/IT-BAER/finx/main/setup.sh)"
-```
-
-<br>
-
 ### 🐧 Debian/Ubuntu (no Docker) — Interactive Installer/Updater
 
 ```bash
@@ -158,6 +137,31 @@ npm run dev-start
 ```
 
 Frontend on http://localhost:3000 with API proxied to http://localhost:5000.
+
+<br>
+
+## 🔄 Update/Upgrade
+
+Docker:
+
+```bash
+git pull
+docker compose pull
+docker compose build --no-cache
+docker compose up -d
+docker compose exec backend npm run migrate-db
+```
+
+Debian/Ubuntu installer:
+- Re‑run the one‑liner; it detects an existing install and updates in place.
+
+```bash
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/IT-BAER/finx/main/setup.sh)"
+```
+
+<br>
+
+
 
 <br>
 
