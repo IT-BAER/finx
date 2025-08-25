@@ -353,16 +353,30 @@ const Transactions = () => {
 
   // Group transactions by date
   const groupTransactionsByDate = (transactions) => {
+    const toDateKey = (value) => {
+      if (!value) return "nodate";
+      if (typeof value === "string") {
+        // Prefer YYYY-MM-DD if present
+        if (/^\d{4}-\d{2}-\d{2}/.test(value)) return value.slice(0, 10);
+        const t = value.indexOf("T");
+        if (t > 0 && /^\d{4}-\d{2}-\d{2}/.test(value.slice(0, 10))) {
+          return value.slice(0, 10);
+        }
+      }
+      // Fallback: convert to Date and use UTC components to avoid tz drift
+      const d = value instanceof Date ? value : new Date(value);
+      if (Number.isNaN(d.getTime())) return "nodate";
+      const y = d.getUTCFullYear();
+      const m = String(d.getUTCMonth() + 1).padStart(2, "0");
+      const day = String(d.getUTCDate()).padStart(2, "0");
+      return `${y}-${m}-${day}`;
+    };
+
     const grouped = {};
     transactions.forEach((transaction) => {
-      // Normalize date to YYYY-MM-DD format to handle both ISO strings and simple dates
-      const date = transaction.date
-        ? String(transaction.date).substring(0, 10)
-        : "nodate";
-      if (!grouped[date]) {
-        grouped[date] = [];
-      }
-      grouped[date].push(transaction);
+      const key = toDateKey(transaction.date);
+      if (!grouped[key]) grouped[key] = [];
+      grouped[key].push(transaction);
     });
     return grouped;
   };
@@ -398,12 +412,13 @@ const Transactions = () => {
         <>
           {/* Mobile view - Grouped by date */}
           <div className="md:hidden space-y-6">
-            {Object.entries(groupedTransactions).map(
-              ([date, dateTransactions], index) => (
-                <div key={date} className="card">
+            {Object.entries(groupedTransactions)
+              .sort((a, b) => (b[0] || '').localeCompare(a[0] || ''))
+              .map(([dateKey, dateTransactions], index) => (
+                <div key={dateKey} className="card">
                   <div className="card-body p-4">
                     <h2 className="text-lg font-semibold mb-3">
-                      {formatDate(date)}
+                      {formatDate(dateTransactions[0]?.date || dateKey)}
                     </h2>
                     <div className="space-y-4">
                       {dateTransactions.map((transaction, idx) => (
@@ -532,8 +547,7 @@ const Transactions = () => {
                     </div>
                   </div>
                 </div>
-              ),
-            )}
+              ))}
             {/* Mobile sentinel for infinite scroll - observed by IntersectionObserver */}
             <div
               ref={mobileSentinelRef}
