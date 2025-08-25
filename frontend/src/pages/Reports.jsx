@@ -1815,33 +1815,65 @@ const Reports = () => {
           <div className="card-body">
             <h3 className="text-xl font-semibold mb-6">{t("largestExpenses")}</h3>
             {topExpenses && topExpenses.length > 0 ? (
-              <div className="hidden md:block">
-                <table className="table w-full divide-y divide-gray-200 dark:divide-gray-700">
-                  <thead>
-                    <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t("date")}</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t("description")}</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t("category")}</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t("amount")}</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                    {topExpenses.map((tx) => (
-                      <tr key={tx.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200">{formatDate(tx.date)}</td>
-                        <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-200 max-w-xs truncate">{tx.description || "N/A"}</td>
-                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200">
-                          {tx.category_name ? (
-                            <span className="badge badge-primary">{tx.category_name}</span>
-                          ) : (
-                            <span className="text-gray-400">—</span>
+              <div className="overflow-x-auto md:overflow-x-visible" style={{ touchAction: "pan-y" }}>
+                {/* Mobile view - Card layout */}
+                <div className="md:hidden space-y-4">
+                  {topExpenses.map((tx) => (
+                    <div
+                      key={tx.id}
+                      className="border-b border-gray-200 dark:border-gray-700 pb-4 last:border-0 last:pb-0"
+                    >
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium text-gray-900 dark:text-gray-200 truncate">
+                            {tx.description || "N/A"}
+                          </div>
+                          <div className="text-sm text-gray-500 dark:text-gray-400">
+                            {formatDate(tx.date)}
+                          </div>
+                          {tx.category_name && (
+                            <div className="text-sm">
+                              <span className="badge badge-primary">{tx.category_name}</span>
+                            </div>
                           )}
-                        </td>
-                        <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-red-600 dark:text-red-400">-{formatCurrency(Number(tx.amount || 0))}</td>
+                        </div>
+                        <div className="text-red-600 dark:text-red-400 font-medium whitespace-nowrap ml-2">
+                          -{formatCurrency(Number(tx.amount || 0))}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Desktop view - Table */}
+                <div className="hidden md:block">
+                  <table className="table w-full divide-y divide-gray-200 dark:divide-gray-700">
+                    <thead>
+                      <tr>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t("date")}</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t("description")}</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t("category")}</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t("amount")}</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                      {topExpenses.map((tx) => (
+                        <tr key={tx.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                          <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200">{formatDate(tx.date)}</td>
+                          <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-200 max-w-xs truncate">{tx.description || "N/A"}</td>
+                          <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200">
+                            {tx.category_name ? (
+                              <span className="badge badge-primary">{tx.category_name}</span>
+                            ) : (
+                              <span className="text-gray-400">—</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-red-600 dark:text-red-400">-{formatCurrency(Number(tx.amount || 0))}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             ) : (
               <div className="text-center py-8 text-gray-500">{t("noDataAvailable")}</div>
