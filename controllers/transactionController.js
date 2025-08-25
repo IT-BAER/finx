@@ -25,17 +25,19 @@ const createTransaction = async (req, res) => {
       return res.status(400).json({ message: "Amount and type are required" });
     }
 
-    // Handle category (per-user)
+    // Handle category (global by name)
     let categoryId = null;
     if (category) {
       try {
+        // Try to find any category with the same name regardless of owner
         const categoryResult = await db.query(
-          "SELECT id FROM categories WHERE user_id = $1 AND LOWER(name) = LOWER($2)",
-          [req.user.id, category],
+          "SELECT id FROM categories WHERE LOWER(name) = LOWER($1) ORDER BY id ASC LIMIT 1",
+          [category],
         );
         if (categoryResult.rows.length > 0) {
           categoryId = categoryResult.rows[0].id;
         } else {
+          // Create a new category owned by the current user but globally discoverable by name
           const newCategory = await db.query(
             "INSERT INTO categories (user_id, name) VALUES ($1, $2) RETURNING id",
             [req.user.id, category],
@@ -447,16 +449,16 @@ const getTransactionById = async (req, res) => {
       categoryId = category_id;
     }
     if (category) {
-      // Try to find existing category
+      // Try to find existing category globally by name (shared across users)
       const categoryResult = await db.query(
-        "SELECT id FROM categories WHERE user_id = $1 AND name = $2",
-        [ownerId, category],
+        "SELECT id FROM categories WHERE LOWER(name) = LOWER($1) ORDER BY id ASC LIMIT 1",
+        [category],
       );
 
       if (categoryResult.rows.length > 0) {
         categoryId = categoryResult.rows[0].id;
       } else {
-        // Create new category
+        // Create new category under the owner for consistency
         const newCategory = await db.query(
           "INSERT INTO categories (user_id, name) VALUES ($1, $2) RETURNING id",
           [ownerId, category],

@@ -42,6 +42,15 @@ class Category {
     return result.rows.length ? new Category(result.rows[0]) : null;
   }
 
+  // Find category by name globally (ignore user ownership)
+  static async findByNameGlobal(name) {
+    const result = await db.query(
+      `SELECT id, user_id, name FROM categories WHERE LOWER(name) = LOWER($1) ORDER BY id ASC LIMIT 1`,
+      [name],
+    );
+    return result.rows.length ? new Category(result.rows[0]) : null;
+  }
+
   // Delete category for a specific user (ownership enforced)
   static async deleteByUser(id, user_id) {
     const result = await db.query(

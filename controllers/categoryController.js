@@ -26,23 +26,32 @@ const createCategory = async (req, res) => {
   }
 };
 
-// Get all categories for the current user (optionally another accessible user)
+// Get categories (global, deduped by name) with optional search
 const getCategories = async (req, res) => {
   try {
-    const { asUserId, q } = req.query;
-    const validAsUserId = await validateAsUserId(req.user.id, asUserId, "all");
-    const ownerId = validAsUserId || req.user.id;
-    const params = [ownerId];
-    let where = "WHERE user_id = $1";
+    const { q } = req.query;
+    const params = [];
+    let where = "";
     if (q && q.trim()) {
       params.push(`%${q.trim()}%`);
-      where += ` AND name ILIKE $${params.length}`;
+      where = `WHERE name ILIKE $1`;
     }
+    // Pull all categories (optionally filtered), then dedupe by lower(name)
     const result = await db.query(
       `SELECT id, name FROM categories ${where} ORDER BY name ASC`,
       params,
     );
-    res.json({ success: true, categories: result.rows });
+    const seen = new Set();
+    const deduped = [];
+    for (const row of result.rows) {
+      const key = String(row.name || "").trim().toLowerCase();
+      if (!key) continue;
+      if (!seen.has(key)) {
+        seen.add(key);
+        deduped.push(row);
+      }
+    }
+    res.json({ success: true, categories: deduped });
   } catch (err) {
     console.error("Get categories error:", err.message);
     res.status(500).json({ message: "Server error" });
