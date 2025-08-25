@@ -239,9 +239,8 @@
 .swipeable-container {
   flex: 1;
   width: 100%;
-  min-height: calc(
-    100vh - 140px
-  ); /* Ensure slides have enough height to display content */
+  /* Let content determine height; Swiper autoHeight adjusts wrapper */
+  min-height: auto;
   touch-action: pan-y;
   position: relative;
   overflow: hidden;
@@ -263,7 +262,8 @@
 .swipeable-page {
   position: relative;
   width: 100%;
-  min-height: calc(100vh - 140px);
+  /* Let page content drive height */
+  min-height: auto;
   height: auto;
   box-sizing: border-box;
   top: auto;

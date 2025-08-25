@@ -128,7 +128,16 @@ const Transactions = () => {
   const loadMore = useCallback(() => {
     if (!isOnline) return; // disable infinite loading while offline
     if (hasMore && !loading) {
-      loadTransactions(serverOffset, true, pageSize);
+      loadTransactions(serverOffset, true, pageSize).then(() => {
+        try {
+          const swiper = document.querySelector('.swiper');
+          // Trigger a microtask to allow DOM to update, then request autoHeight update via event
+          queueMicrotask(() => {
+            const evt = new CustomEvent('finxUpdateAutoHeight');
+            window.dispatchEvent(evt);
+          });
+        } catch (e) {}
+      });
     }
   }, [hasMore, loading, serverOffset, isOnline, pageSize]);
 

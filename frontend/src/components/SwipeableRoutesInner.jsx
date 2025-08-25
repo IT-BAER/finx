@@ -59,35 +59,58 @@ export default function SwipeableRoutesInner() {
     swiperRef.current.slideTo(currentIndex, 0);
   }, [currentIndex, location.key]);
 
-  // Resize observer to keep container height matching active slide content (minimizes layout shift)
+  // Ensure each slide manages its own height; clear any inline heights and let Swiper autoHeight handle it
   useEffect(() => {
-    if (pageRefs.current && pageRefs.current[currentIndex]) {
-      let scheduled = false;
-      const resizeObserver = new ResizeObserver((entries) => {
-        if (!pageRefs.current || !pageRefs.current[currentIndex]) return;
-        let maxHeight = 0;
-        for (const entry of entries) {
-          maxHeight = Math.max(maxHeight, entry.contentRect.height);
-        }
-        if (scheduled) return;
-        scheduled = true;
-        requestAnimationFrame(() => {
-          // parentElement is the SwiperSlide container
-          if (
-            pageRefs.current[currentIndex] &&
-            pageRefs.current[currentIndex].parentElement
-          ) {
-            pageRefs.current[currentIndex].parentElement.style.height =
-              `${maxHeight}px`;
-          }
-          scheduled = false;
-        });
+    if (!swiperRef.current) return;
+    try {
+      const slides = swiperRef.current.slides || [];
+      slides.forEach((slide) => {
+        if (slide && slide.style) slide.style.height = "";
       });
-      resizeObserver.observe(pageRefs.current[currentIndex], {
-        box: "content-box",
-      });
-      return () => resizeObserver.disconnect();
+      if (
+        pageRefs.current &&
+        pageRefs.current[currentIndex] &&
+        pageRefs.current[currentIndex].parentElement
+      ) {
+        pageRefs.current[currentIndex].parentElement.style.height = "";
+      }
+      if (typeof swiperRef.current.updateAutoHeight === "function") {
+        swiperRef.current.updateAutoHeight(0);
+      }
+    } catch (e) {
+      // noop
     }
+  }, [currentIndex]);
+
+  // Recompute wrapper height whenever the active page's content height changes (e.g., infinite scroll appends)
+  useEffect(() => {
+    if (!swiperRef.current) return;
+    const el = pageRefs.current?.[currentIndex];
+    if (!el) return;
+    let rafId = null;
+    const ro = new ResizeObserver(() => {
+      if (!swiperRef.current || typeof swiperRef.current.updateAutoHeight !== "function") return;
+      if (rafId) cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => {
+        try {
+          swiperRef.current.updateAutoHeight(0);
+        } catch (e) {}
+      });
+    });
+    ro.observe(el, { box: "content-box" });
+
+    // Also respond to explicit update requests from pages (e.g., infinite scroll appended)
+    const onUpdate = () => {
+      try {
+        swiperRef.current?.updateAutoHeight?.(0);
+      } catch (e) {}
+    };
+    window.addEventListener('finxUpdateAutoHeight', onUpdate);
+    return () => {
+      try { ro.disconnect(); } catch (e) {}
+      if (rafId) cancelAnimationFrame(rafId);
+      window.removeEventListener('finxUpdateAutoHeight', onUpdate);
+    };
   }, [currentIndex]);
 
   const onSlideChange = (swiperInstance) => {
@@ -124,6 +147,7 @@ export default function SwipeableRoutesInner() {
         slidesPerView={1}
         spaceBetween={0}
         speed={150} // Ultra fast transition animation
+  autoHeight={true}
         threshold={6} // Slightly reduced distance to trigger swipe (was 10)
         longSwipesMs={30} // Faster recognition
         longSwipesRatio={0.12} // Reduced minimal ratio required for long swipe (was 0.15)
