@@ -37,7 +37,72 @@ async function validateAsUserId(requesterId, asUserId, dataType = "all") {
   return accessible.includes(Number(asUserId)) ? Number(asUserId) : null;
 }
 
+/**
+ * Returns sharing permission metadata for a specific owner -> requester pair.
+ * Includes whether the level is writable and parsed source_filter ids (both numeric and string for robustness).
+ */
+async function getSharingPermissionMeta(ownerUserId, requesterId) {
+  const query = `
+    SELECT permission_level, source_filter
+    FROM sharing_permissions
+    WHERE owner_user_id = $1 AND shared_with_user_id = $2
+    LIMIT 1
+  `;
+  const res = await db.query(query, [ownerUserId, requesterId]);
+  if (res.rows.length === 0) {
+    return { exists: false, writable: false, allowedSourceIdsNum: null, allowedSourceIdsStr: null, allowedSourceNamesLower: null };
+  }
+  const row = res.rows[0];
+  const level = String(row.permission_level || "").trim().toLowerCase();
+  const writableLevels = new Set(["write","edit","read_write","read-write","rw","readwrite","full","owner"]);
+  let allowedSourceIdsNum = null;
+  let allowedSourceIdsStr = null;
+  let allowedSourceNamesLower = null;
+  if (row.source_filter) {
+    try {
+      const parsed = JSON.parse(row.source_filter);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        const nums = [];
+        const strs = [];
+        const nameCandidates = [];
+        for (const x of parsed) {
+          const sx = String(x).trim();
+          const n = Number(sx);
+          if (!Number.isNaN(n) && sx !== "") {
+            nums.push(n);
+            strs.push(sx);
+          } else if (sx) {
+            nameCandidates.push(sx.toLowerCase());
+          }
+        }
+        allowedSourceIdsNum = nums.length > 0 ? nums : null;
+        allowedSourceIdsStr = strs.length > 0 ? strs : null;
+        allowedSourceNamesLower = nameCandidates.length > 0 ? nameCandidates : null;
+        if (nums.length > 0) {
+          try {
+            const namesRes = await db.query(
+              `SELECT name FROM sources WHERE user_id = $1 AND id = ANY($2)`,
+              [ownerUserId, nums],
+            );
+            allowedSourceNamesLower = namesRes.rows
+              .map((row) => String(row.name || "").trim().toLowerCase())
+              .filter((s) => s.length > 0)
+              .concat(allowedSourceNamesLower || [])
+              .filter((v, i, a) => a.indexOf(v) === i);
+          } catch (e) {
+            // ignore
+          }
+        }
+      }
+    } catch (e) {
+      // ignore parse errors
+    }
+  }
+  return { exists: true, writable: writableLevels.has(level), allowedSourceIdsNum, allowedSourceIdsStr, allowedSourceNamesLower };
+}
+
 module.exports = {
   getAccessibleUserIds,
   validateAsUserId,
+  getSharingPermissionMeta,
 };

@@ -7,7 +7,7 @@ COPY . .
 
 # Production stage
 FROM node:20-alpine
-RUN apk add --no-cache postgresql-client
+RUN apk add --no-cache postgresql-client curl
 WORKDIR /app
 ENV NODE_ENV=production
 
@@ -26,6 +26,9 @@ RUN npm ci --omit=dev
 
 # Copy the rest of the application code
 COPY --from=builder /app .
+
+# Ensure shell scripts are executable and have UNIX line endings
+RUN chmod +x scripts/*.sh && sed -i 's/\r$//' scripts/*.sh
 
 EXPOSE 5000
 

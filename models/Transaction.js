@@ -527,6 +527,7 @@ class Transaction {
     let writable = false;
     let allowedSourceIdsNum = null;
     let allowedSourceIdsStr = null;
+  let allowedSourceNamesLower = null;
 
     if (permRes.rows.length > 0) {
       const pr = permRes.rows[0];
@@ -552,13 +553,35 @@ class Transaction {
           if (Array.isArray(parsed) && parsed.length > 0) {
             const nums = [];
             const strs = [];
+            const nameCandidates = [];
             for (const x of parsed) {
-              const n = Number(x);
-              if (!Number.isNaN(n)) nums.push(n);
-              strs.push(String(x));
+              const sx = String(x).trim();
+              const n = Number(sx);
+              if (!Number.isNaN(n) && sx !== "") {
+                nums.push(n);
+                strs.push(sx);
+              } else if (sx) {
+                nameCandidates.push(sx.toLowerCase());
+              }
             }
             allowedSourceIdsNum = nums.length > 0 ? nums : null;
             allowedSourceIdsStr = strs.length > 0 ? strs : null;
+            allowedSourceNamesLower = nameCandidates.length > 0 ? nameCandidates : null;
+            if (nums.length > 0) {
+              try {
+                const namesRes = await db.query(
+                  `SELECT name FROM sources WHERE user_id = $1 AND id = ANY($2)`,
+                  [user_id, nums],
+                );
+                allowedSourceNamesLower = namesRes.rows
+                  .map((row) => String(row.name || "").trim().toLowerCase())
+                  .filter((s) => s.length > 0)
+                  .concat(allowedSourceNamesLower || [])
+                  .filter((v, i, a) => a.indexOf(v) === i);
+              } catch (e) {
+                // ignore
+              }
+            }
           }
         } catch (e) {
           // ignore parsing errors
@@ -569,7 +592,7 @@ class Transaction {
     const computed = rows.map((row) => {
       // Visibility already ensured by SQL. Compute can_edit:
       let can_edit = false;
-      if (writable) {
+  if (writable) {
         const sidNum = row.source_id != null ? Number(row.source_id) : null;
         const tidNum = row.target_id != null ? Number(row.target_id) : null;
         const sidStr = row.source_id != null ? String(row.source_id) : null;
@@ -592,6 +615,16 @@ class Transaction {
               allowedSourceIdsStr.includes(sidStr)) ||
             (hasStr && tidStr != null && allowedSourceIdsStr.includes(tidStr));
           can_edit = !!(numMatch || strMatch);
+          if (!can_edit && String(row.type).toLowerCase() === "income") {
+            const tname = String(row.target_name || "").trim().toLowerCase();
+            if (
+              tname &&
+              Array.isArray(allowedSourceNamesLower) &&
+              allowedSourceNamesLower.includes(tname)
+            ) {
+              can_edit = true;
+            }
+          }
         } else {
           can_edit = true;
         }

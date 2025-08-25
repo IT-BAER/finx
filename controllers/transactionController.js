@@ -3,7 +3,7 @@ const RecurringTransaction = require("../models/RecurringTransaction");
 const Category = require("../models/Category");
 const User = require("../models/User");
 const db = require("../config/db");
-const { getAccessibleUserIds, validateAsUserId } = require("../utils/access");
+const { getAccessibleUserIds, validateAsUserId, getSharingPermissionMeta } = require("../utils/access");
 
 // Create transaction
 const createTransaction = async (req, res) => {
@@ -208,7 +208,7 @@ const getTransactions = async (req, res) => {
       (uid) => Number(uid) !== Number(req.user.id),
     );
 
-    let permsByOwner = {};
+  let permsByOwner = {};
     if (otherOwners.length > 0) {
       // Parameter $1 is the requester (shared_with_user_id), owners start at $2..$N
       const ownersPlaceholders = otherOwners
@@ -220,11 +220,10 @@ const getTransactions = async (req, res) => {
         WHERE shared_with_user_id = $1 AND owner_user_id IN (${ownersPlaceholders})
       `;
       const permRes = await db.query(permQuery, [req.user.id, ...otherOwners]);
-      permsByOwner = permRes.rows.reduce((acc, r) => {
-        const level = String(r.permission_level || "")
-          .trim()
-          .toLowerCase();
-        // Robust mapping of writable levels
+      // Use for..of to allow awaiting name enrichment
+      permsByOwner = {};
+      for (const r of permRes.rows) {
+        const level = String(r.permission_level || "").trim().toLowerCase();
         const writableLevels = new Set([
           "write",
           "edit",
@@ -237,9 +236,9 @@ const getTransactions = async (req, res) => {
         ]);
         const writable = writableLevels.has(level);
 
-        // Parse source_filter robustly as both numeric and string ids
         let allowedSourceIdsNum = null;
         let allowedSourceIdsStr = null;
+        let allowedSourceNamesLower = null;
         if (r.source_filter) {
           try {
             const parsed = JSON.parse(r.source_filter);
@@ -253,71 +252,93 @@ const getTransactions = async (req, res) => {
               }
               allowedSourceIdsNum = nums.length > 0 ? nums : null;
               allowedSourceIdsStr = strs.length > 0 ? strs : null;
+              if (nums.length > 0) {
+                // Enrich with names of the allowed source ids for name-based fallback (income -> target name matches source name)
+                try {
+                  const namesRes = await db.query(
+                    `SELECT name FROM sources WHERE user_id = $1 AND id = ANY($2)`,
+                    [r.owner_user_id, nums],
+                  );
+                  allowedSourceNamesLower = namesRes.rows
+                    .map((row) => String(row.name || "").trim().toLowerCase())
+                    .filter((s) => s.length > 0);
+                } catch (e) {
+                  // ignore name enrichment errors
+                }
+              }
             }
           } catch (e) {
             // ignore parse errors; treat as no additional source scoping
           }
         }
 
-        acc[r.owner_user_id] = {
+        permsByOwner[r.owner_user_id] = {
           writable,
           allowedSourceIdsNum,
           allowedSourceIdsStr,
+          allowedSourceNamesLower,
         };
-        return acc;
-      }, {});
+      }
     }
 
-    const transactions = rows.map((row) => {
+    const transactions = rows.reduce((acc, row) => {
       const ownerId = row.user_id;
-      // Owner can always edit their own
+      // Owner can always view and edit their own
       if (Number(ownerId) === Number(req.user.id)) {
-        return { ...row, owner_user_id: ownerId, can_edit: true };
+        acc.push({ ...row, owner_user_id: ownerId, can_edit: true });
+        return acc;
       }
       const meta = permsByOwner[ownerId];
-      // Default to false when no meta (no sharing record)
+      if (!meta) {
+        return acc; // no visibility without a sharing record
+      }
+      // Visibility: if a source filter is defined, only include when row matches allowed sources
+      const hasNumList = Array.isArray(meta.allowedSourceIdsNum) && meta.allowedSourceIdsNum.length > 0;
+      const hasStrList = Array.isArray(meta.allowedSourceIdsStr) && meta.allowedSourceIdsStr.length > 0;
+      let visible = true;
+      if (hasNumList || hasStrList) {
+        const sidNum = row.source_id != null ? Number(row.source_id) : null;
+        const tidNum = row.target_id != null ? Number(row.target_id) : null;
+        const sidStr = row.source_id != null ? String(row.source_id) : null;
+        const tidStr = row.target_id != null ? String(row.target_id) : null;
+        const numMatch = (sidNum != null && meta.allowedSourceIdsNum?.includes(sidNum)) || (tidNum != null && meta.allowedSourceIdsNum?.includes(tidNum));
+        const strMatch = (sidStr != null && meta.allowedSourceIdsStr?.includes(sidStr)) || (tidStr != null && meta.allowedSourceIdsStr?.includes(tidStr));
+        visible = !!(numMatch || strMatch);
+        if (!visible && String(row.type).toLowerCase() === "income") {
+          // Name-based fallback: income target name equals allowed source name
+          const tname = String(row.target_name || "").trim().toLowerCase();
+          if (tname && Array.isArray(meta.allowedSourceNamesLower) && meta.allowedSourceNamesLower.includes(tname)) {
+            visible = true;
+          }
+        }
+      }
+      if (!visible) {
+        return acc;
+      }
+      // Compute can_edit (writable + within allowed list if present)
       let can_edit = false;
-      if (meta) {
-        // Must have writable permission_level
-        if (meta.writable) {
-          // If source_filter is defined, enforce that transaction is tied to one of the shared sources/targets
+      if (meta.writable) {
+        if (hasNumList || hasStrList) {
           const sidNum = row.source_id != null ? Number(row.source_id) : null;
           const tidNum = row.target_id != null ? Number(row.target_id) : null;
           const sidStr = row.source_id != null ? String(row.source_id) : null;
           const tidStr = row.target_id != null ? String(row.target_id) : null;
-
-          const hasNumList =
-            Array.isArray(meta.allowedSourceIdsNum) &&
-            meta.allowedSourceIdsNum.length > 0;
-          const hasStrList =
-            Array.isArray(meta.allowedSourceIdsStr) &&
-            meta.allowedSourceIdsStr.length > 0;
-
-          if (hasNumList || hasStrList) {
-            const numMatch =
-              (hasNumList &&
-                sidNum != null &&
-                meta.allowedSourceIdsNum.includes(sidNum)) ||
-              (hasNumList &&
-                tidNum != null &&
-                meta.allowedSourceIdsNum.includes(tidNum));
-            const strMatch =
-              (hasStrList &&
-                sidStr != null &&
-                meta.allowedSourceIdsStr.includes(sidStr)) ||
-              (hasStrList &&
-                tidStr != null &&
-                meta.allowedSourceIdsStr.includes(tidStr));
-            can_edit = !!(numMatch || strMatch);
-          } else {
-            // No explicit source scoping, writable means can edit all of owner's transactions
-            can_edit = true;
+          const numMatch = (sidNum != null && meta.allowedSourceIdsNum?.includes(sidNum)) || (tidNum != null && meta.allowedSourceIdsNum?.includes(tidNum));
+          const strMatch = (sidStr != null && meta.allowedSourceIdsStr?.includes(sidStr)) || (tidStr != null && meta.allowedSourceIdsStr?.includes(tidStr));
+          can_edit = !!(numMatch || strMatch);
+          if (!can_edit && String(row.type).toLowerCase() === "income") {
+            const tname = String(row.target_name || "").trim().toLowerCase();
+            if (tname && Array.isArray(meta.allowedSourceNamesLower) && meta.allowedSourceNamesLower.includes(tname)) {
+              can_edit = true;
+            }
           }
+        } else {
+          can_edit = true;
         }
       }
-      // return plain object so res.json serializes can_edit/owner_user_id
-      return { ...row, owner_user_id: ownerId, can_edit };
-    });
+      acc.push({ ...row, owner_user_id: ownerId, can_edit });
+      return acc;
+    }, []);
 
     res.json({ success: true, transactions });
   } catch (err) {
@@ -385,16 +406,38 @@ const getTransactionById = async (req, res) => {
       );
     }
 
-    // Check if transaction exists and belongs to user
-    const transaction = await Transaction.findByIdForUser(id, req.user.id);
-    if (process.env.DEBUG === "true") {
-      console.log("findByIdForUser result:", transaction);
-    }
+    // Load transaction regardless of owner; we’ll enforce permissions below
+    const transaction = await Transaction.findById(id);
     if (!transaction) {
-      if (process.env.DEBUG === "true") {
-        console.log(`Transaction not found for id=${id} user=${req.user?.id}`);
-      }
       return res.status(404).json({ message: "Transaction not found" });
+    }
+    const ownerId = transaction.user_id;
+    const isOwner = Number(ownerId) === Number(req.user.id);
+    if (!isOwner) {
+      const meta = await getSharingPermissionMeta(ownerId, req.user.id);
+      if (!meta.exists) return res.status(404).json({ message: "Transaction not found" });
+      if (!meta.writable) return res.status(403).json({ message: "Forbidden" });
+      const hasNum = Array.isArray(meta.allowedSourceIdsNum) && meta.allowedSourceIdsNum.length > 0;
+      const hasStr = Array.isArray(meta.allowedSourceIdsStr) && meta.allowedSourceIdsStr.length > 0;
+      if (hasNum || hasStr) {
+        const sidNum = transaction.source_id != null ? Number(transaction.source_id) : null;
+        const tidNum = transaction.target_id != null ? Number(transaction.target_id) : null;
+        const sidStr = transaction.source_id != null ? String(transaction.source_id) : null;
+        const tidStr = transaction.target_id != null ? String(transaction.target_id) : null;
+        const numMatch = (sidNum != null && meta.allowedSourceIdsNum?.includes(sidNum)) || (tidNum != null && meta.allowedSourceIdsNum?.includes(tidNum));
+        const strMatch = (sidStr != null && meta.allowedSourceIdsStr?.includes(sidStr)) || (tidStr != null && meta.allowedSourceIdsStr?.includes(tidStr));
+        if (!(numMatch || strMatch)) {
+          // Fallback for income: target name equals an allowed source name
+          if (String(transaction.type).toLowerCase() === "income") {
+            const tname = String(transaction.target_name || "").trim().toLowerCase();
+            if (!(tname && Array.isArray(meta.allowedSourceNamesLower) && meta.allowedSourceNamesLower.includes(tname))) {
+              return res.status(403).json({ message: "Forbidden" });
+            }
+          } else {
+            return res.status(403).json({ message: "Forbidden" });
+          }
+        }
+      }
     }
 
     // Handle category
@@ -407,7 +450,7 @@ const getTransactionById = async (req, res) => {
       // Try to find existing category
       const categoryResult = await db.query(
         "SELECT id FROM categories WHERE user_id = $1 AND name = $2",
-        [req.user.id, category],
+        [ownerId, category],
       );
 
       if (categoryResult.rows.length > 0) {
@@ -416,7 +459,7 @@ const getTransactionById = async (req, res) => {
         // Create new category
         const newCategory = await db.query(
           "INSERT INTO categories (user_id, name) VALUES ($1, $2) RETURNING id",
-          [req.user.id, category],
+          [ownerId, category],
         );
         categoryId = newCategory.rows[0].id;
       }
@@ -425,7 +468,7 @@ const getTransactionById = async (req, res) => {
     // Check if category belongs to user (if provided and not newly created)
     if (categoryId && !category) {
       // Use findByIdForUser to enforce ownership check at the model level
-      const categoryRecord = await Category.findByIdForUser(categoryId, req.user.id);
+  const categoryRecord = await Category.findByIdForUser(categoryId, ownerId);
       if (process.env.DEBUG === "true") {
         console.log(
           `Checking category ownership via findByIdForUser: categoryId=${categoryId}, categoryRecord=`,
@@ -443,13 +486,13 @@ const getTransactionById = async (req, res) => {
     }
 
     // Handle source
-    let source_id = transaction.source_id;
+  let source_id = transaction.source_id;
     if (source !== undefined) {
       if (source) {
         // Try to find existing source
         const sourceResult = await db.query(
-          "SELECT id FROM sources WHERE user_id = $1 AND name = $2",
-          [req.user.id, source],
+      "SELECT id FROM sources WHERE user_id = $1 AND name = $2",
+      [ownerId, source],
         );
 
         if (sourceResult.rows.length > 0) {
@@ -458,7 +501,7 @@ const getTransactionById = async (req, res) => {
           // Create new source
           const newSource = await db.query(
             "INSERT INTO sources (user_id, name) VALUES ($1, $2) RETURNING id",
-            [req.user.id, source],
+            [ownerId, source],
           );
           source_id = newSource.rows[0].id;
         }
@@ -468,13 +511,13 @@ const getTransactionById = async (req, res) => {
     }
 
     // Handle target
-    let target_id = transaction.target_id;
+  let target_id = transaction.target_id;
     if (target !== undefined) {
       if (target) {
         // Try to find existing target
         const targetResult = await db.query(
-          "SELECT id FROM targets WHERE user_id = $1 AND name = $2",
-          [req.user.id, target],
+      "SELECT id FROM targets WHERE user_id = $1 AND name = $2",
+      [ownerId, target],
         );
 
         if (targetResult.rows.length > 0) {
@@ -483,7 +526,7 @@ const getTransactionById = async (req, res) => {
           // Create new target
           const newTarget = await db.query(
             "INSERT INTO targets (user_id, name) VALUES ($1, $2) RETURNING id",
-            [req.user.id, target],
+            [ownerId, target],
           );
           target_id = newTarget.rows[0].id;
         }
@@ -492,9 +535,35 @@ const getTransactionById = async (req, res) => {
       }
     }
 
-    const updatedTransaction = await Transaction.updateByUser(
+    // If shared and source_filter exists, ensure the final new linkage is allowed (match either source_id or target_id)
+    if (!isOwner) {
+      const meta = await getSharingPermissionMeta(ownerId, req.user.id);
+      if (!meta.writable) return res.status(403).json({ message: "Forbidden" });
+      const hasNum = Array.isArray(meta.allowedSourceIdsNum) && meta.allowedSourceIdsNum.length > 0;
+      const hasStr = Array.isArray(meta.allowedSourceIdsStr) && meta.allowedSourceIdsStr.length > 0;
+      if (hasNum || hasStr) {
+        const sidNumNew = source_id != null ? Number(source_id) : null;
+        const tidNumNew = target_id != null ? Number(target_id) : null;
+        const sidStrNew = source_id != null ? String(source_id) : null;
+        const tidStrNew = target_id != null ? String(target_id) : null;
+        const numMatch = (sidNumNew != null && meta.allowedSourceIdsNum?.includes(sidNumNew)) || (tidNumNew != null && meta.allowedSourceIdsNum?.includes(tidNumNew));
+        const strMatch = (sidStrNew != null && meta.allowedSourceIdsStr?.includes(sidStrNew)) || (tidStrNew != null && meta.allowedSourceIdsStr?.includes(tidStrNew));
+        if (!(numMatch || strMatch)) {
+          // Fallback for income: new target name equals an allowed source name
+          if (String(type || transaction.type).toLowerCase() === "income") {
+            const tnameNew = String(target || transaction.target_name || "").trim().toLowerCase();
+            if (!(tnameNew && Array.isArray(meta.allowedSourceNamesLower) && meta.allowedSourceNamesLower.includes(tnameNew))) {
+              return res.status(403).json({ message: "Forbidden" });
+            }
+          } else {
+            return res.status(403).json({ message: "Forbidden" });
+          }
+        }
+      }
+    }
+
+    const updatedTransaction = await Transaction.update(
       id,
-      req.user.id,
       categoryId,
       source_id,
       target_id,
@@ -511,7 +580,7 @@ const getTransactionById = async (req, res) => {
       if (process.env.DEBUG === "true") {
         console.log(`updateByUser returned no rows for id=${id} user=${req.user?.id}`);
       }
-      return res.status(404).json({ message: "Transaction not found or not owned by user" });
+  return res.status(404).json({ message: "Transaction not found" });
     }
  
     res.json({
@@ -529,13 +598,44 @@ const deleteTransaction = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Check ownership using owner-scoped helper
-    const transaction = await Transaction.findByIdForUser(id, req.user.id);
+    // Fetch transaction to evaluate permissions
+    const transaction = await Transaction.findById(id);
     if (!transaction) {
       return res.status(404).json({ message: "Transaction not found" });
     }
 
-    const deletedTransaction = await Transaction.deleteByUser(id, req.user.id);
+    const ownerId = transaction.user_id;
+    const isOwner = Number(ownerId) === Number(req.user.id);
+    if (!isOwner) {
+      const meta = await getSharingPermissionMeta(ownerId, req.user.id);
+      if (!meta.exists) return res.status(404).json({ message: "Transaction not found" });
+      if (!meta.writable) return res.status(403).json({ message: "Forbidden" });
+
+      const hasNum = Array.isArray(meta.allowedSourceIdsNum) && meta.allowedSourceIdsNum.length > 0;
+      const hasStr = Array.isArray(meta.allowedSourceIdsStr) && meta.allowedSourceIdsStr.length > 0;
+      if (hasNum || hasStr) {
+        const sidNum = transaction.source_id != null ? Number(transaction.source_id) : null;
+        const tidNum = transaction.target_id != null ? Number(transaction.target_id) : null;
+        const sidStr = transaction.source_id != null ? String(transaction.source_id) : null;
+        const tidStr = transaction.target_id != null ? String(transaction.target_id) : null;
+        const numMatch = (sidNum != null && meta.allowedSourceIdsNum?.includes(sidNum)) || (tidNum != null && meta.allowedSourceIdsNum?.includes(tidNum));
+        const strMatch = (sidStr != null && meta.allowedSourceIdsStr?.includes(sidStr)) || (tidStr != null && meta.allowedSourceIdsStr?.includes(tidStr));
+        if (!(numMatch || strMatch)) {
+          // Fallback for income: match by target name = allowed source name
+          if (String(transaction.type).toLowerCase() === "income") {
+            const tname = String(transaction.target_name || "").trim().toLowerCase();
+            if (!(tname && Array.isArray(meta.allowedSourceNamesLower) && meta.allowedSourceNamesLower.includes(tname))) {
+              return res.status(403).json({ message: "Forbidden" });
+            }
+          } else {
+            return res.status(403).json({ message: "Forbidden" });
+          }
+        }
+      }
+    }
+
+    // Authorized; delete regardless of requester id
+    const deletedTransaction = await Transaction.delete(id);
     res.json({
       success: true,
       transaction: deletedTransaction,

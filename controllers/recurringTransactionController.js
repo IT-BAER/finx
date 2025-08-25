@@ -1,4 +1,5 @@
 const RecurringTransaction = require("../models/RecurringTransaction");
+const { getSharingPermissionMeta } = require("../utils/access");
 
 // Helpers
 function toYMD(date) {
@@ -115,19 +116,41 @@ const createRecurringTransaction = async (req, res) => {
   }
 };
 
-// Get recurring transaction by ID
+// Get recurring transaction by ID (owner or shared visibility via source-based rules)
 const getRecurringTransactionById = async (req, res) => {
   try {
     const { id } = req.params;
-    const recurringTransaction = await RecurringTransaction.findByIdForUser(
-      id,
-      req.user.id,
-    );
-
+    // Load regardless of owner; enforce permissions below
+    const recurringTransaction = await RecurringTransaction.findById(id);
     if (!recurringTransaction) {
       return res
         .status(404)
         .json({ message: "Recurring transaction not found" });
+    }
+
+    const ownerId = recurringTransaction.user_id;
+    const isOwner = Number(ownerId) === Number(req.user.id);
+    if (!isOwner) {
+      const meta = await getSharingPermissionMeta(ownerId, req.user.id);
+      if (!meta.exists) {
+        return res
+          .status(404)
+          .json({ message: "Recurring transaction not found" });
+      }
+      // Visibility scoped by allowed source names when provided
+      const hasNames = Array.isArray(meta.allowedSourceNamesLower) && meta.allowedSourceNamesLower.length > 0;
+      if (hasNames) {
+        const type = String(recurringTransaction.type || "").toLowerCase();
+        const sourceName = String(recurringTransaction.source || "").trim().toLowerCase();
+        const targetName = String(recurringTransaction.target || "").trim().toLowerCase();
+        // expense: source must match; income: target must match (maps to source names domain)
+        const keyName = type === "income" ? targetName : sourceName;
+        if (!keyName || !meta.allowedSourceNamesLower.includes(keyName)) {
+          return res
+            .status(404)
+            .json({ message: "Recurring transaction not found" });
+        }
+      }
     }
 
     res.json({
@@ -140,21 +163,49 @@ const getRecurringTransactionById = async (req, res) => {
   }
 };
 
-// Update recurring transaction
+// Update recurring transaction (owner or shared with write permission; scoped by source names)
 const updateRecurringTransaction = async (req, res) => {
   try {
     const { id } = req.params;
-  const updatesRaw = req.body || {};
+    const updatesRaw = req.body || {};
 
-    const recurringTransaction = await RecurringTransaction.findByIdForUser(
-      id,
-      req.user.id,
-    );
-
+    // Load regardless of owner; enforce permissions
+    const recurringTransaction = await RecurringTransaction.findById(id);
     if (!recurringTransaction) {
       return res
         .status(404)
         .json({ message: "Recurring transaction not found" });
+    }
+
+    const ownerId = recurringTransaction.user_id;
+    const isOwner = Number(ownerId) === Number(req.user.id);
+    if (!isOwner) {
+      const meta = await getSharingPermissionMeta(ownerId, req.user.id);
+      if (!meta.exists) {
+        return res
+          .status(404)
+          .json({ message: "Recurring transaction not found" });
+      }
+      if (!meta.writable) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      // If names are scoped, ensure the final values (after update) remain within scope
+      const hasNames = Array.isArray(meta.allowedSourceNamesLower) && meta.allowedSourceNamesLower.length > 0;
+      if (hasNames) {
+        const nextType = (Object.prototype.hasOwnProperty.call(updatesRaw, "type") && typeof updatesRaw.type === "string")
+          ? String(updatesRaw.type).toLowerCase().trim()
+          : String(recurringTransaction.type || "").toLowerCase();
+        const nextSource = (Object.prototype.hasOwnProperty.call(updatesRaw, "source"))
+          ? String(updatesRaw.source || "").trim().toLowerCase()
+          : String(recurringTransaction.source || "").trim().toLowerCase();
+        const nextTarget = (Object.prototype.hasOwnProperty.call(updatesRaw, "target"))
+          ? String(updatesRaw.target || "").trim().toLowerCase()
+          : String(recurringTransaction.target || "").trim().toLowerCase();
+        const keyName = nextType === "income" ? nextTarget : nextSource;
+        if (!keyName || !meta.allowedSourceNamesLower.includes(keyName)) {
+          return res.status(403).json({ message: "Forbidden" });
+        }
+      }
     }
 
     // Normalize updates to avoid passing empty strings to DATE columns
@@ -187,9 +238,9 @@ const updateRecurringTransaction = async (req, res) => {
       else delete normalized.type;
     }
 
-    const updatedRecurringTransaction = await RecurringTransaction.updateByUser(
+    // Authorized: perform unscoped update by id (owner remains unchanged)
+    const updatedRecurringTransaction = await RecurringTransaction.update(
       id,
-      req.user.id,
       normalized,
     );
 
@@ -203,22 +254,43 @@ const updateRecurringTransaction = async (req, res) => {
   }
 };
 
-// Delete recurring transaction
+// Delete recurring transaction (owner or shared with write permission; scoped by source names)
 const deleteRecurringTransaction = async (req, res) => {
   try {
     const { id } = req.params;
-    const recurringTransaction = await RecurringTransaction.findByIdForUser(
-      id,
-      req.user.id,
-    );
-
+    // Load regardless of owner; enforce permissions
+    const recurringTransaction = await RecurringTransaction.findById(id);
     if (!recurringTransaction) {
       return res
         .status(404)
         .json({ message: "Recurring transaction not found" });
     }
 
-    await RecurringTransaction.deleteByUser(id, req.user.id);
+    const ownerId = recurringTransaction.user_id;
+    const isOwner = Number(ownerId) === Number(req.user.id);
+    if (!isOwner) {
+      const meta = await getSharingPermissionMeta(ownerId, req.user.id);
+      if (!meta.exists) {
+        return res
+          .status(404)
+          .json({ message: "Recurring transaction not found" });
+      }
+      if (!meta.writable) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const hasNames = Array.isArray(meta.allowedSourceNamesLower) && meta.allowedSourceNamesLower.length > 0;
+      if (hasNames) {
+        const type = String(recurringTransaction.type || "").toLowerCase();
+        const sourceName = String(recurringTransaction.source || "").trim().toLowerCase();
+        const targetName = String(recurringTransaction.target || "").trim().toLowerCase();
+        const keyName = type === "income" ? targetName : sourceName;
+        if (!keyName || !meta.allowedSourceNamesLower.includes(keyName)) {
+          return res.status(403).json({ message: "Forbidden" });
+        }
+      }
+    }
+
+    await RecurringTransaction.delete(id);
 
     res.json({
       success: true,

@@ -827,7 +827,6 @@ const EditTransaction = () => {
                       className="flex-shrink-0 w-6 h-6"
                     />
                   }
-                  className="px-4 py-3 text-base font-medium"
                   haptic="impact"
                 >
                   {loading ? (
