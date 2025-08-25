@@ -6,6 +6,9 @@ set -E  # enable ERR trap inheritance
 # Preserve original script arguments for potential re-exec under elevated user
 SCRIPT_ARGS=("$@")
 
+# Non-interactive apt by default when we need to install packages
+export DEBIAN_FRONTEND=noninteractive
+
 # FinX Debian/Ubuntu Installer (interactive + idempotent)
 # - Installs Node.js LTS, PostgreSQL, Nginx (optional)
 # - Creates database and app user with strong passwords
@@ -189,8 +192,8 @@ ensure_pkg() {
     local pkg="$1"
     if ! dpkg -s "$pkg" >/dev/null 2>&1; then
         say "Installing package: $pkg"
-        $SUDO apt-get update -y
-        $SUDO DEBIAN_FRONTEND=noninteractive apt-get install -y "$pkg"
+    $SUDO apt-get update -y
+    $SUDO apt-get install -y "$pkg"
     else
         ok "$pkg already installed"
     fi
@@ -249,7 +252,12 @@ install_node() {
     else
         say "Installing Node.js LTS (20.x) via NodeSource"
         if [ -n "${SUDO}" ]; then
-            curl -fsSL https://deb.nodesource.com/setup_20.x | ${SUDO} -E bash -
+            if [ "${SUDO}" = "sudo" ]; then
+                curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+            else
+                # doas (no -E support); pipe directly
+                curl -fsSL https://deb.nodesource.com/setup_20.x | ${SUDO} bash -
+            fi
         else
             curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
         fi
