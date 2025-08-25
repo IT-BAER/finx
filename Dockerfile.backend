@@ -11,24 +11,24 @@ RUN apk add --no-cache postgresql-client curl
 WORKDIR /app
 ENV NODE_ENV=production
 
-# Create a non-root user and group
+# Create a non-root user and group (we'll switch after preparing files)
 RUN addgroup -S finx && adduser -S finx -G finx
 
-# Set ownership of the app directory
-RUN chown -R finx:finx /app
-
-# Switch to the new user
-USER finx
-
-# Copy package files and install dependencies as the new user
+# Copy package files and install production dependencies (as root)
 COPY --from=builder /app/package*.json ./
 RUN npm ci --omit=dev
 
-# Copy the rest of the application code
+# Copy the rest of the application code (as root)
 COPY --from=builder /app .
 
-# Ensure shell scripts are executable and have UNIX line endings
-RUN chmod +x scripts/*.sh && sed -i 's/\r$//' scripts/*.sh
+# Ensure shell scripts are executable and have UNIX line endings (run as root)
+RUN chmod +x /app/scripts/*.sh && sed -i 's/\r$//' /app/scripts/*.sh
+
+# Fix ownership of the app directory after all files are in place
+RUN chown -R finx:finx /app
+
+# Switch to the non-root user for runtime
+USER finx
 
 EXPOSE 5000
 
