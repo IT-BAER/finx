@@ -471,7 +471,8 @@ const getTransactionById = async (req, res) => {
   const categoryRecord = await Category.findByIdForUser(categoryId, ownerId);
       if (process.env.DEBUG === "true") {
         console.log(
-          `Checking category ownership via findByIdForUser: categoryId=${categoryId}, categoryRecord=`,
+          "Checking category ownership via findByIdForUser: categoryId=%s, categoryRecord=",
+          categoryId,
           categoryRecord,
         );
       }
