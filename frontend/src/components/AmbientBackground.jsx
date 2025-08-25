@@ -92,6 +92,26 @@ const AmbientBackground = () => {
         gradientColors: ["#ffffff", "#fff1f2", "#ffe4e6"], // White (brightest) -> rose-50 (brighter) -> rose-100 (darker)
       },
     },
+    wednesday: {
+      dark: {
+        background: "#16132a",
+        particles: [
+          "rgba(124,58,237,0.45)",
+          "rgba(167,139,250,0.35)",
+          "rgba(79,70,229,0.25)",
+        ],
+        gradientColors: ["#0f0b1a", "#16132a", "#1f1a3a"], // Deep violet shades
+      },
+      light: {
+        background: "#f5f3ff",
+        particles: [
+          "rgba(124,58,237,0.35)",
+          "rgba(167,139,250,0.30)",
+          "rgba(221,214,254,0.25)",
+        ],
+        gradientColors: ["#ffffff", "#ede9fe", "#ddd6fe"], // White -> violet-100 -> violet-200
+      },
+    },
   };
 
   const getCurrentScheme = () => {

@@ -328,7 +328,7 @@ const Settings = () => {
                     <Icon
                       src="/icons/currency-euro.svg"
                       size="md"
-                      variant="accent"
+                      variant="strong"
                     />
                   </span>
                 </div>
@@ -368,7 +368,7 @@ const Settings = () => {
               <div className="flex items-center mb-4">
                 <div className="mr-3">
                   <span className="icon-wrap icon-wrap-md icon-wrap-circle">
-                    <Icon src="/icons/share.svg" size="md" variant="accent" />
+                    <Icon src="/icons/share.svg" size="md" variant="strong" />
                   </span>
                 </div>
                 <span className="font-medium">{t("dataSharing")}</span>
@@ -419,7 +419,7 @@ const Settings = () => {
                       <Icon
                         src="/icons/settings.svg"
                         size="md"
-                        variant="accent"
+                        variant="strong"
                       />
                     </span>
                   </div>

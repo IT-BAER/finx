@@ -380,6 +380,8 @@ const Navbar = () => {
                     ? "#4ade80, #16a34a 60%, #15803d"
                     : theme === "rose"
                       ? "#fb7185, #e11d48 60%, #be123c"
+                    : theme === "wednesday"
+                    ? "#a78bfa, #7c3aed 60%, #6d28d9"
                       : "#5cc6ff, #3b82f6 60%, #1d4ed8"
               })`,
               filter: "blur(1px)",

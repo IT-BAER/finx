@@ -125,6 +125,32 @@
   --muted: #f8b8c3; /* rose-300 */
 }
 
+/* Wednesday theme */
+:root[data-theme="wednesday"] {
+  --bg: #f5f3ff; /* violet-50 */
+  --text: #111827; /* gray-900 */
+  --surface: #ffffff; /* white */
+  --surface-muted: #ede9fe; /* violet-100 */
+  --border: #ddd6fe; /* violet-200 */
+  --muted: #4c1d95; /* violet-900 */
+  --accent: #7c3aed; /* violet-600 (Wednesday accent) */
+  --accent-600: #6d28d9; /* violet-700 */
+  --accent-400: #a78bfa; /* violet-400 */
+  --accent-contrast: #ffffff;
+  --success: #16a34a; /* keep success */
+  --warning: #ca8a04; /* keep warning */
+  --danger: #dc2626; /* keep danger */
+}
+/* Wednesday dark neutrals */
+:root[data-theme="wednesday"].dark {
+  --bg: #0f0b1a; /* deep purple-black */
+  --text: #e9e7ff; /* very light violet */
+  --surface: #16132a; /* very dark violet surface */
+  --surface-muted: #1f1a3a; /* dark violet muted */
+  --border: #2c2657; /* violet-800-ish */
+  --muted: #bdb7e6; /* muted violet */
+}
+
 /* Helpers bound to CSS vars */
 .theme-bg {
   background-color: var(--bg);
@@ -156,6 +182,15 @@
 }
 .theme-accent-ring {
   --tw-ring-color: var(--accent-400);
+}
+
+/* Helpers for using accent as soft background and borders */
+.theme-accent-soft-bg {
+  background-color: color-mix(in srgb, var(--accent) 12%, var(--surface));
+  color: var(--accent);
+}
+.theme-accent-border {
+  border-color: var(--accent);
 }
 
 /* Themed header/footer/background wrappers */
@@ -191,6 +226,14 @@ footer {
 }
 :root[data-theme="rose"].dark footer {
   background-color: color-mix(in srgb, var(--surface) 80%, var(--accent));
+}
+
+/* Wednesday footer palette tweaks */
+:root[data-theme="wednesday"] footer {
+  background-color: color-mix(in srgb, var(--surface) 92%, var(--accent));
+}
+:root[data-theme="wednesday"].dark footer {
+  background-color: color-mix(in srgb, var(--surface) 85%, var(--accent));
 }
 
 /* Ensure buttons align with variables across themes */
@@ -229,6 +272,11 @@ footer {
 :root[data-theme="rose"] {
   --icon-filter-accent: invert(19%) sepia(94%) saturate(4427%)
     hue-rotate(334deg) brightness(96%) contrast(97%);
+}
+:root[data-theme="wednesday"] {
+  /* Purple/violet accent tint */
+  --icon-filter-accent: invert(38%) sepia(84%) saturate(5333%)
+    hue-rotate(257deg) brightness(91%) contrast(94%);
 }
 
 .icon-tint {
@@ -932,11 +980,115 @@ body {
   border-color: color-mix(in srgb, var(--border) 80%, #000);
   opacity: 0.95;
 }
+:root[data-theme="wednesday"].dark .card {
+  /* Adjusted to be less dark */
+  background-color: color-mix(in srgb, var(--surface) 40%, #000);
+  border-color: color-mix(in srgb, var(--border) 80%, #000);
+  opacity: 0.95;
+}
 :root[data-theme="rose"] .card {
   background-color: color-mix(in srgb, var(--surface) 90%, transparent);
   border-color: color-mix(in srgb, var(--border) 90%, transparent);
   opacity: 0.9;
 }
+
+/* Wednesday-specific overrides to replace blue accents with theme accent */
+:root[data-theme="wednesday"] .fab {
+  background: linear-gradient(90deg, var(--accent), var(--accent-600));
+}
+
+:root[data-theme="wednesday"] .mobile-menu-item:hover,
+:root[data-theme="wednesday"] .mobile-menu-item.active {
+  color: var(--accent);
+}
+
+:root[data-theme="wednesday"] .spinner {
+  border-color: var(--accent);
+  border-top-color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+:root[data-theme="wednesday"] .progress-fill {
+  background: linear-gradient(90deg, var(--accent), var(--accent-600));
+}
+
+/* Inputs focus ring/border to match accent */
+:root[data-theme="wednesday"] .form-input:focus {
+  --tw-ring-color: var(--accent-400);
+  border-color: var(--accent);
+}
+
+/* Floating label focus color */
+:root[data-theme="wednesday"] .floating-input:focus + .floating-label,
+:root[data-theme="wednesday"] .floating-input:not(:placeholder-shown) + .floating-label {
+  color: var(--accent);
+}
+
+/* Wednesday utility overrides: map common Tailwind blue utilities to theme accent */
+:root[data-theme="wednesday"] .text-blue-600 { color: var(--accent) !important; }
+:root[data-theme="wednesday"].dark .text-blue-400 { color: var(--accent-400) !important; }
+:root[data-theme="wednesday"] .text-blue-700 { color: var(--accent-600) !important; }
+
+:root[data-theme="wednesday"] .hover\:text-blue-900:hover { color: var(--accent-600) !important; }
+:root[data-theme="wednesday"].dark .hover\:text-blue-300:hover { color: var(--accent-400) !important; }
+
+:root[data-theme="wednesday"] .group:hover .group-hover\:text-blue-600 { color: var(--accent) !important; }
+:root[data-theme="wednesday"].dark .group:hover .dark\:group-hover\:text-blue-400 { color: var(--accent-400) !important; }
+
+:root[data-theme="wednesday"] .border-blue-500 { border-color: var(--accent) !important; }
+:root[data-theme="wednesday"] .bg-blue-50 { background-color: color-mix(in srgb, var(--accent) 10%, var(--surface)) !important; }
+:root[data-theme="wednesday"] .bg-blue-50\/50 { background-color: color-mix(in srgb, var(--accent) 10%, var(--surface)) !important; }
+:root[data-theme="wednesday"].dark .bg-blue-900\/20 { background-color: color-mix(in srgb, var(--accent) 20%, transparent) !important; }
+:root[data-theme="wednesday"].dark .bg-blue-900\/10 { background-color: color-mix(in srgb, var(--accent) 14%, transparent) !important; }
+/* Extra mappings seen in badges/nav */
+:root[data-theme="wednesday"].dark .bg-blue-900 { background-color: color-mix(in srgb, var(--accent) 28%, #000) !important; }
+:root[data-theme="wednesday"] .text-blue-800 { color: var(--accent-600) !important; }
+:root[data-theme="wednesday"].dark .text-blue-200 { color: var(--accent-400) !important; }
+
+:root[data-theme="wednesday"] .focus\:ring-blue-500:focus { --tw-ring-color: var(--accent-400) !important; }
+:root[data-theme="wednesday"] .focus\:border-blue-500:focus { border-color: var(--accent) !important; }
+
+/* Info alerts mapping */
+:root[data-theme="wednesday"] .bg-blue-100 { background-color: color-mix(in srgb, var(--accent) 14%, #fff) !important; }
+:root[data-theme="wednesday"] .border-blue-400 { border-color: var(--accent-400) !important; }
+:root[data-theme="wednesday"] .text-blue-700 { color: var(--accent-600) !important; }
+:root[data-theme="wednesday"].dark .bg-blue-900\/30 { background-color: color-mix(in srgb, var(--accent) 18%, transparent) !important; }
+:root[data-theme="wednesday"].dark .border-blue-700 { border-color: var(--accent-600) !important; }
+:root[data-theme="wednesday"].dark .text-blue-300 { color: var(--accent-400) !important; }
+
+/* Wednesday: category badge readability */
+:root[data-theme="wednesday"] .badge-primary {
+  background-color: color-mix(in srgb, var(--accent) 14%, var(--surface)) !important;
+  color: var(--accent-600) !important;
+  border: 1px solid color-mix(in srgb, var(--accent) 32%, transparent);
+}
+:root[data-theme="wednesday"].dark .badge-primary {
+  background-color: color-mix(in srgb, var(--accent) 32%, transparent) !important;
+  color: #ffffff !important;
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+}
+
+/* Wednesday: mobile menu active indicator */
+:root[data-theme="wednesday"] .mobile-menu-item.active {
+  color: var(--accent) !important;
+}
+
+/* Wednesday: boost masked icon contrast in dark mode */
+:root[data-theme="wednesday"].dark .icon-mask.variant-accent {
+  background-color: var(--accent-400) !important; /* lighter violet for contrast */
+  filter: none !important;
+  opacity: 1 !important;
+}
+
+/* Wednesday: improve icon wrap chip contrast in dark mode */
+:root[data-theme="wednesday"].dark .icon-wrap {
+  background-color: color-mix(in srgb, var(--accent) 18%, #0d0b18) !important;
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent) !important;
+}
+
+/* Generic text/border mappings */
+:root[data-theme="wednesday"] .text-blue-500 { color: var(--accent) !important; }
+:root[data-theme="wednesday"] .border-blue-500 { border-color: var(--accent) !important; }
 
 .dark .form-input {
   @apply border-gray-600 text-white;

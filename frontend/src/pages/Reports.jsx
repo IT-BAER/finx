@@ -1258,7 +1258,10 @@ const Reports = () => {
           className={`grid grid-cols-1 md:grid-cols-2 ${isIncomeTrackingDisabled ? "lg:grid-cols-2" : "lg:grid-cols-4"} gap-6 mb-8`}
         >
           {!isIncomeTrackingDisabled && (
-            <div className="card">
+            <div
+              className="card"
+              style={{ borderColor: "rgba(52, 211, 153, 0.5)" }}
+            >
               <div className="card-body">
                 <div className="flex items-center">
                   <div className="p-3 rounded-full bg-green-100 dark:bg-green-900/30 mr-4">
@@ -1296,7 +1299,10 @@ const Reports = () => {
             </div>
           )}
 
-          <div className="card">
+          <div
+            className="card"
+            style={{ borderColor: "rgba(248, 113, 113, 0.5)" }}
+          >
             <div className="card-body">
               <div className="flex items-center">
                 <div className="p-3 rounded-full bg-red-100 dark:bg-red-900/30 mr-4">
@@ -1334,7 +1340,10 @@ const Reports = () => {
           </div>
 
           {!isIncomeTrackingDisabled && (
-            <div className="card">
+            <div
+              className="card"
+              style={{ borderColor: "rgba(168, 85, 247, 0.5)" }}
+            >
               <div className="card-body">
                 <div className="flex items-center">
                   <div className="p-3 rounded-full bg-purple-100 dark:bg-purple-900/30 mr-4">
@@ -1375,7 +1384,13 @@ const Reports = () => {
             </div>
           )}
 
-          <div className="card">
+          <div
+            className="card"
+            style={{
+              // Use theme accent for this card so Wednesday theme maps it to violet automatically
+              borderColor: "color-mix(in srgb, var(--accent) 50%, transparent)",
+            }}
+          >
             <div className="card-body">
               <div className="flex items-center">
                 <div className="p-3 rounded-full bg-blue-100 dark:bg-blue-900/30 mr-4">

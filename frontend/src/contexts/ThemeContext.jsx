@@ -17,6 +17,7 @@ function updateThemeColorMeta(theme, darkMode) {
     ocean: { light: "#ffffff", dark: "#0b2533" },
     forest: { light: "#ffffff", dark: "#0f2417" },
     rose: { light: "#ffffff", dark: "#2a0f19" },
+  wednesday: { light: "#ffffff", dark: "#16132a" },
   };
 
   // Get the appropriate color based on theme and mode
@@ -42,6 +43,7 @@ export const AVAILABLE_THEMES = [
   { key: "ocean", label: "Ocean" },
   { key: "forest", label: "Forest" },
   { key: "rose", label: "Rose" },
+  { key: "wednesday", label: "Wednesday" },
 ];
 
 export const ThemeProvider = ({ children }) => {
