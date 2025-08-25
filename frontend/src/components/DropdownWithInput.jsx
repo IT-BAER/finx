@@ -21,6 +21,8 @@ const DropdownWithInput = ({
   const menuRef = useRef(null);
   const isInternalUpdateRef = useRef(false);
   const portalRootRef = useRef(null);
+  const interactingWithMenuRef = useRef(false);
+  const touchStartYRef = useRef(0);
 
   // Update filtered options when options or input value changes
   useEffect(() => {
@@ -75,24 +77,59 @@ const DropdownWithInput = ({
     const reposition = () => {
       if (!isOpen || !dropdownRef.current || !menuRef.current) return;
       const r = dropdownRef.current.getBoundingClientRect();
-      menuRef.current.style.left = `${r.left}px`;
+      // Match input width and clamp to viewport
+      const desiredWidth = r.width;
+      menuRef.current.style.width = `${desiredWidth}px`;
+      let left = r.left;
+      // After width is set, we can clamp left so it doesn't overflow the viewport
+      const menuWidth = desiredWidth;
+      const maxLeft = Math.max(0, window.innerWidth - menuWidth - 8);
+      left = Math.min(left, maxLeft);
+      menuRef.current.style.left = `${left}px`;
       menuRef.current.style.top = `${r.bottom + 4}px`;
-      menuRef.current.style.width = `${r.width}px`;
     };
 
     document.addEventListener("mousedown", handleClickOutside);
-  window.addEventListener("scroll", reposition, { capture: true, passive: true }); // capture to catch inner scroll containers, passive to avoid blocking
-  window.addEventListener("resize", reposition, { passive: true });
-
-    // Recompute position on open next frame
-    if (isOpen) {
-      requestAnimationFrame(reposition);
-    }
+    window.addEventListener("scroll", reposition, { capture: true, passive: true }); // capture to catch inner scroll containers, passive to avoid blocking
+    window.addEventListener("resize", reposition, { passive: true });
 
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
-  window.removeEventListener("scroll", reposition, true);
-  window.removeEventListener("resize", reposition);
+      window.removeEventListener("scroll", reposition, { capture: true });
+      window.removeEventListener("resize", reposition);
+    };
+  }, [isOpen]);
+
+  // Reposition once on open to avoid one-frame misplacement
+  useEffect(() => {
+    if (!isOpen) return;
+    const r = dropdownRef.current?.getBoundingClientRect();
+    const el = menuRef.current;
+    if (!r || !el) return;
+    el.style.width = `${r.width}px`;
+    const menuWidth = r.width;
+    const maxLeft = Math.max(0, window.innerWidth - menuWidth - 8);
+    const left = Math.min(r.left, maxLeft);
+    el.style.left = `${left}px`;
+    el.style.top = `${r.bottom + 4}px`;
+
+    // Attach a native non-passive wheel listener to control preventDefault safely
+    const onWheelNative = (e) => {
+      const target = menuRef.current;
+      if (!target) return;
+      const atTop = target.scrollTop <= 0;
+      const atBottom = Math.ceil(target.scrollTop + target.clientHeight) >= target.scrollHeight;
+      const scrollingDown = e.deltaY > 0;
+      const scrollingUp = e.deltaY < 0;
+      const canScroll = target.scrollHeight > target.clientHeight + 1;
+      if (canScroll && !((atTop && scrollingUp) || (atBottom && scrollingDown))) {
+        e.preventDefault();
+        target.scrollTop += e.deltaY;
+      }
+    };
+    el.addEventListener("wheel", onWheelNative, { passive: false });
+    return () => {
+      el.removeEventListener("wheel", onWheelNative, { passive: false });
     };
   }, [isOpen]);
 
@@ -114,6 +151,14 @@ const DropdownWithInput = ({
       clearTimeout(blurTimeout.current);
     }
     blurTimeout.current = setTimeout(() => {
+      // If the user is interacting with the menu (scrolling/touching), do not close on blur
+      if (interactingWithMenuRef.current) {
+        // Reset flag shortly after to allow future blurs to close
+        setTimeout(() => {
+          interactingWithMenuRef.current = false;
+        }, 150);
+        return;
+      }
       // Only create when dropdown is open to prevent loops via prop sync
       if (isOpen && inputValue && !options.includes(inputValue)) {
         handleCreateNew();
@@ -195,18 +240,36 @@ const DropdownWithInput = ({
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: -10, scale: 0.95 }}
                 transition={{ duration: 0.2, ease: "easeOut" }}
-                className="fixed z-50 bg-white/95 dark:bg-gray-800/95 shadow-2xl rounded-lg max-h-60 overflow-auto border border-gray-200 dark:border-gray-700 ring-1 ring-black/5 dark:ring-white/10"
+                className="fixed z-50 shadow-2xl rounded-lg overflow-auto ring-1 ring-black/5 touch-pan-y overscroll-auto max-h-[50vh] md:max-h-60"
                 style={{
                   left: "0px",
                   top: "0px",
                   width: "240px",
+                  WebkitOverflowScrolling: "touch",
+                  backgroundColor: "color-mix(in srgb, var(--surface) 95%, transparent)",
+                  border: "1px solid var(--border)",
+                }}
+                onTouchStart={(e) => {
+                  interactingWithMenuRef.current = true;
+                  touchStartYRef.current = e.touches && e.touches[0] ? e.touches[0].clientY : 0;
+                }}
+                onTouchMove={() => {
+                  // Mark interaction to prevent input blur from closing while user scrolls
+                  interactingWithMenuRef.current = true;
+                }}
+                onTouchEnd={() => {
+                  // Slightly delay clearing to survive blur race
+                  setTimeout(() => {
+                    interactingWithMenuRef.current = false;
+                  }, 200);
                 }}
               >
                 {filteredOptions.length > 0 ? (
-                  filteredOptions.map((option, index) => (
+          filteredOptions.map((option, index) => (
                     <div
                       key={index}
-                      className="px-4 h-[45px] flex items-center text-gray-800 dark:text-gray-100 hover:text-white dark:hover:text-gray-900 hover:bg-blue-600 dark:hover:bg-blue-400/90 cursor-pointer transition-colors relative after:absolute after:bottom-0 after:left-1/2 after:-translate-x-1/2 after:w-3/4 after:border-b after:border-gray-200 dark:after:border-gray-700 last:after:border-b-0"
+                      className="px-4 h-[45px] flex items-center text-[var(--text)] hover:bg-[var(--accent)] hover:text-[var(--accent-contrast)] cursor-pointer transition-colors border-b last:border-b-0"
+                      style={{ borderColor: "var(--border)" }}
                       onMouseDown={(e) => e.preventDefault()}
                       onClick={() => {
                         handleOptionSelect(option);
@@ -216,7 +279,7 @@ const DropdownWithInput = ({
                     </div>
                   ))
                 ) : (
-                  <div className="px-4 py-2 text-gray-600 dark:text-gray-300">
+                  <div className="px-4 py-2" style={{ color: "var(--muted)" }}>
                     No options found
                   </div>
                 )}

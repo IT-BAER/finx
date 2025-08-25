@@ -166,9 +166,9 @@ const Dropdown = ({
                 {options.map((option) => (
                   <div
                     key={option.value}
-                    className={`px-4 py-2 text-gray-800 dark:text-gray-100 hover:text-white dark:hover:text-gray-900 hover:bg-blue-600 dark:hover:bg-blue-400/90 cursor-pointer transition-colors ${
+                    className={`px-4 py-2 cursor-pointer transition-colors text-[var(--text)] hover:bg-[var(--accent)] hover:text-[var(--accent-contrast)] ${
                       option.value === value
-                        ? "bg-blue-600 dark:bg-blue-400/90 text-white dark:text-gray-900"
+                        ? "bg-[var(--accent)] text-[var(--accent-contrast)]"
                         : ""
                     }`}
                     onMouseDown={(e) => e.preventDefault()}
