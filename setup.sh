@@ -6,8 +6,11 @@ set -E  # enable ERR trap inheritance
 # Preserve original script arguments for potential re-exec under elevated user
 SCRIPT_ARGS=("$@")
 
-# Non-interactive apt by default when we need to install packages
+# Non-interactive apt and sane locale defaults (quiet Perl/apt warnings on minimal systems)
 export DEBIAN_FRONTEND=noninteractive
+export LANG=C.UTF-8
+export LC_ALL=C.UTF-8
+export LANGUAGE=C
 
 # FinX Debian/Ubuntu Installer (interactive + idempotent)
 # - Installs Node.js LTS, PostgreSQL, Nginx (optional)
@@ -158,7 +161,7 @@ run_as_user() {
         ${SUDO} -u "${_user}" "$@"
     else
         # Use su for root context; preserve environment variables passed explicitly
-        su -s /bin/sh -c "$(printf '%q ' "$@")" "${_user}"
+    su -s /bin/sh -c "cd / && $(printf '%q ' "$@")" "${_user}"
     fi
 }
 
@@ -192,7 +195,7 @@ ensure_pkg() {
     local pkg="$1"
     if ! dpkg -s "$pkg" >/dev/null 2>&1; then
         say "Installing package: $pkg"
-    $SUDO apt-get update -y
+    apt_update_once
     $SUDO apt-get install -y "$pkg"
     else
         ok "$pkg already installed"
@@ -275,6 +278,15 @@ install_postgres() {
     fi
     $SUDO systemctl enable postgresql
     $SUDO systemctl start postgresql
+}
+
+# Run apt-get update once per session to speed up repeated installs
+APT_UPDATED_FLAG="/tmp/.finx-apt-updated.flag"
+apt_update_once() {
+    if [ ! -f "$APT_UPDATED_FLAG" ]; then
+        $SUDO apt-get update -y
+        touch "$APT_UPDATED_FLAG"
+    fi
 }
 
 is_pkg_installed() { dpkg -s "$1" >/dev/null 2>&1; }
@@ -849,25 +861,6 @@ server {
                 add_header Cache-Control "public, max-age=2592000, immutable";
                 try_files $uri =404;
         }
-
-    # Icons and logos
-    location /icons/ {
-        expires 365d;
-        add_header Cache-Control "public, max-age=31536000, immutable";
-        try_files $uri =404;
-    }
-    location /logos/ {
-        expires 365d;
-        add_header Cache-Control "public, max-age=31536000, immutable";
-        try_files $uri =404;
-    }
-
-    # Root favicon
-    location = /favicon.ico {
-        expires 365d;
-        add_header Cache-Control "public, max-age=31536000, immutable";
-        try_files $uri =404;
-    }
 
     # Icon and logo directories
     location /icons/ {
