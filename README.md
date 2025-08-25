@@ -1,8 +1,5 @@
 <div align="center">
 
-<img src="./finx%20-%20banner.jpg" alt="FinX — Self‑Hosted Personal Finance" style="max-width: 100%; height: auto;" />
-
-
 # FinX — Personal Finance Tracker (PWA)
 
 [![Node.js](https://img.shields.io/badge/Node.js-20.x-green.svg)](https://nodejs.org/)
@@ -10,6 +7,8 @@
 [![React](https://img.shields.io/badge/Frontend-React%20%2B%20Vite-61DAFB.svg)](https://react.dev/)
 [![PostgreSQL](https://img.shields.io/badge/DB-PostgreSQL-336791.svg)](https://www.postgresql.org/)
 ![PWA](https://img.shields.io/badge/PWA-Ready-blueviolet.svg)
+
+<img src="./finx%20-%20banner.jpg" alt="FinX — Self‑Hosted Personal Finance" style="max-width: 100%; height: auto;" />
 
 Modern, offline-capable personal finance app with sharing, recurring transactions, and fast mobile UX.
 
