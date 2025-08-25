@@ -20,7 +20,9 @@ Modern, offline-capable personal finance app with sharing, recurring transaction
    <a href="#-key-features">✨ Features</a> •
    <a href="#-tech-stack">🧱 Tech Stack</a> •
    <a href="#-requirements">🧰 Requirements</a> •
+   <a href="#-configuration-environment">⚙️ Configuration</a> •
    <a href="#-quick-install">🚀 Install</a> •
+   <a href="#-updateupgrade">🔄 Update</a> •
    <a href="#-management">🛠️ Management</a> •
    <a href="#-uninstall">🧹 Uninstall</a> •
    <a href="#-troubleshooting">🚨 Troubleshooting</a> •
@@ -57,6 +59,25 @@ Modern, offline-capable personal finance app with sharing, recurring transaction
 
 <br>
 
+## ⚙️ Configuration (Environment)
+
+Backend environment (file path differs by setup):
+- Docker: `.env` (repo root)
+- Debian/Ubuntu installer: `/etc/finx/finx.env`
+
+Keys:
+- PORT: API port (default 5000)
+- DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD: PostgreSQL connection
+- JWT_SECRET: required; set a strong random value
+- CORS_ORIGIN: comma‑separated list of allowed frontend origins
+- DISABLE_REGISTRATION: `true` to block open signups (recommended)
+- DEV_MODE: `true` enables auto‑login in dev only (don’t use in prod)
+
+Frontend build flags (optional):
+- VITE_DEV_MODE: pairs with backend DEV_MODE for local dev
+
+<br>
+
 ## 🚀 Quick Install/Update
 
 ### 🐋 Docker Compose
@@ -79,6 +100,27 @@ docker compose up -d --build
 ```
 
 App: http://localhost:3000 • API: proxied at /api
+
+<br>
+
+## 🔄 Update/Upgrade
+
+Docker:
+
+```bash
+git pull
+docker compose pull
+docker compose build --no-cache
+docker compose up -d
+docker compose exec backend npm run migrate-db
+```
+
+Debian/Ubuntu installer:
+- Re‑run the one‑liner; it detects an existing install and updates in place.
+
+```bash
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/IT-BAER/finx/main/setup.sh)"
+```
 
 <br>
 
@@ -194,6 +236,23 @@ npm run migrate-db
 ```
 
 **Port conflicts:** API uses `PORT` (default 5000). Change in env file or stop other services.
+
+<br>
+
+## 👤 First Run & Admin Account
+
+- Docker: check backend container logs, it prints out generated admin credentials on fresh installs.
+- Debian/Ubuntu installer: the setup runs init and prints credentials once.
+- If an admin already exists, credentials won’t be reprinted; create new users from the UI.
+
+<br>
+
+## 🧾 Data Import
+
+- Import CSV from the UI (Settings page) and map the columns.
+- Date format: `YYYY-MM-DD`; Amount: plain number using dot decimal.
+- Types: `income` or `expense` (CSV value `Withdrawal` is mapped to `expense`).
+- Duplicate detection prevents re‑importing the same entry (matches user+date+amount+type+normalized fields).
 
 <br>
 
