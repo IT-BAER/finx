@@ -25,6 +25,8 @@ const Reports = () => {
   });
   const [reportData, setReportData] = useState(null);
   const [dailyExpensesData, setDailyExpensesData] = useState(null);
+  const [sourceShareData, setSourceShareData] = useState(null);
+  const [topExpenses, setTopExpenses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const { t, formatCurrency, formatDate, language } = useTranslation();
@@ -1048,6 +1050,93 @@ const Reports = () => {
         // Set processed daily expenses data
         setDailyExpensesData(processedDailyExpenses);
 
+        // Additional visuals: Expenses by Source (share) and Largest Expenses for the selected range
+        try {
+          const all = await offlineAPI.getAllTransactions();
+          if (Array.isArray(all) && all.length > 0) {
+            // Filter to range and expenses only
+            const start = new Date(startDate);
+            const end = new Date(endDate);
+            end.setHours(23, 59, 59, 999);
+            const inRangeExpenses = all.filter((tx) => {
+              if (!tx || tx.type !== "expense") return false;
+              const d = new Date(tx.date);
+              return d >= start && d <= end;
+            });
+
+            // Compute source shares (top 7 + Other)
+            const totalsBySource = new Map();
+            inRangeExpenses.forEach((tx) => {
+              const name = (tx.source_name || "Other").trim() || "Other";
+              totalsBySource.set(
+                name,
+                (totalsBySource.get(name) || 0) + Number(tx.amount || 0),
+              );
+            });
+            const sorted = Array.from(totalsBySource.entries()).sort(
+              (a, b) => b[1] - a[1],
+            );
+            const top = sorted.slice(0, 7);
+            const rest = sorted.slice(7);
+            let labels = top.map(([n]) => n);
+            let data = top.map(([, v]) => v);
+            if (rest.length > 0) {
+              labels = [...labels, t("other")];
+              data = [
+                ...data,
+                rest.reduce((sum, [, v]) => sum + v, 0),
+              ];
+            }
+            const bg = [
+              "rgba(248, 113, 113, 0.8)",
+              "rgba(96, 165, 250, 0.8)",
+              "rgba(251, 191, 36, 0.8)",
+              "rgba(139, 92, 246, 0.8)",
+              "rgba(16, 185, 129, 0.8)",
+              "rgba(244, 114, 182, 0.8)",
+              "rgba(209, 213, 219, 0.8)",
+              "rgba(139, 69, 19, 0.8)",
+            ];
+            const border = [
+              "rgba(248, 113, 113, 1)",
+              "rgba(96, 165, 250, 1)",
+              "rgba(251, 191, 36, 1)",
+              "rgba(139, 92, 246, 1)",
+              "rgba(16, 185, 129, 1)",
+              "rgba(244, 114, 182, 1)",
+              "rgba(209, 213, 219, 1)",
+              "rgba(139, 69, 19, 1)",
+            ];
+            const paletteSize = Math.max(labels.length, 0);
+            const dataSet = {
+              labels,
+              datasets: [
+                {
+                  data,
+                  label: t("expensesBySource"),
+                  backgroundColor: bg.slice(0, paletteSize),
+                  borderColor: border.slice(0, paletteSize),
+                  borderWidth: 1,
+                  hoverOffset: 12,
+                },
+              ],
+            };
+            setSourceShareData(dataSet);
+
+            // Largest expenses list (top 5)
+            const topList = [...inRangeExpenses]
+              .sort((a, b) => Number(b.amount || 0) - Number(a.amount || 0))
+              .slice(0, 5);
+            setTopExpenses(topList);
+          } else {
+            setSourceShareData(null);
+            setTopExpenses([]);
+          }
+        } catch (e) {
+          // Non-fatal
+          console.warn("Reports: failed building source/large charts", e?.message || e);
+        }
+
         if (!reportData) setLoading(false);
       } catch (err) {
         // When offline and no cache, don't block UI with an error; just keep prior data
@@ -1661,6 +1750,105 @@ const Reports = () => {
       </div>
 
       {/* Income vs Expenses Chart - Moved to bottom to match Dashboard order */}
+      {/* Additional: Expenses by Source and Largest Expenses */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+        <div className="card">
+          <div className="card-body">
+            <h3 className="text-xl font-semibold mb-6">{t("expensesBySource")}</h3>
+            {sourceShareData && sourceShareData.labels?.length > 0 ? (
+              <motion.div
+                key={`source-share-${timeRange}`}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.3 }}
+                className="w-full"
+                style={{ height: "auto", minHeight: 0 }}
+              >
+                <Pie
+                  data={sourceShareData}
+                  options={{
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                      legend: {
+                        position: "right",
+                        labels: {
+                          color: dark ? "#ffffff" : "#374151",
+                          font: { size: 12, weight: "600" },
+                          usePointStyle: true,
+                          boxWidth: 12,
+                          padding: 15,
+                        },
+                      },
+                      title: { display: false },
+                      datalabels: {
+                        color: "#fff",
+                        font: { weight: "bold", size: 12 },
+                        formatter: (value, context) => {
+                          const total = context.dataset.data.reduce((acc, v) => acc + v, 0);
+                          const pct = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                          return pct > 5 ? `${pct}%` : "";
+                        },
+                        anchor: "center",
+                        align: "center",
+                      },
+                    },
+                    cutout: "60%",
+                  }}
+                />
+              </motion.div>
+            ) : (
+              <motion.div
+                key={`source-share-empty-${timeRange}`}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.3 }}
+                className="text-center py-8 text-gray-500"
+              >
+                {t("noDataAvailable")}
+              </motion.div>
+            )}
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="card-body">
+            <h3 className="text-xl font-semibold mb-6">{t("largestExpenses")}</h3>
+            {topExpenses && topExpenses.length > 0 ? (
+              <div className="hidden md:block">
+                <table className="table w-full divide-y divide-gray-200 dark:divide-gray-700">
+                  <thead>
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t("date")}</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t("description")}</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t("category")}</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t("amount")}</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                    {topExpenses.map((tx) => (
+                      <tr key={tx.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200">{formatDate(tx.date)}</td>
+                        <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-200 max-w-xs truncate">{tx.description || "N/A"}</td>
+                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200">
+                          {tx.category_name ? (
+                            <span className="badge badge-primary">{tx.category_name}</span>
+                          ) : (
+                            <span className="text-gray-400">—</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-red-600 dark:text-red-400">-{formatCurrency(Number(tx.amount || 0))}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="text-center py-8 text-gray-500">{t("noDataAvailable")}</div>
+            )}
+          </div>
+        </div>
+      </div>
       {!isIncomeTrackingDisabled && (
         <div className="card mb-8">
           <div className="card-body">

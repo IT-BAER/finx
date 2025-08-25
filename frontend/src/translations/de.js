@@ -357,6 +357,8 @@ export default {
   chartType: "Diagrammtyp",
   barChart: "Balkendiagramm",
   lineChart: "Liniendiagramm",
+  largestExpenses: "Größte Ausgaben",
+  expensesBySource: "Ausgaben nach Quelle",
   week: "Woche",
   month: "Monat",
   year: "Jahr",

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { transactionAPI } from "../services/api.jsx";
+import offlineAPI from "../services/offlineAPI.js";
 import { useNavigate } from "react-router-dom";
 import Button from "../components/Button.jsx";
 
@@ -41,6 +42,12 @@ async function loadDashboardData() {
   const monthStartStr = toYYYYMMDD(monthStart);
   const monthEndStr = toYYYYMMDD(now);
 
+  // Previous month (full)
+  const prevMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+  const prevMonthStart = new Date(prevMonthEnd.getFullYear(), prevMonthEnd.getMonth(), 1);
+  const prevMonthStartStr = toYYYYMMDD(prevMonthStart);
+  const prevMonthEndStr = toYYYYMMDD(prevMonthEnd);
+
   const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
   const isTablet =
     typeof window !== "undefined" &&
@@ -56,15 +63,17 @@ async function loadDashboardData() {
   const ivsStartStr = toYYYYMMDD(ivsStart);
   const ivsEndStr = toYYYYMMDD(ivsEnd);
 
-  const [weeklyRes, monthlyRes, ivsRes] = await Promise.all([
+  const [weeklyRes, monthlyRes, ivsRes, prevMonthlyRes] = await Promise.all([
     transactionAPI.getDashboardData({ startDate: weekStartStr, endDate: weekEndStr }),
     transactionAPI.getDashboardData({ startDate: monthStartStr, endDate: monthEndStr }),
     transactionAPI.getDashboardData({ startDate: ivsStartStr, endDate: ivsEndStr }),
+    transactionAPI.getDashboardData({ startDate: prevMonthStartStr, endDate: prevMonthEndStr }),
   ]);
 
   const weekly = weeklyRes.data?.data || weeklyRes.data;
   const monthly = monthlyRes.data?.data || monthlyRes.data;
   const ivs = ivsRes.data?.data || ivsRes.data;
+  const prevMonthly = prevMonthlyRes.data?.data || prevMonthlyRes.data;
 
   const incomeByDate = (ivs.incomeByDate || []).map((d) => ({
     ...d,
@@ -99,6 +108,11 @@ async function loadDashboardData() {
       incomeByDate: incomeByDate,
       dailyExpenses: expensesByDate,
     },
+    // For comparisons
+    prevMonthDailyExpenses: (prevMonthly?.dailyExpenses || []).map((d) => ({
+      date: d.date,
+      total: parseFloat(d.total || 0),
+    })),
   };
 }
 
@@ -109,6 +123,9 @@ const Dashboard = () => {
   const { dark } = useTheme();
 
   const [dashboardData, setDashboardData] = useState(null);
+  const [topExpenses, setTopExpenses] = useState([]);
+  const [perSourceChartData, setPerSourceChartData] = useState(null);
+  const [perSourceLegend, setPerSourceLegend] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   // removed prefetch indicator
@@ -151,6 +168,134 @@ const Dashboard = () => {
       window.removeEventListener("dataRefreshNeeded", handleDataRefresh);
     };
   }, []);
+
+  // Derive extra insights after data loads
+  useEffect(() => {
+    if (!dashboardData) return;
+
+  // Build per-source cumulative line chart for current month (expenses only), like balance trend but per source
+    (async () => {
+      try {
+        const all = await offlineAPI.getAllTransactions();
+        const now = new Date();
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        const monthEnd = now;
+
+        // Days labels 1..today
+        const dayLabels = [];
+        {
+          const temp = new Date(monthStart);
+          while (temp <= monthEnd) {
+            dayLabels.push(String(temp.getDate()));
+            temp.setDate(temp.getDate() + 1);
+          }
+        }
+
+  // Group expenses by source_name per day index (daily totals)
+        const groups = new Map(); // source -> array of totals per day index
+        const totalsBySource = new Map();
+        const dayIndex = (d) => {
+          const dd = new Date(d);
+          return dd.getDate() - 1; // 0-based
+        };
+
+        (all || [])
+          .filter((tx) => tx?.type === "expense")
+          .forEach((tx) => {
+            const d = new Date(tx.date);
+            if (!(d >= monthStart && d <= monthEnd)) return;
+            const srcName = (tx.source_name || "Other").trim() || "Other";
+            const idx = dayIndex(d);
+            if (idx < 0 || idx >= dayLabels.length) return;
+            if (!groups.has(srcName)) groups.set(srcName, new Array(dayLabels.length).fill(0));
+            const arr = groups.get(srcName);
+            arr[idx] += Number(tx.amount || 0);
+            totalsBySource.set(srcName, (totalsBySource.get(srcName) || 0) + Number(tx.amount || 0));
+          });
+
+        // Limit to top 5 sources by total; collapse others into "Other"
+        const sortedSources = Array.from(totalsBySource.entries()).sort((a, b) => b[1] - a[1]);
+        const topSources = sortedSources.slice(0, 5).map(([name]) => name);
+        const datasets = [];
+        const palette = [
+          "rgba(96, 165, 250, 1)", // blue
+          "rgba(248, 113, 113, 1)", // red
+          "rgba(52, 211, 153, 1)", // green
+          "rgba(251, 191, 36, 1)",  // amber
+          "rgba(139, 92, 246, 1)",  // purple
+        ];
+
+        topSources.forEach((name, i) => {
+          const daily = (groups.get(name) || new Array(dayLabels.length).fill(0)).slice();
+          // Convert to cumulative then invert to show decremental trend
+          for (let k = 1; k < daily.length; k++) daily[k] += daily[k - 1];
+          const cumulativeNegative = daily.map((v) => -v);
+          datasets.push({
+            label: name,
+            data: cumulativeNegative,
+            borderColor: palette[i % palette.length],
+            backgroundColor: palette[i % palette.length].replace(", 1)", ", 0.12)"),
+            borderWidth: 2,
+            tension: 0.35,
+            pointRadius: 0,
+          });
+        });
+
+        // Aggregate remaining sources into "Other" if any
+        const others = sortedSources.slice(5).map(([name]) => name);
+        if (others.length > 0) {
+          const otherDaily = new Array(dayLabels.length).fill(0);
+          others.forEach((name) => {
+            const arr = groups.get(name) || [];
+            for (let i = 0; i < dayLabels.length; i++) {
+              otherDaily[i] += Number(arr[i] || 0);
+            }
+          });
+          // Convert to cumulative and invert to decremental
+          for (let k = 1; k < otherDaily.length; k++) otherDaily[k] += otherDaily[k - 1];
+          const otherCumulativeNegative = otherDaily.map((v) => -v);
+          datasets.push({
+            label: "Other",
+            data: otherCumulativeNegative,
+            borderColor: "rgba(107, 114, 128, 1)", // gray-500
+            backgroundColor: "rgba(107, 114, 128, 0.12)",
+            borderWidth: 2,
+            tension: 0.35,
+            pointRadius: 0,
+          });
+        }
+
+        const chartData = { labels: dayLabels, datasets };
+        setPerSourceChartData(chartData);
+        // Build legend items with current (last point) cumulative value per source
+        const legendItems = datasets.map((ds) => ({
+          label: ds.label,
+          color: ds.borderColor,
+          total: Array.isArray(ds.data) && ds.data.length > 0 ? ds.data[ds.data.length - 1] : 0,
+        }));
+        setPerSourceLegend(legendItems);
+      } catch {}
+    })();
+
+    // Largest 5 expenses this month from local/all transactions
+    (async () => {
+      try {
+        const all = await offlineAPI.getAllTransactions();
+        const now = new Date();
+        const start = new Date(now.getFullYear(), now.getMonth(), 1);
+        const end = now;
+        const top = (all || [])
+          .filter((tx) => tx?.type === "expense")
+          .filter((tx) => {
+            const d = new Date(tx.date);
+            return d >= start && d <= end;
+          })
+          .sort((a, b) => Number(b.amount || 0) - Number(a.amount || 0))
+          .slice(0, 5);
+        setTopExpenses(top);
+      } catch {}
+    })();
+  }, [dashboardData]);
 
   const refreshDashboardData = async () => {
     try {
@@ -461,6 +606,8 @@ const Dashboard = () => {
       },
     ],
   };
+
+  // monthCompareData removed; replaced by perSourceChartData
 
   return (
   <div className="container mx-auto px-4 pt-4 md:pt-0 pb-4 min-h-0">
@@ -779,10 +926,162 @@ const Dashboard = () => {
         </div>
       </div>
 
+      
+
+    {/* Expenses by Source (This Month) */}
+      <div className="card mb-8">
+        <div className="card-body">
+      <h2 className="text-xl font-semibold mb-6">{t("expensesBySource")}</h2>
+      {perSourceChartData ? (
+            <div className="w-full" style={{ height: "auto", minHeight: 0 }}>
+              <Line data={perSourceChartData} options={lineChartOptions} />
+              {perSourceLegend && perSourceLegend.length > 0 && (
+                <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2">
+                  {perSourceLegend.map((item) => (
+                    <div key={item.label} className="flex items-center space-x-2">
+                      <span
+                        className="inline-block h-2.5 w-2.5 rounded-full"
+                        style={{ backgroundColor: item.color }}
+                        aria-hidden="true"
+                      />
+                      <span className="text-sm text-gray-700 dark:text-gray-300 font-medium">
+                        {item.label}
+                      </span>
+                      <span className="text-sm text-gray-500 dark:text-gray-400">• {formatCurrency(Number(item.total || 0))}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-gray-500">{t("noDataAvailable")}</div>
+          )}
+        </div>
+      </div>
+
   {/* Income vs Expenses section intentionally removed from dashboard */}
 
-      {/* Recent Transactions */}
-      <div className="card">
+      {/* Largest + Recent: side-by-side on desktop, stacked on mobile */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+        <div className="card">
+          <div className="card-body">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-xl font-semibold">{t("largestExpenses")}</h2>
+          </div>
+          {topExpenses && topExpenses.length > 0 ? (
+            <div className="overflow-x-auto md:overflow-x-visible" style={{ touchAction: "pan-y" }}>
+              {/* Mobile view - Card layout */}
+              <div className="md:hidden space-y-4">
+                {topExpenses.map((tx) => (
+                  <div
+                    key={tx.id}
+                    className="border-b border-gray-200 dark:border-gray-700 pb-4 last:border-0 last:pb-0"
+                  >
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-gray-900 dark:text-gray-200 truncate">
+                          {tx.description || "N/A"}
+                        </div>
+                        <div className="text-sm text-gray-500 dark:text-gray-400">
+                          {formatDate(tx.date)}
+                        </div>
+                        {tx.category_name && (
+                          <div className="text-sm">
+                            <span className="badge badge-primary">{tx.category_name}</span>
+                          </div>
+                        )}
+                      </div>
+                      <div className="text-red-600 dark:text-red-400 font-medium whitespace-nowrap ml-2">
+                        -{formatCurrency(Number(tx.amount || 0))}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Desktop view - Table */}
+              <div className="hidden md:block">
+                <table className="table w-full divide-y divide-gray-200 dark:divide-gray-700">
+                  <thead>
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        {t("date")}
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        {t("description")}
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        {t("category")}
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        {t("amount")}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                    {topExpenses.map((tx) => (
+                      <tr key={tx.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200">
+                          {formatDate(tx.date)}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-200 max-w-xs truncate">
+                          {tx.description || "N/A"}
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200">
+                          {tx.category_name ? (
+                            <span className="badge badge-primary">{tx.category_name}</span>
+                          ) : (
+                            <span className="text-gray-400">—</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-red-600 dark:text-red-400">
+                          -{formatCurrency(Number(tx.amount || 0))}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <svg
+                className="mx-auto h-12 w-12 text-gray-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+                ></path>
+              </svg>
+              <h2 className="mt-2 text-sm font-medium text-gray-900 dark:text-gray-200">
+                {t("noTransactions")}
+              </h2>
+              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                {t("getStartedAddTransaction")}
+              </p>
+              <div className="mt-6">
+                <Button
+                  variant="primary"
+                  onClick={() => navigate("/add-transaction")}
+                  haptic="tap"
+                  aria-label={t("addTransaction")}
+                >
+                  {t("addTransaction")}
+                </Button>
+              </div>
+            </div>
+          )}
+  </div>
+  </div>
+
+  {/* Recent Transactions */}
+  <div className="card">
         <div className="card-body">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-xl font-semibold">{t("recentTransactions")}</h2>
@@ -812,7 +1111,7 @@ const Dashboard = () => {
 
               return displayTransactions.length > 0 ? (
                 <div
-                  className="overflow-x-auto"
+                  className="overflow-x-auto md:overflow-x-visible"
                   style={{ touchAction: "pan-y" }}
                 >
                   {/* Mobile view - Card layout */}
@@ -965,6 +1264,7 @@ const Dashboard = () => {
           )}
         </div>
       </div>
+    </div>
     </div>
   );
 };

@@ -356,6 +356,8 @@ export default {
   chartType: "Chart Type",
   barChart: "Bar Chart",
   lineChart: "Line Chart",
+  largestExpenses: "Largest Expenses",
+  expensesBySource: "Expenses by Source",
   week: "Week",
   month: "Month",
   year: "Year",
