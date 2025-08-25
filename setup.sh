@@ -492,7 +492,7 @@ ensure_repo() {
     fi
 
     ensure_tool git
-    say "Cloning FinX repo to ${INSTALL_DIR}${REF:+ (ref: ${REF})}"
+    say "Preparing FinX repo in ${INSTALL_DIR}${REF:+ (ref: ${REF})}"
     if [ -d "${INSTALL_DIR}/.git" ]; then
         ok "Existing git repo found at ${INSTALL_DIR}"
         APP_DIR="${INSTALL_DIR}"
@@ -502,11 +502,8 @@ ensure_repo() {
         if [ -n "${REF}" ] && [ -z "${ARCHIVE_URL}" ]; then
             say "Updating repository to release ref: ${REF}"
             if [ "${CREATE_USER}" = "y" ]; then
-                (
-                    cd "${INSTALL_DIR}" && \
-                    run_as_user "${APP_USER}" git fetch --all --prune && \
-                    run_as_user "${APP_USER}" git checkout -q "${REF}"
-                ) || warn "Checkout of ${REF} failed; repository remains unchanged"
+                run_as_user_in_dir "${APP_USER}" "${INSTALL_DIR}" git fetch --all --prune || warn "git fetch failed in ${INSTALL_DIR}"
+                run_as_user_in_dir "${APP_USER}" "${INSTALL_DIR}" git checkout -q "${REF}" || warn "Checkout of ${REF} failed; repository remains unchanged"
             else
                 (
                     cd "${INSTALL_DIR}" && \
@@ -517,12 +514,10 @@ ensure_repo() {
         else
             say "Updating repository to main branch"
             if [ "${CREATE_USER}" = "y" ]; then
-                (
-                    cd "${INSTALL_DIR}" && \
-                    run_as_user "${APP_USER}" git fetch origin main || run_as_user "${APP_USER}" git fetch origin && \
-                    run_as_user "${APP_USER}" git checkout -q main || true && \
-                    run_as_user "${APP_USER}" git reset --hard origin/main || true
-                ) || warn "Update to main branch encountered issues; repository may be unchanged"
+                # Try fetching specific branch first, fallback to generic fetch
+                run_as_user_in_dir "${APP_USER}" "${INSTALL_DIR}" git fetch origin main || run_as_user_in_dir "${APP_USER}" "${INSTALL_DIR}" git fetch origin || true
+                run_as_user_in_dir "${APP_USER}" "${INSTALL_DIR}" git checkout -q main || true
+                run_as_user_in_dir "${APP_USER}" "${INSTALL_DIR}" git reset --hard origin/main || true
             else
                 (
                     cd "${INSTALL_DIR}" && \
@@ -539,7 +534,7 @@ ensure_repo() {
         # Clone and checkout specific ref (branch or commit)
         if [ "${CREATE_USER}" = "y" ]; then
             run_as_user "${APP_USER}" git clone "${REPO_URL}" "${INSTALL_DIR}"
-            ( cd "${INSTALL_DIR}" && run_as_user "${APP_USER}" git checkout "${REF}" )
+            run_as_user_in_dir "${APP_USER}" "${INSTALL_DIR}" git checkout "${REF}"
         else
             git clone "${REPO_URL}" "${INSTALL_DIR}"
             ( cd "${INSTALL_DIR}" && git checkout "${REF}" )
