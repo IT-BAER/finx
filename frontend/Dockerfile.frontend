@@ -13,8 +13,9 @@ FROM nginx:alpine
 COPY --from=build /app/build /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/nginx.conf
 
-# Create a non-root user and group, and create a writable directory for nginx pid
-RUN addgroup -S finx && adduser -S finx -G finx \
+# Install curl for healthcheck; create a non-root user and group, and create a writable directory for nginx pid
+RUN apk add --no-cache curl \
+  && addgroup -S finx && adduser -S finx -G finx \
     && mkdir -p /var/run/nginx \
     && chown -R finx:finx /usr/share/nginx/html \
     && chown -R finx:finx /var/cache/nginx \
@@ -28,6 +29,6 @@ USER finx
 EXPOSE 80
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD wget -q --spider http://localhost/ || exit 1
+  CMD curl -fsS http://localhost/ || exit 1
 
 CMD ["nginx", "-g", "daemon off;"]

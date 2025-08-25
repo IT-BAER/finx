@@ -3,6 +3,9 @@
 set -euo pipefail
 set -E  # enable ERR trap inheritance
 
+# Preserve original script arguments for potential re-exec under elevated user
+SCRIPT_ARGS=("$@")
+
 # FinX Debian/Ubuntu Installer (interactive + idempotent)
 # - Installs Node.js LTS, PostgreSQL, Nginx (optional)
 # - Creates database and app user with strong passwords
@@ -52,8 +55,24 @@ need_sudo() {
     if [ "${EUID:-$(id -u)}" -ne 0 ]; then
         if command -v sudo >/dev/null 2>&1; then
             SUDO="sudo"
+        elif command -v doas >/dev/null 2>&1; then
+            # Support OpenBSD-style privilege escalation
+            SUDO="doas"
         else
-            err "This script requires root privileges or sudo installed."
+            warn "Neither sudo nor doas is installed. Attempting to re-run as root using su."
+            # Resolve absolute path to this script
+            local SELF
+            if command -v realpath >/dev/null 2>&1; then
+                SELF=$(realpath "$0")
+            elif command -v readlink >/dev/null 2>&1; then
+                SELF=$(readlink -f "$0" 2>/dev/null || echo "$0")
+            else
+                SELF="$0"
+            fi
+            # Re-exec using su, preserving arguments; will prompt for root password
+            su -s /bin/sh -c "exec /usr/bin/env bash \"$SELF\" ${SCRIPT_ARGS[*]@Q}" root
+            # If su returns, it failed
+            err "Privilege escalation failed. Please run as root or install sudo/doas."
             exit 1
         fi
     else
@@ -132,6 +151,7 @@ cleanup() {
 run_as_user() {
     local _user="$1"; shift
     if [ -n "${SUDO}" ]; then
+        # sudo and doas both support -u
         ${SUDO} -u "${_user}" "$@"
     else
         # Use su for root context; preserve environment variables passed explicitly

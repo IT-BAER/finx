@@ -68,7 +68,7 @@ cd finx
 #    File: .env (already present in the repo)
 
 # 2) Start services
-docker-compose up -d --build
+docker compose up -d --build
 
 # 3) First run initialization (usually automatic). If needed, run manually:
 # docker-compose exec backend npm run init-db
@@ -120,9 +120,9 @@ Frontend on http://localhost:3000 with API proxied to http://localhost:5000.
 
 ### Docker
 ```bash
-docker-compose ps
-docker-compose logs -f backend frontend
-docker-compose exec backend npm run migrate-db
+docker compose ps
+docker compose logs -f backend frontend
+docker compose exec backend npm run migrate-db
 ```
 
 ### Linux (systemd)
