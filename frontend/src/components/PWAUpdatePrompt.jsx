@@ -23,6 +23,15 @@ const PWAUpdatePrompt = () => {
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.ready
         .then((registration) => {
+          // If a worker is already waiting when the app starts, prompt immediately
+          if (registration.waiting && navigator.serviceWorker.controller) {
+            setWaitingWorker(registration.waiting);
+            if (!hasShownUpdatePrompt) {
+              hasShownUpdatePrompt = true;
+              setShowUpdatePrompt(true);
+              trackPWAEvent("sw_update_waiting");
+            }
+          }
           // Listen for updatefound on the registration to find a waiting worker
           registration.addEventListener("updatefound", () => {
             const newWorker = registration.installing;
@@ -120,18 +129,6 @@ const PWAUpdatePrompt = () => {
         "controllerchange",
         onControllerChange,
       );
-
-      // fallback timeout if no controllerchange
-      setTimeout(() => {
-        if (!reloaded) {
-          window.toastWithHaptic.dismiss(toastId);
-          window.toastWithHaptic.success(tRaw("applyingUpdateReloading"), {
-            duration: 1500,
-            id: "pwa-update-success",
-          });
-          window.location.reload();
-        }
-      }, 8000);
     } catch (err) {
       console.error("PWA update failed:", err);
       window.toastWithHaptic.dismiss(toastId);

@@ -252,17 +252,9 @@ function App() {
     return () => window.removeEventListener("serverConnectivityChange", handler);
   }, []);
 
-  // Register service worker
+  // Register service worker without periodic auto-update; updates are user-driven via prompt
   useEffect(() => {
-    const intervalMS = 60 * 60 * 1000; // 1 hour
-    registerSW({
-      onRegistered(r) {
-        r &&
-          setInterval(() => {
-            r.update();
-          }, intervalMS);
-      },
-    });
+    registerSW();
   }, []);
 
   // Handle app ready state

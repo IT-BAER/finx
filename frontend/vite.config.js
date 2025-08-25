@@ -175,7 +175,8 @@ export default defineConfig(({ mode }) => {
               },
             },
           ],
-          skipWaiting: true,
+          // Do not auto-activate new service workers; let users decide via in-app prompt
+          skipWaiting: false,
           clientsClaim: true,
           cleanupOutdatedCaches: true,
         },
