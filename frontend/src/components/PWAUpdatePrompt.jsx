@@ -56,6 +56,14 @@ const PWAUpdatePrompt = () => {
         })
         .catch(() => {});
     }
+    const onPwaUpdate = () => {
+      if (!hasShownUpdatePrompt) {
+        hasShownUpdatePrompt = true;
+        setShowUpdatePrompt(true);
+      }
+    };
+    window.addEventListener("pwa-update-available", onPwaUpdate);
+    return () => window.removeEventListener("pwa-update-available", onPwaUpdate);
   }, []);
 
   const handleUpdate = async () => {
@@ -90,20 +98,25 @@ const PWAUpdatePrompt = () => {
 
       // Optionally ask SW to preload known UI routes as a best-effort
       // UI preloading removed temporarily
-      // Ask waiting worker to skip waiting
-      try {
-        waitingWorker.postMessage({ type: "SKIP_WAITING" });
-      } catch (err) {
-        // fallback to registration
-        if ("serviceWorker" in navigator) {
-          const reg = await navigator.serviceWorker.getRegistration();
-          if (reg && reg.waiting) {
-            try {
-              reg.waiting.postMessage({ type: "SKIP_WAITING" });
-            } catch (e) {
+      // Prefer virtual:pwa-register’s updater if present
+      if (typeof window.__pwa_update_sw === "function") {
+        try { await window.__pwa_update_sw(); } catch {}
+      } else {
+        // Ask waiting worker to skip waiting
+        try {
+          waitingWorker.postMessage({ type: "SKIP_WAITING" });
+        } catch (err) {
+          // fallback to registration
+          if ("serviceWorker" in navigator) {
+            const reg = await navigator.serviceWorker.getRegistration();
+            if (reg && reg.waiting) {
               try {
-                await reg.update();
-              } catch (_) {}
+                reg.waiting.postMessage({ type: "SKIP_WAITING" });
+              } catch (e) {
+                try {
+                  await reg.update();
+                } catch (_) {}
+              }
             }
           }
         }

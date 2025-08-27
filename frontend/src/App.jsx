@@ -252,9 +252,20 @@ function App() {
     return () => window.removeEventListener("serverConnectivityChange", handler);
   }, []);
 
-  // Register service worker without periodic auto-update; updates are user-driven via prompt
+  // Register service worker and surface update function for our prompt
   useEffect(() => {
-    registerSW();
+    const updateSW = registerSW({
+      immediate: true,
+      onNeedRefresh() {
+        try {
+          window.dispatchEvent(new CustomEvent("pwa-update-available"));
+        } catch {}
+      },
+      onOfflineReady() {
+        // no-op
+      },
+    });
+    window.__pwa_update_sw = () => updateSW(true);
   }, []);
 
   // Handle app ready state
