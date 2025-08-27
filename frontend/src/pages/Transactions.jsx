@@ -98,7 +98,12 @@ const Transactions = () => {
               uniqueFirstPage.push(tx);
             }
           }
-          setRawTransactions(uniqueFirstPage);
+          // Only replace list if we actually have content
+          if (uniqueFirstPage.length > 0) {
+            setRawTransactions(uniqueFirstPage);
+          } else {
+            setHasMore(false);
+          }
         }
       } else {
         // Append only unseen items

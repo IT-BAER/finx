@@ -350,6 +350,28 @@ class OfflineAPI {
       };
       await this.storeLocalTransaction(localTransaction);
 
+      // Also append to snapshot so relaunch while still offline shows it together with previous items
+      try {
+        const userId = this.getCurrentUserId();
+        if (userId) {
+          const key = `transactions_snapshot_user_${userId}`;
+          const current = (await offlineStorage.getOfflineData(key)) || [];
+          const entry = {
+            id: localTransaction.id,
+            date: localTransaction.date,
+            description: localTransaction.description,
+            amount: localTransaction.amount,
+            type: localTransaction.type,
+            category_name: localTransaction.category_name,
+            source_name: localTransaction.source_name || localTransaction.source || null,
+            target_name: localTransaction.target_name || localTransaction.target || null,
+            user_id: userId,
+          };
+          const updated = [entry, ...current].slice(0, 50);
+          await offlineStorage.storeOfflineData(key, updated);
+        }
+      } catch (e) {}
+
       // Notify UI to refresh lists
       if (typeof window !== "undefined") {
         window.dispatchEvent(new CustomEvent("transactionAdded"));
@@ -614,6 +636,9 @@ class OfflineAPI {
         if (this.isOnline) {
           const page = await this.get("/transactions", requestParams);
           onlineRows = page.transactions || page.data?.transactions || (Array.isArray(page) ? page : []) || [];
+        } else {
+          // Offline: use snapshot as a stand-in for the first page
+          onlineRows = await this.getTransactionsSnapshot();
         }
 
         // Always merge with local offline edits; include them on the first page only
@@ -626,8 +651,8 @@ class OfflineAPI {
           map.set(tx.id, { ...tx, _dataSource: "online" });
         }
 
-        // Include local items only on the first page to avoid repeating them on subsequent pages
-        if (offset === 0) {
+  // Include local items only on the first page to avoid repeating them on subsequent pages
+  if (offset === 0) {
           for (const localTx of localTransactions) {
             if (map.has(localTx.id)) {
               // Prefer local when it's an offline edit of an existing online transaction
@@ -646,10 +671,19 @@ class OfflineAPI {
         // Sort by YYYY-MM-DD string, newest first (avoids timezone issues)
         return merged.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
       } catch (error) {
-        // Fallback to local transactions when offline or on error; if none, use snapshot
-        const local = await this.getLocalTransactions();
-        if (local && local.length > 0) return local;
-        return this.getTransactionsSnapshot();
+        // Offline/error: merge snapshot (as base) with local edits, prefer local
+        const [snap, local] = await Promise.all([
+          this.getTransactionsSnapshot(),
+          this.getLocalTransactions(),
+        ]);
+        const map = new Map();
+        for (const tx of snap || []) map.set(tx.id, { ...tx, _dataSource: "snapshot" });
+        for (const tx of local || []) {
+          const key = tx._tempId || tx.id;
+          map.set(key, { ...map.get(key), ...tx, _dataSource: "local" });
+        }
+        const merged = Array.from(map.values());
+        return merged.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
       }
     }
 
@@ -753,13 +787,22 @@ class OfflineAPI {
       );
     } catch (error) {
       console.log(
-        "getAllTransactions - Error, returning local transactions only:",
+        "getAllTransactions - Error, returning merged local + snapshot:",
         error.message,
       );
-  // If completely offline, return local transactions or last snapshot
-  const local = await this.getLocalTransactions();
-  if (local && local.length > 0) return local;
-  return this.getTransactionsSnapshot();
+      // Offline/error: merge snapshot with local, prefer local
+      const [snap, local] = await Promise.all([
+        this.getTransactionsSnapshot(),
+        this.getLocalTransactions(),
+      ]);
+      const map = new Map();
+      for (const tx of snap || []) map.set(tx.id, { ...tx, _dataSource: "snapshot" });
+      for (const tx of local || []) {
+        const key = tx._tempId || tx.id;
+        map.set(key, { ...map.get(key), ...tx, _dataSource: "local" });
+      }
+      const merged = Array.from(map.values());
+      return merged.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
     }
   }
 
