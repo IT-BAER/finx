@@ -84,17 +84,22 @@ const Transactions = () => {
         tx?._tempId != null ? `tmp:${tx._tempId}` : `id:${tx?.id}`;
 
       if (!append) {
-        // Reset seen keys and list on fresh load
-        seenKeysRef.current = new Set();
-        const uniqueFirstPage = [];
-        for (const tx of pageItems) {
-          const k = getKey(tx);
-          if (!seenKeysRef.current.has(k)) {
-            seenKeysRef.current.add(k);
-            uniqueFirstPage.push(tx);
+        // If we got no items (e.g., offline with no snapshot), keep the current list
+        if (!pageItems || pageItems.length === 0) {
+          setHasMore(false);
+        } else {
+          // Reset seen keys and list on fresh load
+          seenKeysRef.current = new Set();
+          const uniqueFirstPage = [];
+          for (const tx of pageItems) {
+            const k = getKey(tx);
+            if (!seenKeysRef.current.has(k)) {
+              seenKeysRef.current.add(k);
+              uniqueFirstPage.push(tx);
+            }
           }
+          setRawTransactions(uniqueFirstPage);
         }
-        setRawTransactions(uniqueFirstPage);
       } else {
         // Append only unseen items
         const toAppend = [];
@@ -111,8 +116,8 @@ const Transactions = () => {
       }
 
       // Update server offset and hasMore based on online items only
-      setServerOffset(offsetValue + onlineCount);
-      setHasMore(isOnline && onlineCount === requestedLimit);
+  setServerOffset(offsetValue + onlineCount);
+  setHasMore(isOnline && onlineCount === requestedLimit);
     } catch (err) {
       setError("Failed to load transactions");
       console.error("Error loading transactions:", err);
@@ -196,14 +201,9 @@ const Transactions = () => {
     const size = isMobile ? 10 : 20;
     setPageSize(size);
     // Reset offset and load first page
-    if (!isOnline) {
-      // Load only cached items and disable further server loads
-      loadTransactions(0, false, size);
-      setHasMore(false);
-    } else {
-      // Normal online initial load
-      loadTransactions(0, false, size);
-    }
+  // Always attempt to load; internal guards keep current list if empty
+  loadTransactions(0, false, size);
+  if (!isOnline) setHasMore(false);
     setServerOffset(0);
   }, [isOnline]);
 
@@ -211,50 +211,50 @@ const Transactions = () => {
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible" && isCurrentPage.current) {
-  // Refresh first page when page becomes visible
-  setServerOffset(0);
-  loadTransactions(0, false, pageSize);
+        // Refresh first page when page becomes visible. If offline and fetch yields nothing, keep current list.
+        setServerOffset(0);
+        loadTransactions(0, false, pageSize);
       }
     };
 
     // Set up custom event listeners for transaction updates
     const handleTransactionAdded = () => {
-  // Reload first page when a transaction is added
-  setServerOffset(0);
-  loadTransactions(0, false, pageSize);
+      // Reload first page when a transaction is added
+      setServerOffset(0);
+      loadTransactions(0, false, pageSize);
     };
 
     const handleTransactionUpdated = () => {
-  // Reload first page when a transaction is updated
-  setServerOffset(0);
-  loadTransactions(0, false, pageSize);
+      // Reload first page when a transaction is updated
+      setServerOffset(0);
+      loadTransactions(0, false, pageSize);
     };
 
     const handleTransactionDeleted = () => {
-  // Reload first page when a transaction is deleted
-  setServerOffset(0);
-  loadTransactions(0, false, pageSize);
+      // Reload first page when a transaction is deleted
+      setServerOffset(0);
+      loadTransactions(0, false, pageSize);
     };
 
     // Listen for when transactions are synced from offline to online
     const handleTransactionsSynced = () => {
-  // Reload first page when transactions are synced
-  setServerOffset(0);
-  loadTransactions(0, false, pageSize);
+      // Reload first page when transactions are synced
+      setServerOffset(0);
+      loadTransactions(0, false, pageSize);
     };
 
     // Listen for when app comes back online
     const handleAppBackOnline = () => {
-  // Reload first page when app comes back online
-  setServerOffset(0);
-  loadTransactions(0, false, pageSize);
+      // Reload first page when app comes back online
+      setServerOffset(0);
+      loadTransactions(0, false, pageSize);
     };
 
     // Listen for general data refresh needs
     const handleDataRefreshNeeded = () => {
-  // Reload first page when data refresh is needed
-  setServerOffset(0);
-  loadTransactions(0, false, pageSize);
+      // Reload first page when data refresh is needed. If offline and fetch yields nothing, keep current list.
+      setServerOffset(0);
+      loadTransactions(0, false, pageSize);
     };
 
     document.addEventListener("visibilitychange", handleVisibilityChange);

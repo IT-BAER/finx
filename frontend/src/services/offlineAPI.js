@@ -426,6 +426,27 @@ class OfflineAPI {
       window.dispatchEvent(new CustomEvent("transactionAdded"));
       window.dispatchEvent(new CustomEvent("dataRefreshNeeded"));
     }
+    // Update transactions snapshot with the newly created online transaction
+    try {
+      const userId = this.getCurrentUserId();
+      if (userId && result?.transaction) {
+        const key = `transactions_snapshot_user_${userId}`;
+        const current = (await offlineStorage.getOfflineData(key)) || [];
+        const entry = {
+          id: result.transaction.id,
+          date: result.transaction.date,
+          description: result.transaction.description,
+          amount: result.transaction.amount,
+          type: result.transaction.type,
+          category_name: result.transaction.category_name,
+          source_name: result.transaction.source_name || result.transaction.source || null,
+          target_name: result.transaction.target_name || result.transaction.target || null,
+          user_id: result.transaction.user_id,
+        };
+        const updated = [entry, ...current].slice(0, 50);
+        await offlineStorage.storeOfflineData(key, updated);
+      }
+    } catch (e) {}
     return result;
   }
 
