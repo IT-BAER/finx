@@ -30,8 +30,7 @@ Modern, offline-capable personal finance app with sharing, recurring transaction
    <a href="#-security">🔒 Security</a> •
    <a href="#-learn-more">📚 More</a> •
    <a href="#-license">📄 License</a> •
-   <a href="#-support-development">💜 Support</a> •
-   <a href="#-credits">👏 Credits</a>
+   <a href="#-support-development">💜 Support</a>
   
 </p>
 
@@ -371,13 +370,4 @@ If this project helps you, consider supporting future work (coffee fuels coding)
 <br>
 <a href="https://www.paypal.com/donate/?hosted_button_id=5XXRC7THMTRRS" target="_blank">Donate via PayPal</a>
 </div>
-
-<br>
-
-## 👏 Credits
-
-- React, Vite, Tailwind CSS
-- Express, Node.js
-- PostgreSQL
-- Workbox (via Vite PWA plugin)
 
