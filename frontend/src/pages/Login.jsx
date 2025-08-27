@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import "../utils/haptics.js";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
@@ -16,18 +16,47 @@ const Login = () => {
   const { login } = useAuth();
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const formRef = useRef(null);
+  const emailRef = useRef(null);
+  const passwordRef = useRef(null);
+  const hpUserRef = useRef(null); // hidden fallback
+  const hpPassRef = useRef(null); // hidden fallback
+
+  // Try to pick up autofilled values on mount (Android PWA often doesn't fire change/input)
+  useEffect(() => {
+    let tries = 0;
+    const maxTries = 8; // ~1.6s total
+    const tick = () => {
+      tries += 1;
+      const ev = emailRef.current?.value || hpUserRef.current?.value;
+      const pv = passwordRef.current?.value || hpPassRef.current?.value;
+      if (ev && !email) setEmail(ev);
+      if (pv && !password) setPassword(pv);
+      if (tries < maxTries && (!ev || !pv)) {
+        setTimeout(tick, 200);
+      }
+    };
+    setTimeout(tick, 150);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
 
-    if (!email || !password) {
+    // As a safety net, read from DOM refs in case state didn't get updated from autofill
+    const domEmail = emailRef.current?.value || hpUserRef.current?.value || email;
+    const domPassword = passwordRef.current?.value || hpPassRef.current?.value || password;
+    if (!email && domEmail) setEmail(domEmail);
+    if (!password && domPassword) setPassword(domPassword);
+
+    if (!domEmail || !domPassword) {
       window.toastWithHaptic.error(t("fillAllFields"));
       setLoading(false);
       return;
     }
 
-    const result = await login(email, password, rememberMe);
+    const result = await login(domEmail, domPassword, rememberMe);
     if (result.success) {
       navigate("/dashboard");
     } else {
@@ -48,31 +77,68 @@ const Login = () => {
           <div className="card-body">
             {/* Error alerts removed - using toast notifications instead */}
 
-            <form className="space-y-6" onSubmit={handleSubmit}>
+            <form
+              ref={formRef}
+              className="space-y-6"
+              onSubmit={handleSubmit}
+              autoComplete="on"
+              name="login"
+              id="login-form"
+            >
+              {/* Hidden hints to help mobile managers in PWAs; copied into visible fields on submit */}
+              <input
+                ref={hpUserRef}
+                type="text"
+                name="username"
+                autoComplete="username"
+                tabIndex={-1}
+                aria-hidden="true"
+                style={{ position: "absolute", opacity: 0, width: 0, height: 0, pointerEvents: "none", left: "-9999px" }}
+              />
+              <input
+                ref={hpPassRef}
+                type="password"
+                name="password"
+                autoComplete="current-password"
+                tabIndex={-1}
+                aria-hidden="true"
+                style={{ position: "absolute", opacity: 0, width: 0, height: 0, pointerEvents: "none", left: "-9999px" }}
+              />
               <div className="form-group">
                 <Input
+                  ref={emailRef}
                   id="email"
-                  name="email"
+                  name="username"
                   type="email"
                   label={t("email")}
-                  autoComplete="email"
+                  autoComplete="username"
+                  inputMode="email"
+                  autoCapitalize="off"
+                  autoCorrect="off"
+                  spellCheck={false}
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  onInput={(e) => !email && setEmail(e.target.value)}
                   floatingLabel={true}
                 />
               </div>
 
               <div className="form-group">
                 <Input
+                  ref={passwordRef}
                   id="password"
                   name="password"
                   type="password"
                   label={t("password")}
                   autoComplete="current-password"
+                  autoCapitalize="off"
+                  autoCorrect="off"
+                  spellCheck={false}
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  onInput={(e) => !password && setPassword(e.target.value)}
                   floatingLabel={true}
                 />
               </div>
