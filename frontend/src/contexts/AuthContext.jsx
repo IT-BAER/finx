@@ -1,6 +1,6 @@
 import { createContext, useState, useEffect, useContext } from "react";
 import { authAPI } from "../services/api.jsx";
-import { setAuthToken, isAuthenticated } from "../utils/auth.jsx";
+import { setAuthToken, isAuthenticated, getCurrentUser } from "../utils/auth.jsx";
 import offlineAPI from "../services/offlineAPI.js";
 import tRaw from "../lib/i18n";
 
@@ -31,22 +31,53 @@ export const AuthProvider = ({ children }) => {
 
   const loadUser = async () => {
     try {
+      // If offline, try cached user or token-derived user first
+      if (!offlineAPI.isOnline) {
+        const cachedStr = localStorage.getItem("user");
+        if (cachedStr) {
+          const cached = JSON.parse(cachedStr);
+          setUser(cached);
+          setIsIncomeTrackingDisabled(!!cached.income_tracking_disabled);
+          return;
+        }
+        const tokenUser = getCurrentUser();
+        if (tokenUser) {
+          setUser(tokenUser);
+          setIsIncomeTrackingDisabled(false);
+          return;
+        }
+      }
+
+      // Otherwise, fetch online
       const res = await authAPI.getCurrentUser();
       const u = res && res.data && res.data.user ? res.data.user : null;
       if (!u) throw new Error("Invalid user response");
 
       setUser(u);
       setIsIncomeTrackingDisabled(!!u.income_tracking_disabled);
+      try { localStorage.setItem("user", JSON.stringify(u)); } catch {}
 
-      // Trigger offline data caching for authenticated users
       if (offlineAPI.isOnline) {
         setTimeout(() => {
           // offlineAPI.cacheAllOfflineData();
-        }, 1000); // Delay to allow app to initialize
+        }, 1000);
       }
     } catch (err) {
-      console.error("Error loading user:", err);
-      logout();
+      console.warn("Falling back to offline user due to load failure:", err?.message || err);
+      const cachedStr = localStorage.getItem("user");
+      if (cachedStr) {
+        try {
+          const cached = JSON.parse(cachedStr);
+          setUser(cached);
+          setIsIncomeTrackingDisabled(!!cached.income_tracking_disabled);
+        } catch {}
+      } else {
+        const tokenUser = getCurrentUser();
+        if (tokenUser) {
+          setUser(tokenUser);
+          setIsIncomeTrackingDisabled(false);
+        }
+      }
     } finally {
       setLoading(false);
     }
@@ -65,6 +96,7 @@ export const AuthProvider = ({ children }) => {
   if (!u) throw new Error("Invalid user response");
   setUser(u);
   setIsIncomeTrackingDisabled(!!u.income_tracking_disabled);
+  try { localStorage.setItem("user", JSON.stringify(u)); } catch {}
   return u;
     } catch (err) {
       console.error("Error refreshing user:", err);
@@ -76,7 +108,8 @@ export const AuthProvider = ({ children }) => {
     try {
       const res = await authAPI.login({ email, password, rememberMe });
       setAuthToken(res.data.token);
-      setUser(res.data.user);
+  setUser(res.data.user);
+  try { localStorage.setItem("user", JSON.stringify(res.data.user)); } catch {}
 
   // Show login success notification localized
   window.toastWithHaptic.success(tRaw("loginSuccessful"), {
@@ -104,7 +137,8 @@ export const AuthProvider = ({ children }) => {
     try {
       const res = await authAPI.register({ email, password });
       setAuthToken(res.data.token);
-      setUser(res.data.user);
+  setUser(res.data.user);
+  try { localStorage.setItem("user", JSON.stringify(res.data.user)); } catch {}
       return { success: true };
     } catch (err) {
       return {
@@ -117,6 +151,7 @@ export const AuthProvider = ({ children }) => {
   const logout = () => {
     setAuthToken(null);
     setUser(null);
+  try { localStorage.removeItem("user"); } catch {}
 
     // Clear theme settings from localStorage
     localStorage.removeItem("theme");
@@ -133,6 +168,15 @@ export const AuthProvider = ({ children }) => {
       await authAPI.updateUser({
         income_tracking_disabled: newIncomeTrackingDisabled,
       });
+      // persist change in cached user for offline continuity
+      try {
+        const str = localStorage.getItem("user");
+        if (str) {
+          const cached = JSON.parse(str);
+          cached.income_tracking_disabled = newIncomeTrackingDisabled;
+          localStorage.setItem("user", JSON.stringify(cached));
+        }
+      } catch {}
     } catch (err) {
       console.error("Error updating income tracking preference:", err);
       // Revert state if update fails
