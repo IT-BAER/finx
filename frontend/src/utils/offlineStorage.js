@@ -458,8 +458,174 @@ class OfflineStorage {
       headers,
       body: item.data ? JSON.stringify(item.data) : undefined,
     });
-
+    // Handle special cases before generic error
     if (!resp.ok) {
+      // If trying to UPDATE a transaction that was deleted online -> convert to CREATE
+      if (
+        (item.method === "PUT" || item.method === "PATCH") &&
+        item.endpoint.includes("/transactions/") &&
+        (resp.status === 404 || resp.status === 410)
+      ) {
+        const transactionId = item.endpoint.split("/").pop();
+        const userId = this.getCurrentUserId();
+        let newPayload = null;
+        try {
+          // Try to reconstruct full payload from local cached list
+          if (userId) {
+            const key = `transactions_user_${userId}`;
+            const localTransactions = (await this.getOfflineData(key)) || [];
+            const numId = parseInt(transactionId, 10);
+            const local = localTransactions.find(
+              (t) => t.id === numId || t._tempId === numId,
+            );
+            if (local) {
+              newPayload = {
+                amount: local.amount,
+                type: local.type,
+                description: local.description || "",
+                date: local.date,
+                category: local.category_name || local.category || null,
+                source: local.source_name || local.source || null,
+                target: local.target_name || local.target || null,
+              };
+            }
+          }
+        } catch (e) {}
+
+        // Fallback to the original item.data (may be partial)
+        if (!newPayload) {
+          const d = item.data || {};
+          newPayload = {
+            amount: d.amount,
+            type: d.type,
+            description: d.description || "",
+            date: d.date,
+            category: d.category || d.category_name || null,
+            source: d.source || d.source_name || null,
+            target: d.target || d.target_name || null,
+          };
+        }
+
+        // Attempt to create a new transaction from the offline edits
+        const createResp = await fetch("/api/transactions", {
+          method: "POST",
+          headers,
+          body: JSON.stringify(newPayload),
+        });
+        if (!createResp.ok) {
+          throw new Error(`Sync failed (convert update->create): ${createResp.status}`);
+        }
+        const created = await createResp.json();
+
+        // Update local caches: replace old local copy with the newly created one
+        try {
+          if (userId) {
+            const key = `transactions_user_${userId}`;
+            const localTransactions = (await this.getOfflineData(key)) || [];
+            const numId = parseInt(transactionId, 10);
+            const idx = localTransactions.findIndex(
+              (t) => t.id === numId || t._tempId === numId,
+            );
+            if (idx !== -1) {
+              const merged = {
+                ...localTransactions[idx],
+                ...(created.transaction || {}),
+                _isOffline: false,
+                source_name:
+                  created.transaction?.source_name ||
+                  created.transaction?.source ||
+                  localTransactions[idx].source_name ||
+                  localTransactions[idx].source ||
+                  null,
+                target_name:
+                  created.transaction?.target_name ||
+                  created.transaction?.target ||
+                  localTransactions[idx].target_name ||
+                  localTransactions[idx].target ||
+                  null,
+              };
+              localTransactions[idx] = merged;
+              await this.storeOfflineData(key, localTransactions);
+            }
+
+            // Update snapshot: replace old entry with new id
+            try {
+              const snapKey = `transactions_snapshot_user_${userId}`;
+              const snap = (await this.getOfflineData(snapKey)) || [];
+              const numId2 = parseInt(transactionId, 10);
+              const idx2 = snap.findIndex((t) => t.id === numId2);
+              const entry = {
+                id: created.transaction?.id,
+                date: created.transaction?.date,
+                description: created.transaction?.description,
+                amount: created.transaction?.amount,
+                type: created.transaction?.type,
+                category_name: created.transaction?.category_name,
+                source_name: created.transaction?.source_name || created.transaction?.source || null,
+                target_name: created.transaction?.target_name || created.transaction?.target || null,
+                user_id: created.transaction?.user_id,
+              };
+              if (idx2 !== -1) {
+                snap[idx2] = entry;
+              } else {
+                snap.unshift(entry);
+              }
+              await this.storeOfflineData(snapKey, snap.slice(0, 50));
+            } catch (e) {}
+          }
+          // Clear cached single-transaction record for the old id
+          try {
+            const cacheKey = `cached_transaction_${transactionId}`;
+            const tx = this.db.transaction(["offlineData"], "readwrite");
+            const store = tx.objectStore("offlineData");
+            store.delete(cacheKey);
+          } catch (e) {}
+
+          // Inform UI of conflict resolution
+          try {
+            if (window.toastWithHaptic?.info) {
+              window.toastWithHaptic.info("Original transaction was deleted. Your offline edits were saved as a new transaction.");
+            }
+            window.dispatchEvent(new CustomEvent("transactionsSynced"));
+            window.dispatchEvent(new CustomEvent("dataRefreshNeeded"));
+          } catch (e) {}
+        } catch (e) {}
+
+        // Treat as handled; return created result so caller removes from queue
+        return created;
+      }
+
+      // If deleting a transaction that was already deleted online, treat as success and clean up locally
+      if (item.method === "DELETE" && item.endpoint.includes("/transactions/") && (resp.status === 404 || resp.status === 410)) {
+        const transactionId = item.endpoint.split("/").pop();
+        if (transactionId) {
+          const userId = this.getCurrentUserId();
+          if (userId) {
+            const key = `transactions_user_${userId}`;
+            const localTransactions = (await this.getOfflineData(key)) || [];
+            const filtered = localTransactions.filter(
+              (t) => t.id !== Number(transactionId) && t._tempId !== Number(transactionId),
+            );
+            await this.storeOfflineData(key, filtered);
+            try {
+              const snapKey = `transactions_snapshot_user_${userId}`;
+              const snap = (await this.getOfflineData(snapKey)) || [];
+              const filteredSnap = snap.filter((t) => t.id !== Number(transactionId));
+              await this.storeOfflineData(snapKey, filteredSnap);
+            } catch (e) {}
+          }
+          try {
+            const cacheKey = `cached_transaction_${transactionId}`;
+            const tx = this.db.transaction(["offlineData"], "readwrite");
+            const store = tx.objectStore("offlineData");
+            store.delete(cacheKey);
+          } catch (e) {}
+        }
+        // Consider delete done
+        return { success: true };
+      }
+
+      // Generic failure -> throw to trigger retry/backoff
       throw new Error(`Sync failed: ${resp.status}`);
     }
 
