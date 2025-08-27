@@ -2,14 +2,6 @@ import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { trackPWAEvent } from "../utils/pwa.js";
 import { tRaw } from "../lib/i18n";
-/**
- * PWAUpdatePrompt
- *
- * - Shows a non-intrusive bottom install-style prompt when a new SW is waiting.
- * - Matches InstallPrompt visual style and placement (bottom).
- * - Does NOT auto-refresh. Users choose "Update Now" or "Not now".
- * - On "Update Now" clears UI caches, tells SW to skipWaiting, and waits for controllerchange before reloading.
- */
 
 // Prevent showing the update prompt multiple times within the same session
 let hasShownUpdatePrompt = false;
@@ -35,11 +27,8 @@ const PWAUpdatePrompt = () => {
           // Listen for updatefound on the registration to find a waiting worker
           registration.addEventListener("updatefound", () => {
             const newWorker = registration.installing;
-
             if (!newWorker) return;
             newWorker.addEventListener("statechange", () => {
-              // When the new worker is installed and there's already a controller,
-              // it means an update is waiting and we should prompt the user.
               if (
                 newWorker.state === "installed" &&
                 navigator.serviceWorker.controller
@@ -56,6 +45,7 @@ const PWAUpdatePrompt = () => {
         })
         .catch(() => {});
     }
+    // Also react to app-level signal from virtual:pwa-register
     const onPwaUpdate = () => {
       if (!hasShownUpdatePrompt) {
         hasShownUpdatePrompt = true;
@@ -67,7 +57,7 @@ const PWAUpdatePrompt = () => {
   }, []);
 
   const handleUpdate = async () => {
-    if (!waitingWorker || updatingRef.current) return;
+    if (updatingRef.current) return;
     updatingRef.current = true;
 
     setShowUpdatePrompt(false);
@@ -76,6 +66,28 @@ const PWAUpdatePrompt = () => {
       tRaw("preparingUpdateClearingCache"),
       { duration: 10000, id: "pwa-update" },
     );
+
+    // Install controllerchange listener BEFORE triggering activation to avoid race
+    let reloaded = false;
+    const onControllerChange = () => {
+      if (reloaded) return;
+      reloaded = true;
+      try {
+        navigator.serviceWorker.removeEventListener(
+          "controllerchange",
+          onControllerChange,
+        );
+      } catch {}
+      window.toastWithHaptic.dismiss(toastId);
+      window.toastWithHaptic.success(tRaw("appUpdatedReloading"), {
+        duration: 1500,
+        id: "pwa-update-success",
+      });
+      setTimeout(() => window.location.reload(), 600);
+    };
+    try {
+      navigator.serviceWorker.addEventListener("controllerchange", onControllerChange);
+    } catch {}
 
     try {
       // Clear UI caches so new SW can precache fresh UI assets
@@ -96,52 +108,38 @@ const PWAUpdatePrompt = () => {
         await Promise.all(cachesToDelete.map((name) => caches.delete(name)));
       }
 
-      // Optionally ask SW to preload known UI routes as a best-effort
-      // UI preloading removed temporarily
-      // Prefer virtual:pwa-register’s updater if present
+      // Attempt multiple activation paths for robustness
+      try {
+        const reg = await navigator.serviceWorker.getRegistration();
+        if (reg?.waiting) {
+          try { reg.waiting.postMessage({ type: "SKIP_WAITING" }); } catch {}
+        }
+      } catch {}
+
+      if (waitingWorker) {
+        try { waitingWorker.postMessage({ type: "SKIP_WAITING" }); } catch {}
+      }
+
       if (typeof window.__pwa_update_sw === "function") {
         try { await window.__pwa_update_sw(); } catch {}
       } else {
-        // Ask waiting worker to skip waiting
         try {
-          waitingWorker.postMessage({ type: "SKIP_WAITING" });
-        } catch (err) {
-          // fallback to registration
-          if ("serviceWorker" in navigator) {
-            const reg = await navigator.serviceWorker.getRegistration();
-            if (reg && reg.waiting) {
-              try {
-                reg.waiting.postMessage({ type: "SKIP_WAITING" });
-              } catch (e) {
-                try {
-                  await reg.update();
-                } catch (_) {}
-              }
-            }
-          }
-        }
+          const reg = await navigator.serviceWorker.getRegistration();
+          await reg?.update();
+        } catch {}
       }
 
-      // Wait for controllerchange then reload
-      let reloaded = false;
-      const onControllerChange = () => {
-        if (reloaded) return;
-        reloaded = true;
-        navigator.serviceWorker.removeEventListener(
-          "controllerchange",
-          onControllerChange,
-        );
-        window.toastWithHaptic.dismiss(toastId);
-  window.toastWithHaptic.success(tRaw("appUpdatedReloading"), {
-          duration: 1500,
-          id: "pwa-update-success",
-        });
-        setTimeout(() => window.location.reload(), 600);
-      };
-      navigator.serviceWorker.addEventListener(
-        "controllerchange",
-        onControllerChange,
-      );
+      // Fallback: if no controllerchange in a short while, reload anyway
+      setTimeout(() => {
+        if (!reloaded) {
+          window.toastWithHaptic.dismiss(toastId);
+          window.toastWithHaptic.success(tRaw("appUpdatedReloading"), {
+            duration: 1200,
+            id: "pwa-update-success-fallback",
+          });
+          window.location.reload();
+        }
+      }, 2500);
     } catch (err) {
       console.error("PWA update failed:", err);
       window.toastWithHaptic.dismiss(toastId);
