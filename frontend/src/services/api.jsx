@@ -178,30 +178,41 @@ export const transactionAPI = {
       return Promise.resolve({ data: { data: cached } });
     }
 
-    // Persistent cache key used by offlineStorage
-    const persistentKey = `/api/transactions/dashboard${
-      params && Object.keys(params || {}).length
-        ? `?${new URLSearchParams(params).toString()}`
-        : ""
-    }`;
+  // Persistent cache key used by offlineStorage (normalize param order)
+  const usp = new URLSearchParams(params || {});
+  const persistentKey = `/api/transactions/dashboard${usp.toString() ? `?${usp.toString()}` : ""}`;
 
-    // If offline, try persistent cache in IndexedDB
-  if (typeof window !== "undefined" && !getIsOnline()) {
+    // If offline (including offline startup), try persistent cache in IndexedDB first
+    if (typeof window !== "undefined" && !getIsOnline()) {
       const persisted = await offlineStorage.getCachedAPIResponse(persistentKey);
       if (persisted) {
+        // Seed in-memory for this session too
+        try { setCachedData(cacheKey, persisted.data, 2 * 60 * 1000); } catch {}
         return { data: persisted };
       }
     }
 
-    // Fetch from API
-    const response = await api.get("/transactions/dashboard", { params });
-    // Write to in-memory cache (2 minutes)
-    setCachedData(cacheKey, response.data.data, 2 * 60 * 1000);
-    // Persist entire response payload for robust offline fallback
+    // Try network with graceful fallback to cache
     try {
-      await offlineStorage.cacheAPIResponse(persistentKey, response.data);
-    } catch {}
-    return response;
+      const response = await api.get("/transactions/dashboard", { params });
+      // Write to in-memory cache (2 minutes)
+      setCachedData(cacheKey, response.data.data, 2 * 60 * 1000);
+      // Persist entire response payload for robust offline fallback
+      try {
+        await offlineStorage.cacheAPIResponse(persistentKey, response.data);
+      } catch {}
+      return response;
+    } catch (err) {
+      // Network failed or 401 redirected. Fall back to persisted cache if available.
+      try {
+        const persisted = await offlineStorage.getCachedAPIResponse(persistentKey);
+        if (persisted) {
+          try { setCachedData(cacheKey, persisted.data, 2 * 60 * 1000); } catch {}
+          return { data: persisted };
+        }
+      } catch {}
+      throw err;
+    }
   },
   getReportData: async (params) => {
     const cacheKey = `${cacheKeys.REPORT_DATA}_${JSON.stringify(params || {})}`;
@@ -212,30 +223,39 @@ export const transactionAPI = {
       return Promise.resolve({ data: { data: cached } });
     }
 
-    // Persistent cache key used by offlineStorage
-    const persistentKey = `/api/transactions/dashboard${
-      params && Object.keys(params || {}).length
-        ? `?${new URLSearchParams(params).toString()}`
-        : ""
-    }`;
+  // Persistent cache key used by offlineStorage (normalize param order)
+  const usp = new URLSearchParams(params || {});
+  const persistentKey = `/api/transactions/dashboard${usp.toString() ? `?${usp.toString()}` : ""}`;
 
-    // If offline, try persistent cache in IndexedDB
-  if (typeof window !== "undefined" && !getIsOnline()) {
+    // If offline (including offline startup), try persistent cache first
+    if (typeof window !== "undefined" && !getIsOnline()) {
       const persisted = await offlineStorage.getCachedAPIResponse(persistentKey);
       if (persisted) {
+        try { setCachedData(cacheKey, persisted.data, 2 * 60 * 1000); } catch {}
         return { data: persisted };
       }
     }
 
-    // Fetch from API
-    const response = await api.get("/transactions/dashboard", { params });
-    // Cache the result for 2 minutes (report data can change frequently)
-    setCachedData(cacheKey, response.data.data, 2 * 60 * 1000);
-    // Persist entire response payload for robust offline fallback
+    // Try network with graceful fallback to cache
     try {
-      await offlineStorage.cacheAPIResponse(persistentKey, response.data);
-    } catch {}
-    return response;
+      const response = await api.get("/transactions/dashboard", { params });
+      // Cache the result for 2 minutes (report data can change frequently)
+      setCachedData(cacheKey, response.data.data, 2 * 60 * 1000);
+      // Persist entire response payload for robust offline fallback
+      try {
+        await offlineStorage.cacheAPIResponse(persistentKey, response.data);
+      } catch {}
+      return response;
+    } catch (err) {
+      try {
+        const persisted = await offlineStorage.getCachedAPIResponse(persistentKey);
+        if (persisted) {
+          try { setCachedData(cacheKey, persisted.data, 2 * 60 * 1000); } catch {}
+          return { data: persisted };
+        }
+      } catch {}
+      throw err;
+    }
   },
   create: async (data) => {
     const response = await api.post("/transactions", data);

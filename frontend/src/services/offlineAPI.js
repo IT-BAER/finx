@@ -625,8 +625,10 @@ class OfflineAPI {
         // Sort by YYYY-MM-DD string, newest first (avoids timezone issues)
         return merged.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
       } catch (error) {
-        // Fallback to local transactions when offline or on error
-        return this.getLocalTransactions();
+        // Fallback to local transactions when offline or on error; if none, use snapshot
+        const local = await this.getLocalTransactions();
+        if (local && local.length > 0) return local;
+        return this.getTransactionsSnapshot();
       }
     }
 
@@ -733,8 +735,10 @@ class OfflineAPI {
         "getAllTransactions - Error, returning local transactions only:",
         error.message,
       );
-      // If completely offline, return only local transactions
-      return this.getLocalTransactions();
+  // If completely offline, return local transactions or last snapshot
+  const local = await this.getLocalTransactions();
+  if (local && local.length > 0) return local;
+  return this.getTransactionsSnapshot();
     }
   }
 
@@ -1031,11 +1035,34 @@ class OfflineAPI {
         }
       }
 
-      // Cache recent transactions (last 10)
-      const transactionsResponse = await this.get("/transactions", {
-        limit: 10,
-      });
+      // Cache recent transactions (last 10) and store a full-list snapshot for offline relaunch
+      const transactionsResponse = await this.get("/transactions", { limit: 10 });
       console.log("Cached recent transactions:", transactionsResponse);
+
+      // Persist a lightweight snapshot for list view on offline startup
+      try {
+        const userId = this.getCurrentUserId();
+        if (userId) {
+          const key = `transactions_snapshot_user_${userId}`;
+          const rows = (transactionsResponse && (transactionsResponse.transactions || transactionsResponse.data?.transactions)) || [];
+          const normalized = (rows || []).map((tx) => ({
+            id: tx.id,
+            _tempId: undefined,
+            _isOffline: false,
+            date: tx.date,
+            description: tx.description,
+            amount: tx.amount,
+            type: tx.type,
+            category_name: tx.category_name,
+            source_name: tx.source_name || tx.source || null,
+            target_name: tx.target_name || tx.target || null,
+            user_id: tx.user_id,
+          }));
+          await offlineStorage.storeOfflineData(key, normalized);
+        }
+      } catch (e) {
+        console.warn("Failed to store transactions snapshot", e);
+      }
 
       // Cache each transaction for offline editing
       if (transactionsResponse.transactions) {
@@ -1092,6 +1119,21 @@ class OfflineAPI {
       console.log("All data cached for offline use");
     } catch (error) {
       console.error("Error caching data for offline use:", error);
+    }
+  }
+
+  // Return a snapshot for offline relaunch when no local queue data exists
+  async getTransactionsSnapshot() {
+    try {
+      const userId = this.getCurrentUserId();
+      if (!userId) return [];
+      const key = `transactions_snapshot_user_${userId}`;
+      const rows = (await offlineStorage.getOfflineData(key)) || [];
+      if (!Array.isArray(rows)) return [];
+      // Newest first by date
+      return rows.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+    } catch (e) {
+      return [];
     }
   }
 }
