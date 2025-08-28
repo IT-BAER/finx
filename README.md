@@ -39,6 +39,8 @@ Modern, offline-capable personal finance app with sharing, recurring transaction
 ## ✨ Key Features
 
 - Offline-first PWA: read endpoints cached, queued mutations when offline; server reachability-based connectivity (polls `/api/health`)
+- Realtime updates: transaction changes propagate instantly across devices via SSE; Dashboard and Reports auto-refresh without manual reload
+- Secure offline capture: server does not need public exposure—users can add transactions entirely offline; changes queue locally and sync when the server becomes reachable again
 - Fast mobile UX: early CSS delivery, passive listeners, tuned SW auto-update
 - Transactions with categories, sources, targets; imports with duplicate detection
 - Recurring rules and background processor (systemd scheduler supported)
@@ -318,6 +320,22 @@ npm run migrate-db
    - While offline, it polls every ~3s to detect recovery quickly.
    - Immediate checks on window focus/visibility for snappy recovery/downgrade.
 - Components and data layers subscribe to `serverConnectivityChange` so UI state, caches, and queued mutations react instantly.
+
+### Realtime updates (SSE)
+
+- The backend exposes an authenticated Server-Sent Events stream at `/api/events` (JWT passed via query param for EventSource).
+- The frontend opens a resilient EventSource when logged in and the server is reachable.
+- On transaction create/update/delete (including recurring runs), the server broadcasts to the owner and users with whom data is shared.
+- The client invalidates Dashboard/Reports caches and dispatches `dataRefreshNeeded`; Transactions, Dashboard, and Reports refresh minimal slices automatically.
+- The connection adapts to tab visibility and connectivity, with exponential‑backoff reconnect.
+
+Reverse proxy tip: disable buffering for `/api/events` (e.g., `proxy_buffering off;` in Nginx) so events flush in realtime.
+
+### Secure offline capture (no public exposure required)
+
+- The app works fully offline for adding transactions; mutations are queued in the client and synced later.
+- Connectivity is based on server reachability (not just browser online), so you can keep the API on LAN/VPN only.
+- Users can run the PWA on mobile, record transactions offline, and the app will sync safely when it reconnects—no need to expose the API to the public Internet.
 
 Tuning (optional, set in `frontend/.env` or env for the Vite build):
 
