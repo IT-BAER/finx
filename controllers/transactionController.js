@@ -147,6 +147,16 @@ const createTransaction = async (req, res) => {
       success: true,
       transaction,
     });
+
+    // Emit SSE event to owner and any viewers
+    try {
+      const sse = req.app.get("sse");
+      if (sse) {
+        const viewers = await getAccessibleUserIds(req.user.id, "all");
+        const payload = { type: "transaction:create", transactionId: transaction.id, ownerId: req.user.id, at: Date.now() };
+        sse.broadcastToUsers(viewers, payload);
+      }
+    } catch (e) {}
   } catch (err) {
     console.error("Create transaction error:", err.message);
     res.status(500).json({ message: "Server error" });
@@ -590,6 +600,16 @@ const getTransactionById = async (req, res) => {
       success: true,
       transaction: updatedTransaction,
     });
+    // Emit update event
+    try {
+      const sse = req.app.get("sse");
+      if (sse) {
+        const ownerId = Number(updatedTransaction.user_id);
+        const viewers = await getAccessibleUserIds(ownerId, "all");
+        const payload = { type: "transaction:update", transactionId: updatedTransaction.id, ownerId, at: Date.now() };
+        sse.broadcastToUsers(viewers, payload);
+      }
+    } catch (e) {}
   } catch (err) {
     console.error("Update transaction error:", err.message);
     res.status(500).json({ message: "Server error" });
@@ -643,6 +663,16 @@ const deleteTransaction = async (req, res) => {
       success: true,
       transaction: deletedTransaction,
     });
+    // Emit delete event
+    try {
+      const sse = req.app.get("sse");
+      if (sse && deletedTransaction) {
+        const ownerId = Number(deletedTransaction.user_id);
+        const viewers = await getAccessibleUserIds(ownerId, "all");
+        const payload = { type: "transaction:delete", transactionId: Number(id), ownerId, at: Date.now() };
+        sse.broadcastToUsers(viewers, payload);
+      }
+    } catch (e) {}
   } catch (err) {
     console.error("Delete transaction error:", err.message);
     res.status(500).json({ message: "Server error" });

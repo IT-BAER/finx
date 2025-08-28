@@ -139,6 +139,30 @@ app.use("/api/admin", require("./routes/admin"));
 // Utilities for recurring testing (admin-only)
 app.use("/api/recurring-tools", require("./routes/recurring-tools"));
 
+// SSE events (authenticated). Implemented here to allow global broadcaster singleton.
+const authSSE = require("./middleware/authSSE");
+const { createEventBroadcaster } = require("./utils/sse");
+const sse = createEventBroadcaster();
+
+app.get("/api/events", authSSE, (req, res) => {
+  // Set headers for SSE
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  // Allow CORS for SSE endpoint consistent with app CORS policy
+  res.flushHeaders && res.flushHeaders();
+
+  const userId = req.user?.id;
+  const client = sse.addClient(res, userId);
+
+  // Send an initial ping with server time
+  sse.send(client, { type: "hello", time: Date.now() });
+
+  req.on("close", () => {
+    sse.removeClient(client.id);
+  });
+});
+
 // 404 handler for unknown routes
 app.use((req, res, next) => {
   if (req.path === "/" || req.path === "/health" || req.path === "/ready")
@@ -168,7 +192,7 @@ try {
   const oneDayMs = 24 * 60 * 60 * 1000;
   scheduler.scheduleJob(
     "recurring-processor",
-    recurringProcessor.processRecurringJobs,
+    () => recurringProcessor.processRecurringJobs(app),
     oneDayMs,
     initialDelay,
   );
@@ -176,7 +200,7 @@ try {
   if (process.env.NODE_ENV !== "production") {
     setTimeout(() => {
       recurringProcessor
-        .processRecurringJobs()
+        .processRecurringJobs(app)
         .then((s) => console.info("Boot recurring run stats:", s))
         .catch((e) => console.error("Boot recurring run failed:", e));
     }, 2000);
@@ -205,6 +229,9 @@ const { runAutoMigrations } = require("./utils/autoMigrate");
       `Server is running on ${HOST}:${PORT} (${HOST === "0.0.0.0" ? "all interfaces" : "localhost only"})`,
     );
   });
+
+  // Expose broadcaster globally for controllers to publish events without import cycles
+  app.set("sse", sse);
 
   // Graceful shutdown
   function shutdown(signal) {

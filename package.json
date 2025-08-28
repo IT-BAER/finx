@@ -12,13 +12,13 @@
     "frontend:install": "cd frontend && npm ci",
     "frontend:build": "cd frontend && npm run build",
     "frontend:serve": "cd frontend && npm run serve",
-  "init-db": "node scripts/init-db.js",
-  "migrate-db": "node scripts/migrate-db.js",
-  "cleanup-db": "node scripts/cleanup-sample-data.js",
-  "docker:build": "docker-compose build frontend",
-  "docker:up:build": "docker-compose up -d --build",
-  "audit": "npm audit --audit-level moderate",
-  "smoke:transactions": "node scripts/smoke-test-transactions.js",
+    "init-db": "node scripts/init-db.js",
+    "migrate-db": "node scripts/migrate-db.js",
+    "cleanup-db": "node scripts/cleanup-sample-data.js",
+    "docker:build": "docker-compose build frontend",
+    "docker:up:build": "docker-compose up -d --build",
+    "audit": "npm audit --audit-level moderate",
+    "smoke:transactions": "node scripts/smoke-test-transactions.js",
     "update-deps": "npm update",
     "check": "npm run lint && npm run frontend:build"
   },
@@ -42,7 +42,8 @@
     "express-rate-limit": "^7.5.1",
     "helmet": "^7.2.0",
     "jsonwebtoken": "^9.0.2",
-    "pg": "^8.13.1"
+    "pg": "^8.13.1",
+    "uuid": "^9.0.1"
   },
   "devDependencies": {
     "nodemon": "^3.1.9"

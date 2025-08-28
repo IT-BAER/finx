@@ -25,6 +25,7 @@ import Footer from "./components/Footer.jsx";
 import InstallPrompt from "./components/InstallPrompt.jsx";
 import PWAUpdatePrompt from "./components/PWAUpdatePrompt.jsx";
 import { lazy, Suspense } from "react";
+import "./services/realtime.js";
 
 // Lazy load swipeable routes for better performance
 const Dashboard = lazy(() => import("./pages/Dashboard.jsx"));

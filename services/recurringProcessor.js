@@ -39,7 +39,7 @@ function computeNextDate(
   return next;
 }
 
-async function processRecurringJobs() {
+async function processRecurringJobs(app = null) {
   console.log("Recurring processor: scanning for due recurring entries...");
 
   // Process recurring rules in batches to avoid loading all rows into memory.
@@ -106,7 +106,7 @@ async function processRecurringJobs() {
         }
 
         // Create a new transaction record for this occurrence
-        const created = await Transaction.create(
+  const created = await Transaction.create(
           r.user_id,
           r.category_id,
           null, // source_id - keep null because recurring stores source name, not id
@@ -133,6 +133,14 @@ async function processRecurringJobs() {
         console.log(
           `Recurring processor: created transaction ${created.id} for recurring ${r.id} on ${nextDate.toISOString().substring(0, 10)}`,
         );
+        // Notify via SSE (best-effort)
+        try {
+          const sse = app && app.get ? app.get("sse") : null;
+          if (sse) {
+            sse.broadcastToUser(r.user_id, { type: "transaction:create", transactionId: created.id, ownerId: r.user_id, at: Date.now(), source: "recurring" });
+            sse.broadcast({ type: "dashboard:summaryHint", ownerId: r.user_id, at: Date.now() });
+          }
+        } catch (e) {}
       } catch (e) {
         console.error("Error processing recurring entry", r.id, e);
         errors++;
