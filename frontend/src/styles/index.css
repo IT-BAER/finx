@@ -620,7 +620,7 @@ footer {
   }
 
   .form-input-with-prefix {
-  @apply pl-8 h-[45px];
+  @apply pl-10 h-[45px];
   }
 }
 
@@ -952,7 +952,7 @@ body {
   }
 
   .form-input-with-prefix {
-  @apply pl-8;
+    @apply pl-10;
   }
 }
 
