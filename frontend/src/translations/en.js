@@ -115,6 +115,9 @@ export default {
   delete: "Delete",
   noTransactions: "No transactions found",
   searchTransactions: "Search transactions...",
+  noResults: "No matching transactions",
+  tryDifferentSearch: "Try a different keyword or clear the search.",
+  clear: "Clear",
   incomeTracking: "Income Tracking",
   disableIncomeTracking: "Disable Income Tracking",
   incomeTrackingDescription:

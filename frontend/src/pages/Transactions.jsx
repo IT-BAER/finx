@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import offlineAPI from "../services/offlineAPI.js";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "../hooks/useTranslation";
 import { useAuth } from "../contexts/AuthContext";
 import Button from "../components/Button";
@@ -8,6 +8,7 @@ import Icon from "../components/Icon.jsx";
 import { motion } from "framer-motion";
 import { motionTheme } from "../utils/motionTheme";
 import useOfflineAPI from "../hooks/useOfflineAPI.js";
+import Input from "../components/Input.jsx";
 
 const Transactions = () => {
   const navigate = useNavigate();
@@ -28,6 +29,13 @@ const Transactions = () => {
   const [serverOffset, setServerOffset] = useState(0);
   // Page size depends on device: 20 desktop, 10 mobile
   const [pageSize, setPageSize] = useState(20);
+
+  // Search state (URL-powered) with tiny debounce
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialQ = useMemo(() => searchParams.get("q") || "", []);
+  const [searchInput, setSearchInput] = useState(initialQ);
+  const [debouncedQuery, setDebouncedQuery] = useState(initialQ);
+  const debounceTimerRef = useRef(null);
 
   // Process transactions with permission flags
   const transactions = useMemo(() => {
@@ -59,6 +67,87 @@ const Transactions = () => {
       return { ...tx, readOnly: !canEdit };
     });
   }, [rawTransactions, user]);
+
+  // Debounce the search input and sync to URL param
+  useEffect(() => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+    debounceTimerRef.current = setTimeout(() => {
+      setDebouncedQuery(searchInput);
+      const q = searchInput.trim();
+      const next = new URLSearchParams(searchParams);
+      if (q) next.set("q", q);
+      else next.delete("q");
+      setSearchParams(next, { replace: true });
+    }, 150);
+    return () => {
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    };
+  }, [searchInput]);
+
+  const isSearching = debouncedQuery.trim().length > 0;
+
+  // When search is cleared, refresh the first page to restore pagination baseline
+  useEffect(() => {
+    if (!isSearching) {
+      setServerOffset(0);
+      loadTransactions(0, false, pageSize);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isSearching]);
+
+  // Build a lightweight search index and filter across columns
+  const filteredTransactions = useMemo(() => {
+    // Normalizer: case-insensitive and accent/diacritic-insensitive
+    const normalize = (s) =>
+      (s || "")
+        .toString()
+        .toLowerCase()
+        .normalize("NFD")
+        // Remove combining diacritical marks (covers umlauts and many accents)
+        .replace(/[\u0300-\u036f]/g, "");
+
+    const q = debouncedQuery.trim().toLowerCase();
+    if (!q) return transactions;
+
+    const tokens = q
+      .split(/\s+/)
+      .map((s) => normalize(s))
+      .filter(Boolean);
+    if (tokens.length === 0) return transactions;
+
+    return transactions.filter((tx) => {
+      // Join all searchable fields
+      const dateStr = normalize(formatDate(tx.date));
+      const rawDate = normalize(
+        typeof tx.date === "string" ? tx.date.slice(0, 10) : "",
+      );
+      const desc = normalize(tx.description);
+      const cat = normalize(tx.category_name || tx.category);
+      const source = normalize(tx.source_name || tx.source);
+      const target = normalize(tx.target_name || tx.target);
+      const amountRaw = normalize(tx.amount);
+      let amountPretty = "";
+      try {
+        amountPretty = normalize(
+          `${tx.type === "income" ? "+" : "-"}${formatCurrency(
+            parseFloat(tx.amount || 0),
+          )}`,
+        );
+      } catch (e) {}
+      const typeStr = normalize(tx.type);
+      const recurring = tx.recurring_id ? "recurring" : "";
+
+      const hay = `${dateStr} ${rawDate} ${desc} ${cat} ${source} ${target} ${amountRaw} ${amountPretty} ${typeStr} ${recurring}`;
+
+      // Every token must match (AND semantics)
+      for (const t of tokens) {
+        if (!hay.includes(t)) return false;
+      }
+      return true;
+    });
+  }, [transactions, debouncedQuery, formatDate, formatCurrency]);
 
   // Load transactions with pagination parameters
   const loadTransactions = async (
@@ -137,6 +226,7 @@ const Transactions = () => {
   // Load more transactions when scrolling (only when online)
   const loadMore = useCallback(() => {
     if (!isOnline) return; // disable infinite loading while offline
+    if (isSearching) return; // disable infinite loading while searching
     if (hasMore && !loading) {
       loadTransactions(serverOffset, true, pageSize).then(() => {
         try {
@@ -149,7 +239,7 @@ const Transactions = () => {
         } catch (e) {}
       });
     }
-  }, [hasMore, loading, serverOffset, isOnline, pageSize]);
+  }, [hasMore, loading, serverOffset, isOnline, pageSize, isSearching]);
 
   // Set up intersection observer for infinite scrolling
   // Use a single sentinel element (mobile) or the last row (desktop).
@@ -405,15 +495,58 @@ const Transactions = () => {
   }
 
   // Group transactions by date for mobile view
-  const groupedTransactions = groupTransactionsByDate(transactions);
+  const groupedTransactions = groupTransactionsByDate(filteredTransactions);
 
   return (
   <div className="container mx-auto px-4 pt-4 md:pt-0 pb-4 min-h-0">
-      <div className="flex justify-between items-center mb-8">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
         <h1 className="display-2">{t("transactions")}</h1>
+        <div className="relative w-full sm:w-72" role="search">
+          <Icon
+            src="/icons/search.svg"
+            size="sm"
+            variant="strong"
+            aria-hidden={true}
+            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 opacity-70"
+          />
+          <Input
+            type="search"
+            id="tx-search"
+            name="q"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            placeholder={t("search") || "Search"}
+            className={`form-input-with-prefix pr-10 h-10 rounded-xl bg-[var(--surface)] border border-[color-mix(in_srgb,var(--accent)_10%,transparent)]
+              focus:ring-2 focus:ring-[color-mix(in_srgb,var(--accent)_40%,transparent)] focus:border-transparent`}
+            aria-label={t("searchTransactions") || "Search transactions"}
+            autoComplete="off"
+          />
+          {searchInput && (
+            <button
+              type="button"
+              onClick={() => setSearchInput("")}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-sm rounded-full px-2 py-1 text-[var(--muted-text)] hover:text-[var(--text)] focus:outline-none"
+              aria-label={t("clear") || "Clear"}
+            >
+              ×
+            </button>
+          )}
+        </div>
       </div>
 
-      {transactions.length > 0 ? (
+      {isSearching && filteredTransactions.length === 0 ? (
+        <div className="card">
+          <div className="card-body py-10 text-center">
+            <Icon src="/icons/search.svg" size="lg" variant="default" aria-hidden={true} className="mx-auto opacity-60" />
+            <h3 className="mt-4 text-lg font-medium text-gray-900 dark:text-gray-200">
+              {t("noResults") || "No matching transactions"}
+            </h3>
+            <p className="mt-2 text-gray-500 dark:text-gray-400">
+              {t("tryDifferentSearch") || "Try a different keyword or clear the search."}
+            </p>
+          </div>
+        </div>
+      ) : transactions.length > 0 ? (
         <>
           {/* Mobile view - Grouped by date */}
           <div className="md:hidden space-y-6">
@@ -601,11 +734,11 @@ const Transactions = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                    {transactions.map((transaction, index) => (
+                    {filteredTransactions.map((transaction, index) => (
                       <tr
                         key={transaction.id}
                         ref={
-                          index === transactions.length - 1
+                          index === filteredTransactions.length - 1 && !isSearching
                             ? lastTransactionRef
                             : null
                         }
