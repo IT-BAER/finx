@@ -299,12 +299,9 @@ const Dashboard = () => {
 
   const refreshDashboardData = async () => {
     try {
-      const { getIsOnline } = await import("../services/connectivity.js");
-      if (getIsOnline()) {
-        const data = await loadDashboardData();
-        if (!isCurrentPage.current) return;
-        setDashboardData(data);
-      }
+      const data = await loadDashboardData();
+      if (!isCurrentPage.current) return;
+      setDashboardData(data);
     } catch (err) {
       console.error("Error refreshing dashboard data:", err);
     }

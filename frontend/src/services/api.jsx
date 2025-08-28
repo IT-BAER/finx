@@ -225,7 +225,7 @@ export const transactionAPI = {
 
   // Persistent cache key used by offlineStorage (normalize param order)
   const usp = new URLSearchParams(params || {});
-  const persistentKey = `/api/transactions/dashboard${usp.toString() ? `?${usp.toString()}` : ""}`;
+  const persistentKey = `/api/transactions/report${usp.toString() ? `?${usp.toString()}` : ""}`;
 
     // If offline (including offline startup), try persistent cache first
     if (typeof window !== "undefined" && !getIsOnline()) {
@@ -238,7 +238,7 @@ export const transactionAPI = {
 
     // Try network with graceful fallback to cache
     try {
-      const response = await api.get("/transactions/dashboard", { params });
+  const response = await api.get("/transactions/dashboard", { params });
       // Cache the result for 2 minutes (report data can change frequently)
       setCachedData(cacheKey, response.data.data, 2 * 60 * 1000);
       // Persist entire response payload for robust offline fallback

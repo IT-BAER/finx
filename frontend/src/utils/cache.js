@@ -118,3 +118,16 @@ export const clearCache = () => {
 export const clearCacheKey = (key) => {
   cache.remove(key);
 };
+
+// Remove all cache entries whose keys start with the given prefix
+export const removeByPrefix = (prefix) => {
+  if (!prefix) return;
+  try {
+    const { keys } = cache.getStats();
+    for (const k of keys) {
+      if (typeof k === "string" && k.startsWith(prefix)) {
+        cache.remove(k);
+      }
+    }
+  } catch {}
+};

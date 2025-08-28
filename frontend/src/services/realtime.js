@@ -1,6 +1,7 @@
 // Realtime updates via SSE with adaptive reconnect and visibility/connectivity awareness
 import { getAuthToken } from "../utils/auth.jsx";
 import connectivity from "./connectivity.js";
+import cache, { removeByPrefix, cacheKeys } from "../utils/cache.js";
 
 class Realtime {
   constructor() {
@@ -107,11 +108,15 @@ class Realtime {
     const t = String(msg.type);
     if (t.startsWith("transaction:")) {
       // Notify transactions list to refresh first page
-      window.dispatchEvent(new CustomEvent("dataRefreshNeeded"));
+  // Invalidate dashboard/report caches so next fetch is fresh
+  removeByPrefix(cacheKeys.DASHBOARD_DATA);
+  removeByPrefix(cacheKeys.REPORT_DATA);
+  window.dispatchEvent(new CustomEvent("dataRefreshNeeded"));
     }
     if (t.startsWith("dashboard:") || t.startsWith("transaction:")) {
       // Let dashboard/reports decide what to refresh
-      window.dispatchEvent(new CustomEvent("dataRefreshNeeded"));
+  removeByPrefix(cacheKeys.DASHBOARD_DATA);
+  window.dispatchEvent(new CustomEvent("dataRefreshNeeded"));
     }
   }
 }

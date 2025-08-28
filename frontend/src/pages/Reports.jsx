@@ -94,66 +94,18 @@ const Reports = () => {
   // Function to refresh data in the background - only when online
   const refreshReportsData = async () => {
     try {
-      // Only refresh data when online
-      const { getIsOnline } = await import("../services/connectivity.js");
-      if (getIsOnline()) {
-        const { startDate, endDate } = getDateRange();
-        const allTransactions = await offlineAPI.getAllTransactions();
-
-        // If offlineAPI returned nothing, skip updating to avoid zeroing UI
-        if (!allTransactions || allTransactions.length === 0) {
-          // No data to refresh; keep existing state
-          return;
-        }
-
-        // Filter transactions for the date range
-        const filteredTransactions = allTransactions.filter((tx) => {
-          const txDate = new Date(tx.date);
-          const start = new Date(startDate);
-          const end = new Date(endDate);
-          end.setHours(23, 59, 59, 999); // Set to end of day
-          return txDate >= start && txDate <= end;
-        });
-
-        // Process data for the report
-        const processedData = processReportData(
-          filteredTransactions,
-          timeRange,
-          startDate,
-          endDate,
-        );
-
-        // Decide if processedData is meaningful before overwriting UI state.
-        const hasMeaningfulReport =
-          processedData &&
-          processedData.reportData &&
-          // summary totals not both zero
-          ((processedData.reportData.summary?.total_income || 0) !== 0 ||
-            (processedData.reportData.summary?.total_expenses || 0) !== 0 ||
-            // or category data has non-zero entry
-            processedData.reportData.category?.datasets?.[0]?.data?.some(
-              (v) => v && v !== 0,
-            ) ||
-            // or trend labels exist
-            processedData.reportData.trend?.labels?.length > 0 ||
-            // or daily expenses data has entries
-            (processedData.dailyExpensesData &&
-              processedData.dailyExpensesData.length > 0));
-
-        if (hasMeaningfulReport) {
-          // Update state with new data
-          setReportData(processedData.reportData);
-          setDailyExpensesData(processedData.dailyExpensesData);
-          if (!loading) {
-            console.log("Reports data refreshed in background");
-          }
-        } else {
-          // Do not overwrite existing data with empty/zero payload
-          console.log(
-            "Background refresh returned no meaningful data; keeping existing report state",
-          );
-        }
-      }
+      const { startDate, endDate } = getDateRange();
+      // Use API layer which now has persistent cache + invalidation via SSE
+      const res = await transactionAPI.getReportData({ startDate, endDate });
+      const payload = res?.data?.data || res?.data;
+      if (!payload) return;
+      // Minimal shape handling: keep existing components working
+      const processedData = {
+        reportData: payload,
+        dailyExpensesData: payload.dailyExpenses || [],
+      };
+      setReportData(processedData.reportData);
+      setDailyExpensesData(processedData.dailyExpensesData);
     } catch (err) {
       console.error("Error refreshing reports data:", err);
     }
