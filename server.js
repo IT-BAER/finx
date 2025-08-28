@@ -77,7 +77,18 @@ app.use((req, res, next) => {
   res.vary("Origin");
   next();
 });
-app.use(compression());
+// Compression: skip SSE and similar streaming endpoints
+app.use(
+  compression({
+    filter: (req, res) => {
+      // Do not compress SSE
+      if (req.path === "/api/events") return false;
+      const accept = req.headers["accept"] || "";
+      if (accept.includes("text/event-stream")) return false;
+      return compression.filter(req, res);
+    },
+  }),
+);
 
 // General rate limiting - more appropriate for web applications
 const generalLimiter = rateLimit({
@@ -149,6 +160,9 @@ app.get("/api/events", authSSE, (req, res) => {
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
   res.setHeader("Connection", "keep-alive");
+  // Disable proxy buffering where supported
+  res.setHeader("X-Accel-Buffering", "no");
+  res.setHeader("Cache-Control", "no-cache, no-transform");
   // Allow CORS for SSE endpoint consistent with app CORS policy
   res.flushHeaders && res.flushHeaders();
 

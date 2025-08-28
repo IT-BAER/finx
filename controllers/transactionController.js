@@ -3,7 +3,7 @@ const RecurringTransaction = require("../models/RecurringTransaction");
 const Category = require("../models/Category");
 const User = require("../models/User");
 const db = require("../config/db");
-const { getAccessibleUserIds, validateAsUserId, getSharingPermissionMeta } = require("../utils/access");
+const { getAccessibleUserIds, validateAsUserId, getSharingPermissionMeta, getUsersSharedWithOwner } = require("../utils/access");
 
 // Create transaction
 const createTransaction = async (req, res) => {
@@ -148,13 +148,14 @@ const createTransaction = async (req, res) => {
       transaction,
     });
 
-    // Emit SSE event to owner and any viewers
+  // Emit SSE event to owner and any viewers
     try {
       const sse = req.app.get("sse");
       if (sse) {
-        const viewers = await getAccessibleUserIds(req.user.id, "all");
-        const payload = { type: "transaction:create", transactionId: transaction.id, ownerId: req.user.id, at: Date.now() };
-        sse.broadcastToUsers(viewers, payload);
+    const sharedWith = await getUsersSharedWithOwner(req.user.id);
+    const payload = { type: "transaction:create", transactionId: transaction.id, ownerId: req.user.id, at: Date.now() };
+    sse.broadcastToUser(req.user.id, payload);
+    if (sharedWith && sharedWith.length) sse.broadcastToUsers(sharedWith, payload);
       }
     } catch (e) {}
   } catch (err) {
@@ -600,14 +601,15 @@ const getTransactionById = async (req, res) => {
       success: true,
       transaction: updatedTransaction,
     });
-    // Emit update event
+  // Emit update event
     try {
       const sse = req.app.get("sse");
       if (sse) {
         const ownerId = Number(updatedTransaction.user_id);
-        const viewers = await getAccessibleUserIds(ownerId, "all");
-        const payload = { type: "transaction:update", transactionId: updatedTransaction.id, ownerId, at: Date.now() };
-        sse.broadcastToUsers(viewers, payload);
+    const sharedWith = await getUsersSharedWithOwner(ownerId);
+    const payload = { type: "transaction:update", transactionId: updatedTransaction.id, ownerId, at: Date.now() };
+    sse.broadcastToUser(ownerId, payload);
+    if (sharedWith && sharedWith.length) sse.broadcastToUsers(sharedWith, payload);
       }
     } catch (e) {}
   } catch (err) {
@@ -663,14 +665,15 @@ const deleteTransaction = async (req, res) => {
       success: true,
       transaction: deletedTransaction,
     });
-    // Emit delete event
+  // Emit delete event
     try {
       const sse = req.app.get("sse");
       if (sse && deletedTransaction) {
         const ownerId = Number(deletedTransaction.user_id);
-        const viewers = await getAccessibleUserIds(ownerId, "all");
-        const payload = { type: "transaction:delete", transactionId: Number(id), ownerId, at: Date.now() };
-        sse.broadcastToUsers(viewers, payload);
+    const sharedWith = await getUsersSharedWithOwner(ownerId);
+    const payload = { type: "transaction:delete", transactionId: Number(id), ownerId, at: Date.now() };
+    sse.broadcastToUser(ownerId, payload);
+    if (sharedWith && sharedWith.length) sse.broadcastToUsers(sharedWith, payload);
       }
     } catch (e) {}
   } catch (err) {

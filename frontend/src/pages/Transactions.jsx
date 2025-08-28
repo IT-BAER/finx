@@ -256,7 +256,7 @@ const Transactions = () => {
     };
 
     // Listen for general data refresh needs
-    const handleDataRefreshNeeded = () => {
+  const handleDataRefreshNeeded = () => {
       // Reload first page when data refresh is needed. If offline and fetch yields nothing, keep current list.
       setServerOffset(0);
       loadTransactions(0, false, pageSize);

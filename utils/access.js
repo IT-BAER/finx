@@ -28,6 +28,23 @@ async function getAccessibleUserIds(requesterId, dataType = "all") {
 }
 
 /**
+ * Returns a list of user IDs who have been granted access by the given owner.
+ * This is the inverse of getAccessibleUserIds and is used to broadcast updates
+ * to all clients that can see the owner's data.
+ */
+async function getUsersSharedWithOwner(ownerUserId) {
+  const query = `
+    SELECT shared_with_user_id
+    FROM sharing_permissions
+    WHERE owner_user_id = $1
+  `;
+  const res = await db.query(query, [ownerUserId]);
+  const ids = res.rows.map((r) => Number(r.shared_with_user_id)).filter((n) => !Number.isNaN(n));
+  // Deduplicate and exclude self just in case
+  return Array.from(new Set(ids)).filter((id) => Number(id) !== Number(ownerUserId));
+}
+
+/**
  * Validates if a requested asUserId is within the accessible user ids for this requester.
  * Returns a single userId (number) to filter on if valid, otherwise null.
  */
@@ -105,4 +122,5 @@ module.exports = {
   getAccessibleUserIds,
   validateAsUserId,
   getSharingPermissionMeta,
+  getUsersSharedWithOwner,
 };
