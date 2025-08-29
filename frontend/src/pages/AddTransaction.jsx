@@ -163,15 +163,17 @@ const AddTransaction = () => {
       setLoading(true);
       setError("");
     
-      // Validation
-      if ((formData.type !== "income" && !formData.category) || !formData.amount || !formData.date) {
+  // Validation
+  const catTrim = String(formData.category || "").trim();
+  const srcTrim = String(formData.source || "").trim();
+  if ((formData.type !== "income" && !catTrim) || !formData.amount || !formData.date) {
         setError(t("pleaseFillAllRequiredFields"));
         setLoading(false);
         return;
       }
 
       // Source is required
-      if (!formData.source) {
+  if (!srcTrim) {
         setError(t("pleaseProvideSource") || t("pleaseFillAllRequiredFields"));
         setLoading(false);
         return;
