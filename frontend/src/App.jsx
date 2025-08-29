@@ -215,6 +215,27 @@ function App() {
   );
   const isMobileDevice = isMobile();
 
+  // Mobile-only: warm up compositor layers and preload swipe engine to avoid first-swipe stutter
+  useEffect(() => {
+    if (!isMobileDevice) return;
+    // Add warmup class to promote transform layers briefly
+    document.body.classList.add("warmup-swipe");
+    const warmupTimer = setTimeout(() => {
+      document.body.classList.remove("warmup-swipe");
+    }, 1000);
+
+    // Preload swipe engine chunk shortly after mount, without blocking initial paint
+    const preloadTimer = setTimeout(() => {
+      import("./components/SwipeableRoutesInner.jsx").catch(() => {});
+    }, 250);
+
+    return () => {
+      clearTimeout(warmupTimer);
+      clearTimeout(preloadTimer);
+      document.body.classList.remove("warmup-swipe");
+    };
+  }, [isMobileDevice]);
+
   useEffect(() => {
     const routeImports = {
       "/dashboard": () => import("./pages/Dashboard.jsx"),

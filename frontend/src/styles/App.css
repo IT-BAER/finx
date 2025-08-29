@@ -293,6 +293,15 @@ body {
   will-change: transform;
 }
 
+/* Short-lived warm-up to promote layers on first interaction without changing visuals */
+body.warmup-swipe .swipeable-container,
+body.warmup-swipe .swipeable-page,
+body.warmup-swipe .motion-div {
+  will-change: transform;
+  -webkit-transform: translate3d(0, 0, 0);
+  transform: translate3d(0, 0, 0);
+}
+
 /* Swipe hint indicators - only visible on mobile */
 @keyframes pulse {
   0%,
