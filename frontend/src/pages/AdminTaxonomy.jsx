@@ -26,6 +26,29 @@ const AdminTaxonomy = () => {
   const [consolidateTo, setConsolidateTo] = useState("");
   const [showConsolidateModal, setShowConsolidateModal] = useState(false);
 
+  // Clear selections and modal state when switching between tabs
+  useEffect(() => {
+    setSelectedItems([]);
+    setShowDeleteModal(false);
+    setShowRenameModal(false);
+    setShowConsolidateModal(false);
+    setConsolidateFrom("");
+    setConsolidateTo("");
+    setNewName("");
+  }, [activeTab]);
+
+  // When opening consolidate modal, prefill from/to if two (or more) selected
+  useEffect(() => {
+    if (!showConsolidateModal) return;
+    if (selectedItems && selectedItems.length > 0) {
+      setConsolidateFrom((prev) => prev || String(selectedItems[0]));
+      if (selectedItems.length > 1) {
+        const second = selectedItems.find((id) => String(id) !== String(selectedItems[0]));
+        if (second) setConsolidateTo((prev) => prev || String(second));
+      }
+    }
+  }, [showConsolidateModal]);
+
   useEffect(() => {
     if (!user || !user.is_admin) {
       navigate("/dashboard");
@@ -185,21 +208,21 @@ const AdminTaxonomy = () => {
 
   const getAvailableOptions = () => {
     const items = getItems();
-    // For sources, restrict consolidation target to same owner to avoid backend 400
+    // Start with selected items if any are selected; otherwise fall back to all items
+    let pool = Array.isArray(selectedItems) && selectedItems.length > 0
+      ? items.filter((item) => selectedItems.includes(item.id))
+      : items;
+
+    // For sources, restrict consolidation target to same owner as the chosen "from"
     if (activeTab === "sources" && consolidateFrom) {
-      const fromItem = items.find(
-        (i) => String(i.id) === String(consolidateFrom),
-      );
+      const fromItem = items.find((i) => String(i.id) === String(consolidateFrom));
       if (fromItem && fromItem.user_id != null) {
         const ownerId = Number(fromItem.user_id);
-        return items.filter(
-          (item) =>
-            !selectedItems.includes(item.id) &&
-            Number(item.user_id) === ownerId,
-        );
+        pool = pool.filter((item) => Number(item.user_id) === ownerId);
       }
     }
-    return items.filter((item) => !selectedItems.includes(item.id));
+    // Exclude the currently selected "from" item only
+    return pool.filter((item) => String(item.id) !== String(consolidateFrom));
   };
 
   if (loading) {

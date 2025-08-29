@@ -33,13 +33,14 @@ const Reports = () => {
   const { isIncomeTrackingDisabled } = useAuth();
   const { dark } = useTheme();
   const isCurrentPage = useRef(true);
+  const [refreshTick, setRefreshTick] = useState(0);
 
   useEffect(() => {
     // Set up visibility change listener for background data refresh
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible" && isCurrentPage.current) {
-        // Refresh data when page becomes visible
-        refreshReportsData();
+        // Trigger a full rebuild of processed charts on resume
+        setRefreshTick((x) => x + 1);
       }
     };
 
@@ -47,7 +48,8 @@ const Reports = () => {
 
     // Listen for global data refresh events
     const handleDataRefresh = () => {
-      refreshReportsData();
+      // Trigger a full rebuild of processed charts on data refresh events
+      setRefreshTick((x) => x + 1);
     };
     window.addEventListener("dataRefreshNeeded", handleDataRefresh);
 
@@ -93,22 +95,8 @@ const Reports = () => {
 
   // Function to refresh data in the background - only when online
   const refreshReportsData = async () => {
-    try {
-      const { startDate, endDate } = getDateRange();
-      // Use API layer which now has persistent cache + invalidation via SSE
-      const res = await transactionAPI.getReportData({ startDate, endDate });
-      const payload = res?.data?.data || res?.data;
-      if (!payload) return;
-      // Minimal shape handling: keep existing components working
-      const processedData = {
-        reportData: payload,
-        dailyExpensesData: payload.dailyExpenses || [],
-      };
-      setReportData(processedData.reportData);
-      setDailyExpensesData(processedData.dailyExpensesData);
-    } catch (err) {
-      console.error("Error refreshing reports data:", err);
-    }
+    // Avoid setting raw API payloads which would blank charts; instead, trigger full reload
+    setRefreshTick((x) => x + 1);
   };
 
   // Helper function to format date as short weekday based on language
@@ -1098,7 +1086,7 @@ const Reports = () => {
     };
 
     loadReportData();
-  }, [timeRange, currentDate]); // Removed t and formatDate to prevent infinite re-renders
+  }, [timeRange, currentDate, refreshTick]); // include refreshTick to rebuild on resume/data refresh
 
   // Calculate total expenses for percentage calculation
   const totalExpenses =
@@ -1539,62 +1527,120 @@ const Reports = () => {
               {t("expensesByCategory")}
             </h3>
             {reportData?.category?.labels?.length > 0 ? (
-              <motion.div
-                key={`category-chart-${timeRange}`}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.3 }}
-                className="w-full"
-                style={{ height: "auto", minHeight: 0 }}
-              >
-                <Pie
-                  data={reportData.category}
-                  options={{
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-            legend: {
-                        position: "right",
-                        labels: {
-              color: dark ? "#ffffff" : "#374151", // Bright white for dark mode, darker gray for light mode
-                          font: {
-                            size: 12,
-                            weight: "600",
+              <>
+                {/* Mobile: custom scrollable legend with amounts */}
+                <div className="md:hidden">
+                  <motion.div
+                    key={`category-chart-mobile-${timeRange}`}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.3 }}
+                    className="w-full"
+                    style={{ height: "auto", minHeight: 0 }}
+                  >
+                    <Pie
+                      data={reportData.category}
+                      options={{
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                          legend: { display: false },
+                          title: { display: false },
+                          datalabels: {
+                            color: "#fff",
+                            font: { weight: "bold", size: 12 },
+                            formatter: (value, context) => {
+                              const total = context.dataset.data.reduce((acc, v) => acc + v, 0);
+                              const pct = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                              return pct > 5 ? `${pct}%` : "";
+                            },
+                            anchor: "center",
+                            align: "center",
                           },
-                          usePointStyle: true,
-                          boxWidth: 12,
-                          padding: 15,
                         },
-                      },
-                      title: {
-                        display: false,
-                      },
-                      datalabels: {
-                        color: "#fff",
-                        font: {
-                          weight: "bold",
-                          size: 12,
+                        cutout: "60%",
+                      }}
+                    />
+                  </motion.div>
+                  {/* Custom legend: single scrollable column with name + amount */}
+                  <div className="mt-4 max-h-48 overflow-y-auto divide-y divide-gray-200 dark:divide-gray-700">
+                    {reportData.category.labels.map((label, idx) => {
+                      const amount = Number(
+                        reportData.category.datasets?.[0]?.data?.[idx] || 0,
+                      );
+                      const bg = reportData.category.datasets?.[0]?.backgroundColor || [];
+                      const color = bg[idx % bg.length] || "#999";
+                      return (
+                        <div key={`${label}-${idx}`} className="py-2 flex items-center justify-between">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: color }} aria-hidden="true" />
+                            <span className="text-sm text-gray-700 dark:text-gray-300 font-medium truncate">{label}</span>
+                          </div>
+                          <span className="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap ml-3">{formatCurrency(amount)}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Desktop: keep legend on the right */}
+                <div className="hidden md:block">
+                  <motion.div
+                    key={`category-chart-desktop-${timeRange}`}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.3 }}
+                    className="w-full"
+                    style={{ height: "auto", minHeight: 0 }}
+                  >
+                    <Pie
+                      data={reportData.category}
+                      options={{
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                          legend: {
+                            position: "right",
+                            labels: {
+                              color: dark ? "#ffffff" : "#374151",
+                              font: { size: 12, weight: "600" },
+                              usePointStyle: true,
+                              boxWidth: 12,
+                              padding: 15,
+                              // Append amount to legend text on desktop as well
+                              generateLabels(chart) {
+                                // Use the Chart.js built-in default generator from the chart constructor defaults
+                                // to avoid recursively calling this overridden function.
+                                const defaultGenerate = chart?.constructor?.defaults?.plugins?.legend?.labels?.generateLabels;
+                                const items = defaultGenerate ? defaultGenerate(chart) : [];
+                                const data = chart.data;
+                                const values = data?.datasets?.[0]?.data || [];
+                                return items.map((it, i) => ({
+                                  ...it,
+                                  text: `${it.text} • ${formatCurrency(Number(values[i] || 0))}`,
+                                }));
+                              },
+                            },
+                          },
+                          title: { display: false },
+                          datalabels: {
+                            color: "#fff",
+                            font: { weight: "bold", size: 12 },
+                            formatter: (value, context) => {
+                              const total = context.dataset.data.reduce((acc, val) => acc + val, 0);
+                              const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                              return percentage > 5 ? `${percentage}%` : "";
+                            },
+                            anchor: "center",
+                            align: "center",
+                          },
                         },
-                        formatter: (value, context) => {
-                          // Calculate total for percentage
-                          const total = context.dataset.data.reduce(
-                            (acc, val) => acc + val,
-                            0,
-                          );
-                          // Calculate percentage
-                          const percentage =
-                            total > 0 ? ((value / total) * 100).toFixed(1) : 0;
-                          // Only show percentage if it's above 5% to avoid clutter
-                          return percentage > 5 ? `${percentage}%` : "";
-                        },
-                        anchor: "center",
-                        align: "center",
-                      },
-                    },
-                    cutout: "60%",
-                  }}
-                />
-              </motion.div>
+                        cutout: "60%",
+                      }}
+                    />
+                  </motion.div>
+                </div>
+              </>
             ) : (
               <motion.div
                 key={`category-empty-${timeRange}`}

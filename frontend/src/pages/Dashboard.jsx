@@ -787,19 +787,15 @@ const Dashboard = () => {
       <div className="card mb-8">
         <div className="card-body">
           <h2 className="text-xl font-semibold mb-6">{t("dailyExpenses")}</h2>
-          {dashboardData?.dailyExpenses ? (
+          {dashboardData?.dailyExpenses?.length > 0 ? (
             <div className="w-full" style={{ height: "auto", minHeight: 0 }}>
               <Bar
                 data={{
-                  labels: dashboardData.dailyExpenses.map((item) =>
-                    formatShortWeekday(item.date),
-                  ),
+                  labels: dashboardData.dailyExpenses.map((item) => formatShortWeekday(item.date)),
                   datasets: [
                     {
                       label: t("expenses"),
-                      data: dashboardData.dailyExpenses.map((item) =>
-                        parseFloat(item.total),
-                      ),
+                      data: dashboardData.dailyExpenses.map((item) => parseFloat(item.total || 0)),
                       backgroundColor: "rgba(248, 113, 113, 0.7)",
                       borderColor: "rgba(248, 113, 113, 1)",
                       borderWidth: 2,
@@ -807,47 +803,11 @@ const Dashboard = () => {
                     },
                   ],
                 }}
-                options={{
-                  ...dailyExpensesChartOptions,
-                  maintainAspectRatio: false,
-                  plugins: {
-                    ...dailyExpensesChartOptions.plugins,
-                    datalabels: {
-                      anchor: "center",
-                      align: "center",
-                      formatter: (value) =>
-                        value !== 0 ? formatCurrency(value) : "",
-                      color: "#FFFFFF",
-                      font: {
-                        weight: "bold",
-                        size: 10,
-                      },
-                      display: (context) =>
-                        context.dataset.data[context.dataIndex] !== 0,
-                    },
-                  },
-                }}
+                options={dailyExpensesChartOptions}
               />
             </div>
           ) : (
-            <div className="text-center py-8 text-gray-500">
-              {t("noDataAvailable")}
-            </div>
-          )}
-          {dashboardData?.dailyExpenses && (
-            <div className="mt-4 text-center">
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                Ø {t("dailyExpenses")}:{" "}
-                <span className="font-semibold">
-                  {formatCurrency(
-                    dashboardData.dailyExpenses.reduce(
-                      (sum, item) => sum + parseFloat(item.total),
-                      0,
-                    ) / dashboardData.dailyExpenses.length,
-                  )}
-                </span>
-              </p>
-            </div>
+            <div className="text-center py-8 text-gray-500">{t("noDataAvailable")}</div>
           )}
         </div>
       </div>
@@ -860,49 +820,136 @@ const Dashboard = () => {
               {t("expensesByCategory")}
             </h2>
             {dashboardData?.expenseByCategory ? (
-              <div className="w-full" style={{ height: "auto", minHeight: 0 }}>
-                <Pie
-                  data={{
-                    labels: dashboardData.expenseByCategory.map((item) => {
-                      const name = (item.category_name || "").trim();
-                      return name !== "" ? name : (t("uncategorized") || "Uncategorized");
-                    }),
-                    datasets: [
-                      {
-                        data: dashboardData.expenseByCategory.map((item) =>
-                          parseFloat(item.total),
-                        ),
-                        backgroundColor: [
-                          "rgba(255, 99, 132, 0.7)",
-                          "rgba(54, 162, 235, 0.7)",
-                          "rgba(255, 205, 86, 0.7)",
-                          "rgba(75, 192, 192, 0.7)",
-                          "rgba(153, 102, 255, 0.7)",
-                          "rgba(255, 159, 64, 0.7)",
-                          "rgba(199, 199, 199, 0.7)",
-                          "rgba(83, 102, 255, 0.7)",
-                        ],
-                        borderColor: [
-                          "rgba(255, 99, 132, 1)",
-                          "rgba(54, 162, 235, 1)",
-                          "rgba(255, 205, 86, 1)",
-                          "rgba(75, 192, 192, 1)",
-                          "rgba(153, 102, 255, 1)",
-                          "rgba(255, 159, 64, 1)",
-                          "rgba(199, 199, 199, 1)",
-                          "rgba(83, 102, 255, 1)",
-                        ],
-                        borderWidth: 1,
+              <>
+                {/* Mobile: custom legend with amounts (scrollable) */}
+                <div className="md:hidden w-full" style={{ height: "auto", minHeight: 0 }}>
+                  <Pie
+                    data={{
+                      labels: dashboardData.expenseByCategory.map((item) => {
+                        const name = (item.category_name || "").trim();
+                        return name !== "" ? name : (t("uncategorized") || "Uncategorized");
+                      }),
+                      datasets: [
+                        {
+                          data: dashboardData.expenseByCategory.map((item) => parseFloat(item.total)),
+                          backgroundColor: [
+                            "rgba(255, 99, 132, 0.7)",
+                            "rgba(54, 162, 235, 0.7)",
+                            "rgba(255, 205, 86, 0.7)",
+                            "rgba(75, 192, 192, 0.7)",
+                            "rgba(153, 102, 255, 0.7)",
+                            "rgba(255, 159, 64, 0.7)",
+                            "rgba(199, 199, 199, 0.7)",
+                            "rgba(83, 102, 255, 0.7)",
+                          ],
+                          borderColor: [
+                            "rgba(255, 99, 132, 1)",
+                            "rgba(54, 162, 235, 1)",
+                            "rgba(255, 205, 86, 1)",
+                            "rgba(75, 192, 192, 1)",
+                            "rgba(153, 102, 255, 1)",
+                            "rgba(255, 159, 64, 1)",
+                            "rgba(199, 199, 199, 1)",
+                            "rgba(83, 102, 255, 1)",
+                          ],
+                          borderWidth: 1,
+                        },
+                      ],
+                    }}
+                    options={{ ...pieChartOptions, plugins: { ...pieChartOptions.plugins, legend: { display: false } } }}
+                  />
+                  <div className="mt-4 max-h-48 overflow-y-auto divide-y divide-gray-200 dark:divide-gray-700">
+                    {dashboardData.expenseByCategory.map((item, idx) => {
+                      const name = (item.category_name || "").trim() || (t("uncategorized") || "Uncategorized");
+                      const amount = Number(item.total || 0);
+                      const bg = [
+                        "rgba(255, 99, 132, 0.7)",
+                        "rgba(54, 162, 235, 0.7)",
+                        "rgba(255, 205, 86, 0.7)",
+                        "rgba(75, 192, 192, 0.7)",
+                        "rgba(153, 102, 255, 0.7)",
+                        "rgba(255, 159, 64, 0.7)",
+                        "rgba(199, 199, 199, 0.7)",
+                        "rgba(83, 102, 255, 0.7)",
+                      ];
+                      const color = bg[idx % bg.length];
+                      return (
+                        <div key={`${name}-${idx}`} className="py-2 flex items-center justify-between">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: color }} aria-hidden="true" />
+                            <span className="text-sm text-gray-700 dark:text-gray-300 font-medium truncate">{name}</span>
+                          </div>
+                          <span className="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap ml-3">{formatCurrency(amount)}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Desktop: keep legend on right and append amounts */}
+                <div className="hidden md:block w-full" style={{ height: "auto", minHeight: 0 }}>
+                  <Pie
+                    data={{
+                      labels: dashboardData.expenseByCategory.map((item) => {
+                        const name = (item.category_name || "").trim();
+                        return name !== "" ? name : (t("uncategorized") || "Uncategorized");
+                      }),
+                      datasets: [
+                        {
+                          data: dashboardData.expenseByCategory.map((item) => parseFloat(item.total)),
+                          backgroundColor: [
+                            "rgba(255, 99, 132, 0.7)",
+                            "rgba(54, 162, 235, 0.7)",
+                            "rgba(255, 205, 86, 0.7)",
+                            "rgba(75, 192, 192, 0.7)",
+                            "rgba(153, 102, 255, 0.7)",
+                            "rgba(255, 159, 64, 0.7)",
+                            "rgba(199, 199, 199, 0.7)",
+                            "rgba(83, 102, 255, 0.7)",
+                          ],
+                          borderColor: [
+                            "rgba(255, 99, 132, 1)",
+                            "rgba(54, 162, 235, 1)",
+                            "rgba(255, 205, 86, 1)",
+                            "rgba(75, 192, 192, 1)",
+                            "rgba(153, 102, 255, 1)",
+                            "rgba(255, 159, 64, 1)",
+                            "rgba(199, 199, 199, 1)",
+                            "rgba(83, 102, 255, 1)",
+                          ],
+                          borderWidth: 1,
+                        },
+                      ],
+                    }}
+                    options={{
+                      ...pieChartOptions,
+                      plugins: {
+                        ...pieChartOptions.plugins,
+                        legend: {
+                          ...pieChartOptions.plugins.legend,
+                          labels: {
+                            ...pieChartOptions.plugins.legend.labels,
+                            generateLabels(chart) {
+                              // Use the Chart.js built-in default generator from the chart constructor defaults
+                              // to avoid recursively calling this overridden function.
+                              const defaultGenerate = chart?.constructor?.defaults?.plugins?.legend?.labels?.generateLabels;
+                              const items = defaultGenerate ? defaultGenerate(chart) : [];
+                              const data = chart.data;
+                              const values = data?.datasets?.[0]?.data || [];
+                              return items.map((it, i) => ({
+                                ...it,
+                                text: `${it.text} • ${formatCurrency(Number(values[i] || 0))}`,
+                              }));
+                            },
+                          },
+                        },
                       },
-                    ],
-                  }}
-                  options={pieChartOptions}
-                />
-              </div>
+                    }}
+                  />
+                </div>
+              </>
             ) : (
-              <div className="text-center py-8 text-gray-500">
-                {t("noDataAvailable")}
-              </div>
+              <div className="text-center py-8 text-gray-500">{t("noDataAvailable")}</div>
             )}
           </div>
         </div>
