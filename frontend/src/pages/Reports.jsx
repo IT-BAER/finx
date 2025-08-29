@@ -11,6 +11,7 @@ import { useTheme } from "../contexts/ThemeContext.jsx";
 import offlineAPI from "../services/offlineAPI.js";
 import { transactionAPI } from "../services/api.jsx";
 import { motion } from "framer-motion";
+import ChartLegend from "../components/ChartLegend.jsx";
 
 const Reports = () => {
   const [timeRange, setTimeRange] = useState("weekly");
@@ -603,12 +604,13 @@ const Reports = () => {
         );
 
         // Create labels without percentages (percentages are shown in chart segments)
-        const processedCategoryData = {
+const processedCategoryData = {
           labels: categoryLabels,
           datasets: [
             {
               label: t("expensesByCategory"),
               data: categoryValues,
+              radius: "85%",
               backgroundColor: [
                 "rgba(248, 113, 113, 0.8)",
                 "rgba(96, 165, 250, 0.8)",
@@ -1048,12 +1050,13 @@ const Reports = () => {
               "rgba(139, 69, 19, 1)",
             ];
             const paletteSize = Math.max(labels.length, 0);
-            const dataSet = {
+const dataSet = {
               labels,
               datasets: [
                 {
                   data,
                   label: t("expensesBySource"),
+                  radius: "85%",
                   backgroundColor: bg.slice(0, paletteSize),
                   borderColor: border.slice(0, paletteSize),
                   borderWidth: 1,
@@ -1396,8 +1399,8 @@ const Reports = () => {
       )}
 
       {/* Daily Expenses Chart */}
-      <div className="card mb-8">
-        <div className="card-body">
+      <div className="card md:h-[250px] mb-8">
+        <div className="card-body h-full flex flex-col min-h-0">
           <h3 className="text-xl font-semibold mb-6">
             {timeRange === "weekly"
               ? t("dailyExpenses")
@@ -1406,13 +1409,13 @@ const Reports = () => {
                 : t("monthlyExpenses")}
           </h3>
           {dailyExpensesData?.length > 0 ? (
-            <motion.div
+              <motion.div
               key={`daily-expenses-chart-${timeRange}`}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.3 }}
-              className="w-full"
-              style={{ height: "auto", minHeight: 0 }}
+              className="w-full h-full flex-1"
+              style={{ minHeight: 0 }}
             >
               <Bar
                 data={{
@@ -1521,8 +1524,8 @@ const Reports = () => {
       <div
         className={`grid grid-cols-1 ${isIncomeTrackingDisabled ? "lg:grid-cols-1" : "lg:grid-cols-2"} gap-8 mb-8`}
       >
-        <div className="card">
-          <div className="card-body">
+        <div className="card md:h-[370px]">
+          <div className="card-body h-full flex flex-col min-h-0">
             <h3 className="text-xl font-semibold mb-6">
               {t("expensesByCategory")}
             </h3>
@@ -1535,14 +1538,14 @@ const Reports = () => {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ duration: 0.3 }}
-                    className="w-full"
-                    style={{ height: "auto", minHeight: 0 }}
+                    className="w-full h-44"
                   >
                     <Pie
                       data={reportData.category}
                       options={{
                         responsive: true,
                         maintainAspectRatio: false,
+                        layout: { padding: 8 },
                         plugins: {
                           legend: { display: false },
                           title: { display: false },
@@ -1556,72 +1559,41 @@ const Reports = () => {
                             },
                             anchor: "center",
                             align: "center",
+                            clip: true,
                           },
                         },
                         cutout: "60%",
                       }}
                     />
                   </motion.div>
-                  {/* Custom legend: single scrollable column with name + amount */}
-                  <div className="mt-4 max-h-48 overflow-y-auto divide-y divide-gray-200 dark:divide-gray-700">
-                    {reportData.category.labels.map((label, idx) => {
-                      const amount = Number(
-                        reportData.category.datasets?.[0]?.data?.[idx] || 0,
-                      );
-                      const bg = reportData.category.datasets?.[0]?.backgroundColor || [];
-                      const color = bg[idx % bg.length] || "#999";
-                      return (
-                        <div key={`${label}-${idx}`} className="py-2 flex items-center justify-between">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: color }} aria-hidden="true" />
-                            <span className="text-sm text-gray-700 dark:text-gray-300 font-medium truncate">{label}</span>
-                          </div>
-                          <span className="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap ml-3">{formatCurrency(amount)}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
+                  <ChartLegend
+                    labels={reportData.category.labels}
+                    values={reportData.category.datasets?.[0]?.data}
+                    backgroundColor={reportData.category.datasets?.[0]?.backgroundColor}
+                    formatCurrency={formatCurrency}
+                  />
                 </div>
 
-                {/* Desktop: keep legend on the right */}
-                <div className="hidden md:block">
+                {/* Desktop: pie + custom right-side table legend */}
+                <div className="hidden md:flex items-center gap-6 h-full flex-1">
                   <motion.div
                     key={`category-chart-desktop-${timeRange}`}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ duration: 0.3 }}
-                    className="w-full"
-                    style={{ height: "auto", minHeight: 0 }}
+                    className="flex-[2] flex-1 h-full min-w-0 overflow-hidden p-2 flex items-center justify-center"
+                    style={{ minHeight: 0 }}
                   >
                     <Pie
                       data={reportData.category}
                       options={{
                         responsive: true,
                         maintainAspectRatio: false,
+                        layout: { padding: 12 },
+                        radius: "100%",
                         plugins: {
-                          legend: {
-                            position: "right",
-                            labels: {
-                              color: dark ? "#ffffff" : "#374151",
-                              font: { size: 12, weight: "600" },
-                              usePointStyle: true,
-                              boxWidth: 12,
-                              padding: 15,
-                              // Append amount to legend text on desktop as well
-                              generateLabels(chart) {
-                                // Use the Chart.js built-in default generator from the chart constructor defaults
-                                // to avoid recursively calling this overridden function.
-                                const defaultGenerate = chart?.constructor?.defaults?.plugins?.legend?.labels?.generateLabels;
-                                const items = defaultGenerate ? defaultGenerate(chart) : [];
-                                const data = chart.data;
-                                const values = data?.datasets?.[0]?.data || [];
-                                return items.map((it, i) => ({
-                                  ...it,
-                                  text: `${it.text} • ${formatCurrency(Number(values[i] || 0))}`,
-                                }));
-                              },
-                            },
-                          },
+                          // disable built-in legend for desktop: we render a table next to the chart
+                          legend: { display: false },
                           title: { display: false },
                           datalabels: {
                             color: "#fff",
@@ -1633,12 +1605,46 @@ const Reports = () => {
                             },
                             anchor: "center",
                             align: "center",
+                            clip: true,
                           },
                         },
                         cutout: "60%",
                       }}
+                      style={{ height: "260px", width: "260px", margin: "0 auto" }}
                     />
                   </motion.div>
+
+                  {/* Right-side table legend */}
+                  <div className="w-52 max-h-[260px] overflow-y-auto pt-1 self-center scrollbar-thin-modern">
+                    <table className="w-full text-sm">
+                      <tbody>
+                        {reportData.category.labels.map((label, idx) => {
+                          const amount = Number(
+                            reportData.category.datasets?.[0]?.data?.[idx] || 0,
+                          );
+                          const bg = reportData.category.datasets?.[0]?.backgroundColor || [];
+                          const color = bg[idx % bg.length] || "#999";
+                          return (
+                            <tr key={`${label}-${idx}`} className="h-9">
+                              <td className="align-middle pr-3">
+                                <div className="flex items-center min-w-0">
+                                  <span
+                                    className="inline-block h-2.5 w-2.5 rounded-full mr-3 flex-shrink-0"
+                                    style={{ backgroundColor: color }}
+                                    aria-hidden="true"
+                                  />
+                                  <span className="text-gray-700 dark:text-gray-300 truncate">{label}</span>
+                                </div>
+                              </td>
+                              <td className="text-right align-middle text-gray-600 dark:text-gray-400 font-medium whitespace-nowrap">
+                                {formatCurrency(amount)}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </>
             ) : (
@@ -1659,14 +1665,14 @@ const Reports = () => {
           <div className="card-body">
             <h3 className="text-xl font-semibold mb-6">{t("balanceTrend")}</h3>
             {reportData?.trend?.labels?.length > 0 ? (
-              <motion.div
-                key={`trend-chart-${timeRange}`}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.3 }}
-                className="w-full"
-                style={{ height: "auto", minHeight: 0 }}
-              >
+                <motion.div
+                    key={`trend-chart-${timeRange}`}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.3 }}
+                    className="w-full h-full flex-1"
+                    style={{ minHeight: 0 }}
+                  >
                 <Line
                   data={reportData.trend}
                   options={{
@@ -1768,51 +1774,121 @@ const Reports = () => {
       {/* Income vs Expenses Chart - Moved to bottom to match Dashboard order */}
       {/* Additional: Expenses by Source and Largest Expenses */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-        <div className="card">
-          <div className="card-body">
+        <div className="card md:h-[370px]">
+          <div className="card-body h-full flex flex-col min-h-0">
             <h3 className="text-xl font-semibold mb-6">{t("expensesBySource")}</h3>
             {sourceShareData && sourceShareData.labels?.length > 0 ? (
-              <motion.div
-                key={`source-share-${timeRange}`}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.3 }}
-                className="w-full"
-                style={{ height: "auto", minHeight: 0 }}
-              >
-                <Pie
-                  data={sourceShareData}
-                  options={{
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                      legend: {
-                        position: "right",
-                        labels: {
-                          color: dark ? "#ffffff" : "#374151",
-                          font: { size: 12, weight: "600" },
-                          usePointStyle: true,
-                          boxWidth: 12,
-                          padding: 15,
+              <>
+                {/* Mobile: pie + custom scrollable legend */}
+                <div className="md:hidden">
+                  <motion.div
+                    key={`source-share-mobile-${timeRange}`}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.3 }}
+                    className="w-full h-44"
+                  >
+                    <Pie
+                      data={sourceShareData}
+                      options={{
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        layout: { padding: 8 },
+                        plugins: {
+                          legend: { display: false },
+                          title: { display: false },
+                          datalabels: {
+                            color: "#fff",
+                            font: { weight: "bold", size: 12 },
+                            formatter: (value, context) => {
+                              const total = context.dataset.data.reduce((acc, v) => acc + v, 0);
+                              const pct = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                              return pct > 5 ? `${pct}%` : "";
+                            },
+                            anchor: "center",
+                            align: "center",
+                            clip: true,
+                          },
                         },
-                      },
-                      title: { display: false },
-                      datalabels: {
-                        color: "#fff",
-                        font: { weight: "bold", size: 12 },
-                        formatter: (value, context) => {
-                          const total = context.dataset.data.reduce((acc, v) => acc + v, 0);
-                          const pct = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
-                          return pct > 5 ? `${pct}%` : "";
+                        cutout: "60%",
+                      }}
+                    />
+                  </motion.div>
+                  <ChartLegend
+                    labels={sourceShareData.labels}
+                    values={sourceShareData.datasets?.[0]?.data}
+                    backgroundColor={sourceShareData.datasets?.[0]?.backgroundColor}
+                    formatCurrency={formatCurrency}
+                  />
+                </div>
+
+    {/* Desktop: pie + custom right-side table legend (show 4 rows, scroll rest) */}
+  <div className="hidden md:flex items-center gap-6 h-full flex-1">
+                  <motion.div
+                    key={`source-share-desktop-${timeRange}`}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.3 }}
+          className="flex-[2] flex-1 h-full min-w-0 overflow-hidden p-2 flex items-center justify-center"
+          style={{ minHeight: 0 }}
+                  >
+                    <Pie
+                      data={sourceShareData}
+                      options={{ ...{
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        layout: { padding: 12 },
+                        radius: "100%",
+                        plugins: {
+                          legend: { display: false },
+                          title: { display: false },
+                          datalabels: {
+                            color: "#fff",
+                            font: { weight: "bold", size: 12 },
+                            formatter: (value, context) => {
+                              const total = context.dataset.data.reduce((acc, v) => acc + v, 0);
+                              const pct = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                              return pct > 5 ? `${pct}%` : "";
+                            },
+                            anchor: "center",
+                            align: "center",
+                            clip: true,
+                          },
                         },
-                        anchor: "center",
-                        align: "center",
-                      },
-                    },
-                    cutout: "60%",
-                  }}
-                />
-              </motion.div>
+                        cutout: "60%",
+                      } }}
+                      style={{ height: "260px", width: "260px", margin: "0 auto" }}
+                    />
+                  </motion.div>
+
+                  <div className="w-52 max-h-[260px] overflow-y-auto pt-1 self-center scrollbar-thin-modern">
+                    <table className="w-full text-sm">
+                      <tbody>
+                        {sourceShareData.labels.map((label, idx) => {
+                          const amount = Number(
+                            sourceShareData.datasets?.[0]?.data?.[idx] || 0,
+                          );
+                          const bg = sourceShareData.datasets?.[0]?.backgroundColor || [];
+                          const color = bg[idx % bg.length] || "#999";
+                          return (
+                            <tr key={`${label}-${idx}`} className="h-9">
+                              <td className="align-middle pr-3">
+                                <div className="flex items-center min-w-0">
+                                  <span className="inline-block h-2.5 w-2.5 rounded-full mr-3 flex-shrink-0" style={{ backgroundColor: color }} aria-hidden="true" />
+                                  <span className="text-gray-700 dark:text-gray-300 truncate">{label}</span>
+                                </div>
+                              </td>
+                              <td className="text-right align-middle text-gray-600 dark:text-gray-400 font-medium whitespace-nowrap">
+                                {formatCurrency(amount)}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </>
             ) : (
               <motion.div
                 key={`source-share-empty-${timeRange}`}
@@ -1842,7 +1918,7 @@ const Reports = () => {
                       <div className="flex justify-between items-start">
                         <div className="flex-1 min-w-0">
                           <div className="font-medium text-gray-900 dark:text-gray-200 truncate">
-                            {tx.description || "N/A"}
+{tx.description || tx.category_name || tx.category || (t("uncategorized") || "Uncategorized")}
                           </div>
                           <div className="text-sm text-gray-500 dark:text-gray-400">
                             {formatDate(tx.date)}
@@ -1876,7 +1952,7 @@ const Reports = () => {
                       {topExpenses.map((tx) => (
                         <tr key={tx.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
                           <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200">{formatDate(tx.date)}</td>
-                          <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-200 max-w-xs truncate">{tx.description || "N/A"}</td>
+                          <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-200 max-w-xs truncate">{tx.description || tx.category_name || tx.category || (t("uncategorized") || "Uncategorized")}</td>
                           <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200">
                             {tx.category_name ? (
                               <span className="badge badge-primary">{tx.category_name}</span>
@@ -1898,19 +1974,19 @@ const Reports = () => {
         </div>
       </div>
       {!isIncomeTrackingDisabled && (
-        <div className="card mb-8">
-          <div className="card-body">
+        <div className="card md:h-[250px] mb-8">
+          <div className="card-body h-full flex flex-col min-h-0">
             <h3 className="text-xl font-semibold mb-6">
               {t("incomeVsExpenses")}
             </h3>
             {reportData?.monthly?.labels?.length > 0 ? (
-              <motion.div
+                <motion.div
                 key={`income-expenses-chart-${timeRange}`}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.3 }}
-                className="w-full"
-                style={{ height: "auto", minHeight: 0 }}
+                className="w-full h-full flex-1"
+                style={{ minHeight: 0 }}
               >
                 <Bar
                   data={reportData.monthly}

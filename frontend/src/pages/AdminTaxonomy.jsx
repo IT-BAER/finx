@@ -32,16 +32,14 @@ const AdminTaxonomy = () => {
     setShowDeleteModal(false);
     setShowRenameModal(false);
     setShowConsolidateModal(false);
-    setConsolidateFrom("");
-    setConsolidateTo("");
-    setNewName("");
+  setConsolidateFrom("");
+  setNewName("");
   }, [activeTab]);
 
   // When opening consolidate modal, prefill from/to if two (or more) selected
   useEffect(() => {
     if (!showConsolidateModal) return;
     if (selectedItems && selectedItems.length > 0) {
-      setConsolidateFrom((prev) => prev || String(selectedItems[0]));
       if (selectedItems.length > 1) {
         const second = selectedItems.find((id) => String(id) !== String(selectedItems[0]));
         if (second) setConsolidateTo((prev) => prev || String(second));
@@ -169,18 +167,16 @@ const AdminTaxonomy = () => {
     try {
       if (!consolidateTo) return;
 
-      if (activeTab === "categories") {
-        await adminAPI.mergeCategory(consolidateFrom, {
-          into_category_id: consolidateTo,
-        });
-      } else {
-        // For sources and targets, use delete with reassign parameter
-        const api =
-          activeTab === "sources"
-            ? adminAPI.deleteSource
-            : adminAPI.deleteTarget;
-        await api(consolidateFrom, consolidateTo);
+      // Only allow consolidate for categories; sources/targets must be renamed only
+      if (activeTab !== "categories") {
+        setError(t("consolidateNotAllowed"));
+        setShowConsolidateModal(false);
+        return;
       }
+
+      await adminAPI.mergeCategory(consolidateFrom, {
+        into_category_id: consolidateTo,
+      });
 
       await loadData();
       setSelectedItems([]);
@@ -227,7 +223,7 @@ const AdminTaxonomy = () => {
 
   if (loading) {
     return (
-      <div className="container mx-auto px-4 pt-6 pb-8">
+  <div className="container mx-auto px-4 pt-4 md:pt-0 pb-4 min-h-0">
         <div className="flex justify-center items-center h-64">
           <div className="spinner"></div>
         </div>
@@ -236,7 +232,7 @@ const AdminTaxonomy = () => {
   }
 
   return (
-    <div className="container mx-auto px-4 pt-6 pb-8 min-h-0">
+    <div className="container mx-auto px-4 pt-4 md:pt-0 pb-4 min-h-0">
       <div className="flex items-center justify-between mb-8">
         <h1 className="display-2">{t("adminTaxonomy")}</h1>
 
@@ -281,8 +277,8 @@ const AdminTaxonomy = () => {
 
       {error && <div className="alert alert-error mb-6">{error}</div>}
 
-      {/* Tabs */}
-      <div className="flex space-x-1 mb-6 bg-gray-100 dark:bg-gray-800 p-1 rounded-lg">
+  {/* Tabs */}
+  <div className="flex space-x-1 mb-6 bg-gray-100 dark:bg-gray-800 rounded-lg">
         <motion.button
           onClick={() => {
             // Remove haptic feedback - only notifications and "+" button should have haptic
@@ -396,22 +392,28 @@ const AdminTaxonomy = () => {
                     </div>
                     <div className="text-sm text-gray-500 dark:text-gray-400 text-right">
                       {(() => {
-                        const isGlobal =
-                          item.user_id == null || Number(item.user_id) === 0;
+                        // Support both new admin shape (user_id, first_name, last_name, email)
+                        // and legacy shape (owner_user_id, owner_display)
+                        const uid = item.user_id != null ? item.user_id : item.owner_user_id;
+                        const ownerDisplay = item.owner_display;
+
+                        const isGlobal = uid == null || Number(uid) === 0;
                         if (isGlobal) return "Global";
+
                         const first = (item.first_name || "").trim();
                         const last = (item.last_name || "").trim();
                         const name = [first, last].filter(Boolean).join(" ");
                         const email = (item.email || "").trim();
-                        return name || (email ? email : `#${item.user_id}`);
+                        if (name) return name;
+                        if (email) return email;
+                        if (ownerDisplay) return ownerDisplay;
+                        return `#${uid}`;
                       })()}
-                      {item.email &&
-                        item.user_id != null &&
-                        Number(item.user_id) !== 0 && (
-                          <div className="text-[11px] text-gray-500 dark:text-gray-500">
-                            {item.email}
-                          </div>
-                        )}
+                      {Number(item.user_id ?? item.owner_user_id ?? 0) !== 0 && (item.email || item.owner_display) && (
+                        <div className="text-[11px] text-gray-500 dark:text-gray-500">
+                          {item.email || item.owner_display}
+                        </div>
+                      )}
                     </div>
                   </motion.div>
                 ))}
@@ -421,7 +423,7 @@ const AdminTaxonomy = () => {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ duration: 0.3, delay: 0.1 }}
-                    className="text-center py-8 text-gray-500 dark:text-gray-400"
+                    className="text-center py-6 text-gray-500 dark:text-gray-400"
                   >
                     {t("noItemsFound")}
                   </motion.div>
@@ -451,13 +453,15 @@ const AdminTaxonomy = () => {
 
             {/* Other buttons on the right */}
             <div className="flex gap-2">
-              <Button
-                onClick={() => setShowConsolidateModal(true)}
-                disabled={selectedItems.length < 2}
-                variant="primary"
-              >
-                {t("consolidate")}
-              </Button>
+              {activeTab === "categories" && (
+                <Button
+                  onClick={() => setShowConsolidateModal(true)}
+                  disabled={selectedItems.length < 2}
+                  variant="primary"
+                >
+                  {t("consolidate")}
+                </Button>
+              )}
               <Button
                 onClick={() => setShowRenameModal(true)}
                 disabled={selectedItems.length !== 1}
@@ -542,7 +546,7 @@ const AdminTaxonomy = () => {
 
       {/* Consolidate Modal */}
       <AnimatePresence>
-        {showConsolidateModal && (
+  {showConsolidateModal && activeTab === "categories" && (
           <motion.div
             className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
             initial={{ opacity: 0 }}

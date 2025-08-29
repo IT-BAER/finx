@@ -32,9 +32,8 @@ function buildSearchAndOwnerFilters({ table, q, user_id }) {
   const where = [];
   const params = [];
   let idx = 1;
-
-  // Categories are per-user; allow owner filtering on all tables when provided
-  if (user_id) {
+  // Only allow owner filtering for sources/targets; categories are global
+  if (user_id && table !== "categories") {
     where.push(`${table}.user_id = $${idx++}`);
     params.push(Number(user_id));
   }
@@ -73,21 +72,33 @@ async function listEntities(table, req, res) {
     let listQuery;
     let countQuery;
 
-    listQuery = `
-      SELECT 
-        t.id, 
-        t.user_id, 
-        t.name,
-        u.first_name,
-        u.last_name,
-        u.email
-      FROM ${table} t
-      JOIN users u ON u.id = t.user_id
-      ${whereClause.replaceAll(`${table}.`, "t.")}
-      ORDER BY ${safeSortBy === "owner" ? "u.last_name NULLS LAST, u.first_name NULLS LAST, u.email" : "t.name"} ${safeSortDir}
-      LIMIT $${params.length + 1}
-      OFFSET $${params.length + 2};
-    `;
+    if (table === "categories") {
+      // Categories are global: no user join, show as Global owner
+      listQuery = `
+        SELECT t.id, t.name
+        FROM ${table} t
+        ${whereClause.replaceAll(`${table}.`, "t.")}
+        ORDER BY t.name ${safeSortDir}
+        LIMIT $${params.length + 1}
+        OFFSET $${params.length + 2};
+      `;
+    } else {
+      listQuery = `
+        SELECT 
+          t.id, 
+          t.user_id, 
+          t.name,
+          u.first_name,
+          u.last_name,
+          u.email
+        FROM ${table} t
+        JOIN users u ON u.id = t.user_id
+        ${whereClause.replaceAll(`${table}.`, "t.")}
+        ORDER BY ${safeSortBy === "owner" ? "u.last_name NULLS LAST, u.first_name NULLS LAST, u.email" : "t.name"} ${safeSortDir}
+        LIMIT $${params.length + 1}
+        OFFSET $${params.length + 2};
+      `;
+    }
     countQuery = `
       SELECT COUNT(*)::int AS total
       FROM ${table} t
@@ -100,18 +111,39 @@ async function listEntities(table, req, res) {
     ]);
 
     // Map response
-    const data = listRes.rows.map((r) => {
-      const fn = (r.first_name || "").trim();
-      const ln = (r.last_name || "").trim();
-      const name = [fn, ln].filter(Boolean).join(" ");
-      const owner_display = name ? `${name} (${r.email})` : r.email;
-      return {
+    let data;
+    if (table === "categories") {
+      data = listRes.rows.map((r) => ({
         id: r.id,
         name: r.name,
-        owner_user_id: r.user_id,
-        owner_display,
-      };
-    });
+        // Categories are global
+        owner_user_id: 0,
+        user_id: 0,
+        first_name: "",
+        last_name: "",
+        email: "",
+        owner_display: "Global",
+      }));
+    } else {
+      data = listRes.rows.map((r) => {
+        const fn = (r.first_name || "").trim();
+        const ln = (r.last_name || "").trim();
+        const email = (r.email || "").trim();
+        const name = [fn, ln].filter(Boolean).join(" ");
+        const owner_display = name ? `${name} (${email})` : email;
+        return {
+          id: r.id,
+          name: r.name,
+          // Keep legacy field for compatibility but expose explicit user fields
+          owner_user_id: r.user_id,
+          user_id: r.user_id,
+          first_name: fn,
+          last_name: ln,
+          email,
+          owner_display,
+        };
+      });
+    }
 
     return res.json({
       success: true,

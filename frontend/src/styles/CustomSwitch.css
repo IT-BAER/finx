@@ -93,7 +93,15 @@ input:checked + .slider:before {
   }
 }
 
-/* Responsive adjustments */
+/* Desktop and responsive adjustments */
+/* Slightly reduce the switch size on larger screens */
+@media (min-width: 1024px) {
+  .switch {
+    font-size: 16px; /* was 17px; subtle reduction for desktop */
+  }
+}
+
+/* Mobile: keep it compact */
 @media (max-width: 768px) {
   .switch {
     font-size: 15px;

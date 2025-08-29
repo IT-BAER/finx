@@ -149,7 +149,9 @@
 
 .main-content {
   flex: 1;
-  padding: 1rem;
+  /* Remove top padding here so page container controls top spacing */
+  padding-left: 1rem;
+  padding-right: 1rem;
   padding-bottom: 2rem; /* Reduced padding for better content fit */
   min-height: 0; /* Allow flex shrinking */
   height: auto; /* Let content determine height naturally */

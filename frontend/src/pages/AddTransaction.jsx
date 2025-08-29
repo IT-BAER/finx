@@ -166,15 +166,23 @@ const AddTransaction = () => {
   // Validation
   const catTrim = String(formData.category || "").trim();
   const srcTrim = String(formData.source || "").trim();
-  if ((formData.type !== "income" && !catTrim) || !formData.amount || !formData.date) {
+  const tgtTrim = String(formData.target || "").trim();
+  if ((formData.type !== "income" && !catTrim) || !formData.amount || !formData.date || (formData.type === "income" && !String(formData.description || "").trim())) {
         setError(t("pleaseFillAllRequiredFields"));
         setLoading(false);
         return;
       }
 
-      // Source is required
-  if (!srcTrim) {
+      // For expenses, source is required
+  if (formData.type !== "income" && !srcTrim) {
         setError(t("pleaseProvideSource") || t("pleaseFillAllRequiredFields"));
+        setLoading(false);
+        return;
+      }
+
+      // For income, target is required
+  if (formData.type === "income" && !tgtTrim) {
+        setError(t("pleaseProvideTarget") || t("pleaseFillAllRequiredFields"));
         setLoading(false);
         return;
       }
@@ -482,6 +490,7 @@ const AddTransaction = () => {
                   value={formData.description}
                   onChange={handleChange}
                   placeholder={t("enterDescription")}
+                  required={formData.type === "income"}
                 />
               </div>
 
@@ -490,7 +499,7 @@ const AddTransaction = () => {
                   id="source"
                   name="source"
                   label={t("source")}
-                  required={true}
+                  required={formData.type !== "income"}
                   options={formData.type === "income" ? targets : sources}
                   value={formData.source || ""}
                   onChange={(e) => {
@@ -529,6 +538,7 @@ const AddTransaction = () => {
                   id="target"
                   name="target"
                   label={t("target")}
+                  required={formData.type === "income"}
                   options={formData.type === "income" ? sources : targets}
                   value={formData.target || ""}
                   onChange={(e) => {

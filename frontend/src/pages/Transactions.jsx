@@ -579,7 +579,7 @@ const Transactions = () => {
                           <div className="flex justify-between items-start">
                             <div className="flex-1 min-w-0 relative">
                               <div className="font-medium text-gray-900 dark:text-gray-200 truncate">
-                                {transaction.description || "N/A"}
+{transaction.description || transaction.category_name || transaction.category || (t("uncategorized") || "Uncategorized")}
                               </div>
                               {(transaction.source_name ||
                                 transaction.source) &&
@@ -749,7 +749,7 @@ const Transactions = () => {
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-200 md:table-cell break-words max-w-xs">
                           <div className="flex items-center gap-2">
-                            <span>{transaction.description || "N/A"}</span>
+<span>{transaction.description || transaction.category_name || transaction.category || (t("uncategorized") || "Uncategorized")}</span>
                             {transaction._isOffline && (
                               <div className="flex items-center text-xs text-amber-600 dark:text-amber-400">
                                 <svg

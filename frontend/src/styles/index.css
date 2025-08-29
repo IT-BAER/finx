@@ -1181,3 +1181,38 @@ body {
 .shadow-soft-xl {
   box-shadow: 0 16px 36px rgba(0, 0, 0, 0.10);
 }
+
+/* Minimal, modern scrollbar styling for scrollable panels */
+.scrollbar-thin-modern {
+  /* Firefox */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(100, 116, 139, 0.25) transparent; /* slate-500-ish */
+}
+.dark .scrollbar-thin-modern {
+  scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+}
+
+/* WebKit (Chrome, Edge, Safari) */
+.scrollbar-thin-modern::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.scrollbar-thin-modern::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scrollbar-thin-modern::-webkit-scrollbar-thumb {
+  background-color: rgba(100, 116, 139, 0.25);
+  border-radius: 9999px;
+  border: 2px solid transparent; /* creates a thin pill and keeps thumb off edges */
+  background-clip: content-box;
+}
+.dark .scrollbar-thin-modern::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.18);
+}
+/* Slightly increase visibility on hover without being intrusive */
+.scrollbar-thin-modern:hover::-webkit-scrollbar-thumb {
+  background-color: rgba(100, 116, 139, 0.4);
+}
+.dark .scrollbar-thin-modern:hover::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.28);
+}

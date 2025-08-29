@@ -191,7 +191,7 @@ function ComponentWrapper({ Component }) {
   }, [Component, setPageContentReady]);
 
   return (
-    <div
+      <div
       ref={componentRef}
       style={{
         opacity: isComponentReady ? 1 : 0,
@@ -200,7 +200,6 @@ function ComponentWrapper({ Component }) {
   transitionProperty: "opacity, transform",
   // Remove min-height on login to prevent overly tall containers
   minHeight: disableMinHeight ? undefined : containerHeight,
-        paddingTop: "1rem",
       }}
     >
       <Component />

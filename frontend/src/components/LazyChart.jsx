@@ -113,9 +113,18 @@ function createLazyChart(chartName) {
         style={{
           opacity: visible ? 1 : 0,
           transition: "opacity 350ms ease-in-out",
+          height: "100%",
+          width: "100%",
         }}
       >
-        <Comp {...props} />
+        <Comp
+          {...props}
+          style={{
+            ...(props && props.style ? props.style : {}),
+            height: "100%",
+            width: "100%",
+          }}
+        />
       </div>
     );
   };

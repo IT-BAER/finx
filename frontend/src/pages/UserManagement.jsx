@@ -122,7 +122,7 @@ const UserManagement = () => {
   }
 
   return (
-    <div className="container mx-auto px-4 pt-6 pb-8 min-h-0">
+    <div className="container mx-auto px-4 pt-4 md:pt-0 pb-4 min-h-0">
       <div className="flex items-center justify-between mb-8">
         <h1 className="display-2">{t("userManagement")}</h1>
 
