@@ -58,7 +58,7 @@ const createRecurringTransaction = async (req, res) => {
         return Number(cleaned);
       }
       // Otherwise strip currency symbols/spaces
-      const cleaned = amountStr.replace(/[^0-9+\-\.]/g, "");
+  const cleaned = amountStr.replace(/[^0-9+\-.]/g, "");
       return Number(cleaned);
     })();
 

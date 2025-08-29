@@ -2,7 +2,7 @@ import React from "react";
 
 // Consolidated framer-motion fallback with JSX syntax
 function createFallback(tag) {
-  return React.forwardRef(({ children, style, ...rest }, ref) => {
+  const Comp = React.forwardRef(({ children, style, ...rest }, ref) => {
     const Component = tag;
     // Remove framer-motion specific props before passing to DOM
     const motionProps = [
@@ -29,6 +29,13 @@ function createFallback(tag) {
       </Component>
     );
   });
+  try {
+    // set displayName for better debugging in devtools
+    Comp.displayName = `Fallback(${tag})`;
+  } catch {
+    // ignore if read-only
+  }
+  return Comp;
 }
 
 const baseMotion = {
@@ -53,8 +60,13 @@ const motionProxy = new Proxy(baseMotion, {
   },
 });
 
-export function loadMotion() {
-  return import("framer-motion").then((mod) => mod).catch(() => null);
+export async function loadMotion() {
+  try {
+    const mod = await import("framer-motion");
+    return mod;
+  } catch {
+    return null;
+  }
 }
 
 export function AnimatePresence({ children }) {
@@ -62,7 +74,7 @@ export function AnimatePresence({ children }) {
 }
 
 // Named exports for specific functionality
-export { motionProxy as motion, loadMotion, AnimatePresence };
+export { motionProxy as motion };
 
 // Default export for backward compatibility
 export default { motion: motionProxy, loadMotion, AnimatePresence };

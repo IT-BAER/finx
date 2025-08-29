@@ -185,16 +185,7 @@ export default {
   weekly: "Wöchentlich",
   monthly: "Monatlich",
   yearly: "Jährlich",
-  totalIncome: "Gesamteinnahmen",
-  totalExpenses: "Gesamtausgaben",
-  savingsRate: "Sparquote",
-  netSavings: "Nettoersparnisse",
-  incomeVsExpenses: "Einnahmen vs. Ausgaben",
-  expensesByCategory: "Ausgaben nach Kategorie",
-  balanceTrend: "Saldoentwicklung",
   detailedBreakdown: "Detaillierte Aufschlüsselung",
-  category: "Kategorie",
-  amount: "Betrag",
   percentage: "Prozentsatz",
   food: "Essen",
   groceries: "Lebensmittel",
@@ -222,8 +213,6 @@ export default {
   importData: "Daten importieren",
   deleteAccount: "Konto löschen",
   confirmDeleteAccount: "Bitte bestätigen",
-  areYouSureYouWantToDeleteYourAccount:
-    "Bist du sicher, dass du dein Konto dauerhaft löschen möchtest? Dies kann nicht rückgängig gemacht werden.",
   removeSampleData: "Beispieldaten entfernen",
   removeSampleDataDescription:
     "Bereinigt die Datenbank von Beispieltransaktionen und -kategorien",
@@ -235,7 +224,6 @@ export default {
   languageChanged: "Sprache erfolgreich geändert",
   profileUpdated: "Profil erfolgreich aktualisiert",
   passwordUpdated: "Passwort erfolgreich aktualisiert",
-  passwordsDoNotMatch: "Passwörter stimmen nicht überein",
   passwordMinLength: "Passwort muss mindestens 6 Zeichen lang sein",
   failedToUpdateProfile: "Aktualisierung des Profils fehlgeschlagen",
   noDataAvailable: "Keine Daten verfügbar",
@@ -244,7 +232,6 @@ export default {
   // Common
   cancel: "Abbrechen",
   confirm: "Bestätigen",
-  pleaseConfirm: "Bitte bestätigen",
   add: "Hinzufügen",
   locale: "de-DE",
   save: "Speichern",
@@ -302,8 +289,6 @@ export default {
   owner: "Besitzer",
   name: "Name",
   categories: "Kategorien",
-  sources: "Quellen",
-  targets: "Ziele",
   rename: "Umbenennen",
   renameItem: "Element umbenennen",
   newName: "Neuer Name",
@@ -370,7 +355,6 @@ export default {
   editShares: "Freigaben bearbeiten",
   adminSettings: "Admin-Einstellungen",
   sharedWithOthers: "Mit anderen geteilt",
-  sharedWithMe: "Mit mir geteilt",
   failedToLoadSharedData: "Laden der geteilten Daten fehlgeschlagen",
   failedToLoadUsers: "Laden der Benutzer fehlgeschlagen",
   failedToLoadData: "Laden der Daten fehlgeschlagen",
@@ -389,8 +373,6 @@ export default {
   sourceToShare: "Zu teilende Quelle",
   sourceToShareDescription:
     "Optional: Beschränke die Freigabe auf eine bestimmte Quelle. Lass leer, um alle Quellen zu teilen.",
-  confirmDelete: "Löschen bestätigen",
-  deleteSharingConfirmation: "Möchtest du diese Freigabeberechtigung wirklich löschen?",
 
   // User Management
   userManagement: "Benutzerverwaltung",

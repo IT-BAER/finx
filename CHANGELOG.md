@@ -2,36 +2,82 @@
 
 All notable changes to this project are documented in this file.
 
-## [v0.5.1] - 2025-08-28
+## [v0.5.2] - 2025-08-29
 
-This is a small release that includes a hotfix for mobile input spacing and a new realtime search feature for transactions.
+Summary
+- Patch release containing UX/validation improvements, normalization of names, reporting enhancements and PWA performance tweaks.
 
-### Highlights
+Added / Changed
+- Enhanced transaction editing and reporting features: stronger validation for income/expense types, more descriptive transaction listing, and a reusable `ChartLegend` component for consistent legends across reports.
+- Admin taxonomy and Reports improvements: mobile-friendly, scrollable legends with amounts; consolidated selection behavior and recursion fixes in chart legends.
+- Trim/dedupe behavior in dropdowns and UI: dropdown inputs now trim and dedupe entries; createSource/createTarget no longer run early during form edits — new entities are created only when a transaction is saved.
+- Backend normalization: category/source/target names are normalized (trimmed and matched case-insensitively) to prevent trailing-space duplicates; controllers now use LOWER(TRIM) lookups.
 
-- Fix: increase mobile padding for prefixed inputs to 2.5rem to avoid layout issues on small screens.
-- Feature: realtime transaction search with umlaut (accent) support, debounced and accent-insensitive filtering across columns. Infinite scroll is paused while searching to avoid extra server requests. Mobile search input spacing was improved. A search icon and translations were added.
+Fixed
+- Increase mobile padding for prefixed inputs (2.5rem) to avoid layout issues on small screens.
+- Validation treats whitespace-only input as empty; submitted fields are sanitized to reduce accidental duplicates or invalid data.
 
-### Commits (range: v0.5.0..v0.5.1)
+Performance
+- PWA/perf tweaks to reduce first-swipe jank on mobile:
+  - `content-visibility: auto`, `contain: layout` and intrinsic-size hints for cards.
+  - `scrollbar-gutter: stable both-edges` to avoid reflow on scrollbars.
+  - Temporary `will-change`/translate3d warm-up on swipe containers and lazy preload of swipe engine code.
 
-- 292faafe — fix(ui): increase mobile padding for prefixed inputs to 2.5rem (author: baer)
-  - Files changed: `frontend/src/styles/index.css`
+Representative files changed (high level)
+- `frontend/src/components/ChartLegend.jsx` (added)
+- `frontend/src/pages/Reports.jsx`, `frontend/src/pages/Dashboard.jsx`, `frontend/src/pages/AdminTaxonomy.jsx` (reporting/UX changes)
+- `frontend/src/pages/AddTransaction.jsx`, `frontend/src/pages/EditTransaction.jsx`, `frontend/src/components/DropdownWithInput.jsx` (form/validation changes)
+- `controllers/categoryController.js`, `controllers/sourceController.js`, `controllers/targetController.js` (normalization/back-end lookups)
+- `frontend/src/styles/*` (styling and layout tweaks)
 
-- 9a9a4159 — feat(transactions): add realtime search with umlaut support; mobile search input spacing; translations; use search icon (author: baer)
-  - Files added/modified:
-    - `frontend/public/icons/search.svg` (added)
-    - `frontend/src/pages/Transactions.jsx` (modified)
-    - `frontend/src/styles/index.css` (modified)
-    - `frontend/src/translations/de.js` (modified)
-    - `frontend/src/translations/en.js` (modified)
-
-### Notes
-
-- This release is backwards compatible with v0.5.0. If you build from source ensure you have the repository tags available; the Git range used was `v0.5.0..v0.5.1`.
-
-## [v0.5.0] - (previous)
-
-- Previous release (no changelog here in this file).
+Commits included (range v0.5.1..v0.5.2)
+- bb74a91 — optimizations: Enhance transaction editing and reporting features
+- 8fae1cd — UX: Expenses by Category — mobile scrollable legend + amounts; Admin Taxonomy consolidate & selection fixes; Chart legend recursion fix
+- acf61fd — UI: trim/dedupe in dropdowns; remove early createSource/Target; sanitize submit fields; validation treats whitespace-only as empty
+- 71d0e3b — Normalize names: trim/case-insensitive for category/source/target; prevent trailing-space duplicates; create new entities only on transaction save; UI trims and dedupes; backend lookups use LOWER(TRIM)
+- 6d26a18 — perf(pwa): smooth first swipes on mobile without visual changes
 
 ---
 
-Unreleased changes should go under an `Unreleased` heading at the top of this file.
+## [v0.5.1] - 2025-08-28
+
+Summary
+- Includes a realtime transaction search feature (with accent/umlaut support), mobile UI fixes for prefixed inputs, PWA performance tweaks, and several UX/validation improvements.
+
+Added
+- Realtime transaction search (debounced, accent-insensitive filtering across columns).
+- `frontend/public/icons/search.svg` and updated i18n strings.
+- `frontend/src/components/ChartLegend.jsx` (reusable chart legend component).
+
+Fixed
+- Increase mobile padding for prefixed inputs to 2.5rem (hotfix).
+- Trim and dedupe dropdown entries; prevent creation of duplicate sources/targets on early save.
+- Validation: treat whitespace-only fields as empty; sanitize submitted fields.
+
+Performance
+- Smooth first swipes on mobile without visual changes:
+  - cards: `content-visibility: auto`, `contain: layout`, and intrinsic-size hints (mobile 260px, desktop 320px).
+  - `scrollbar-gutter: stable both-edges` to prevent reflow.
+  - Swipe warm-up: temporary `will-change`/translate3d on swipe containers for 1s.
+  - Lazy preload of swipe engine chunk shortly after mount on mobile.
+
+UX / Optimizations
+- Enhanced transaction editing and reporting features:
+  - EditTransaction: stronger validation rules for income/expense types.
+  - Reports: added ChartLegend and refined chart layouts for better mobile display.
+  - Transactions: show more descriptive info (category names, uncategorized labels).
+  - UserManagement, App styles, and CustomSwitch: spacing and responsiveness improvements.
+  - Modern scrollbar styling for scrollable panels.
+
+Data / Backend
+- Normalize names for category/source/target: trim and case-insensitive matching to prevent trailing-space duplicates. Backend lookups now use LOWER(TRIM).
+
+
+## [v0.5.0]
+
+(previous)
+
+
+
+
+

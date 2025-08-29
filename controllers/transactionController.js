@@ -165,7 +165,10 @@ const createTransaction = async (req, res) => {
     sse.broadcastToUser(req.user.id, payload);
     if (sharedWith && sharedWith.length) sse.broadcastToUsers(sharedWith, payload);
       }
-    } catch (e) {}
+    } catch (e) {
+      // Log SSE broadcast errors but don't fail the request
+      console.warn("SSE broadcast failed:", e && e.message ? e.message : e);
+    }
   } catch (err) {
     console.error("Create transaction error:", err.message);
     res.status(500).json({ message: "Server error" });

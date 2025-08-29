@@ -94,7 +94,6 @@ const Transactions = () => {
       setServerOffset(0);
       loadTransactions(0, false, pageSize);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSearching]);
 
   // Build a lightweight search index and filter across columns

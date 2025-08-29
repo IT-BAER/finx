@@ -38,7 +38,6 @@ export const UICacheProvider = ({ children }) => {
       // ignore parse errors
       console.warn("UICache: failed to read metadata from localStorage", err);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Internal write-through for metadata

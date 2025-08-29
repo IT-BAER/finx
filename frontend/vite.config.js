@@ -78,7 +78,7 @@ export default defineConfig(({ mode }) => {
             "icons/**/*.svg",
           ],
           navigateFallback: "/index.html",
-          navigateFallbackDenylist: [/^\/_/, /\/api\//],
+          navigateFallbackDenylist: [/^\/_/, new RegExp('/api/')],
           runtimeCaching: [
             // Health endpoint - always network only to reflect true server status
             {
@@ -103,7 +103,7 @@ export default defineConfig(({ mode }) => {
       // API data - prefer fresh values; use NetworkFirst with short TTL to allow offline fallback
             {
               urlPattern:
-        /^https?:\/\/[^\/]+\/api\/(transactions|categories|sources|targets|users)/,
+        new RegExp('^https?:\\/\\/[^\\/]+\\/api\\/(transactions|categories|sources|targets|users)'),
               handler: "NetworkFirst",
               options: {
                 cacheName: "api-data-cache",

@@ -84,7 +84,6 @@ function createLazyChart(chartName) {
             null;
           if (mounted) setComp(() => Comp || null);
         } catch (e) {
-          // eslint-disable-next-line no-console
           console.warn("Failed to load chart libraries", e);
         }
       })();

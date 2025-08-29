@@ -1,9 +1,11 @@
 import { useState } from "react";
-import offlineAPI from "../services/offlineAPI";
-import Dropdown from "./Dropdown";
+
 import { useTranslation } from "../hooks/useTranslation";
 import { transactionAPI } from "../services/api";
+import offlineAPI from "../services/offlineAPI";
+
 import Button from "./Button";
+import Dropdown from "./Dropdown";
 
 const Import = ({ onClose }) => {
   const { t } = useTranslation();
@@ -69,9 +71,7 @@ const Import = ({ onClose }) => {
               const headers = lines[0].split(",").map((h) => h.trim());
               const rows = [];
               for (let i = 1; i < lines.length; i++) {
-                const values = lines[i].split(
-                  /,(?=(?:(?:[^"]*\"){2})*[^\"]*$)/,
-                );
+                  const values = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
                 const row = {};
                 for (let j = 0; j < headers.length; j++) {
                   row[headers[j]] = values[j]
@@ -102,10 +102,10 @@ const Import = ({ onClose }) => {
               setMappings(normalizedGuessed);
               // Show mapping UI immediately
               setShowMapping(true);
-            } catch (err) {
-              console.error("Failed to parse CSV on file select", err);
-              setError(t("invalidCSVFormat"));
-            }
+              } catch (_err) {
+                console.error("Failed to parse CSV on file select", _err);
+                setError(t("invalidCSVFormat"));
+              }
           };
           reader.readAsText(selectedFile);
         }
@@ -191,7 +191,7 @@ const Import = ({ onClose }) => {
                 resolve("finx");
                 return;
               }
-            } catch (err) {
+            } catch {
               // not valid JSON
             }
           }
@@ -425,7 +425,7 @@ const Import = ({ onClose }) => {
             let json;
             try {
               json = JSON.parse(content);
-            } catch (jsonErr) {
+            } catch {
               setError(t("invalidJSONFile"));
               setLoading(false);
               return;
@@ -456,7 +456,7 @@ const Import = ({ onClose }) => {
 
             const rows = [];
             for (let i = 1; i < lines.length; i++) {
-              const values = lines[i].split(/,(?=(?:(?:[^"]*\"){2})*[^\"]*$)/);
+              const values = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
               const row = {};
               for (let j = 0; j < headers.length; j++) {
                 row[headers[j]] = values[j] ? values[j].replace(/"/g, "") : "";
@@ -611,7 +611,7 @@ const Import = ({ onClose }) => {
   };
 
   // Build normalized rows from parsed CSV rows using current mappings (best-effort)
-  const buildNormalized = (rows) => {
+  const _buildNormalized = (rows) => {
     if (!rows) return [];
     return rows.map((r) => {
       if (Object.keys(mappings || {}).length > 0) {

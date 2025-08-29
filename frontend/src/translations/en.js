@@ -185,16 +185,7 @@ export default {
   weekly: "Weekly",
   monthly: "Monthly",
   yearly: "Yearly",
-  totalIncome: "Total Income",
-  totalExpenses: "Total Expenses",
-  savingsRate: "Savings Rate",
-  netSavings: "Net Savings",
-  incomeVsExpenses: "Income vs Expenses",
-  expensesByCategory: "Expenses by Category",
-  balanceTrend: "Balance Trend",
   detailedBreakdown: "Detailed Breakdown",
-  category: "Category",
-  amount: "Amount",
   percentage: "Percentage",
   food: "Food",
   groceries: "Groceries",
@@ -222,8 +213,6 @@ export default {
   importData: "Import Data",
   deleteAccount: "Delete Account",
   confirmDeleteAccount: "Please Confirm",
-  areYouSureYouWantToDeleteYourAccount:
-    "Are you sure you want to permanently delete your account? This cannot be undone.",
   removeSampleData: "Remove Sample Data",
   removeSampleDataDescription:
     "Clean database from sample transactions and categories",
@@ -235,7 +224,6 @@ export default {
   languageChanged: "Language changed successfully",
   profileUpdated: "Profile updated successfully",
   passwordUpdated: "Password updated successfully",
-  passwordsDoNotMatch: "Passwords do not match",
   passwordMinLength: "Password must be at least 6 characters",
   failedToUpdateProfile: "Failed to update profile",
   noDataAvailable: "No data available",
@@ -244,7 +232,6 @@ export default {
   // Common
   cancel: "Cancel",
   confirm: "Confirm",
-  pleaseConfirm: "Please Confirm",
   add: "Add",
   locale: "en-US",
   save: "Save",
@@ -302,8 +289,6 @@ export default {
   owner: "Owner",
   name: "Name",
   categories: "Categories",
-  sources: "Sources",
-  targets: "Targets",
   rename: "Rename",
   renameItem: "Rename Item",
   newName: "New Name",
@@ -370,7 +355,6 @@ export default {
   editSharing: "Edit Sharing",
   adminSettings: "Admin Settings",
   sharedWithOthers: "Shared with others",
-  sharedWithMe: "Shared with me",
   failedToLoadSharedData: "Failed to load shared data",
   failedToLoadUsers: "Failed to load users",
   failedToLoadData: "Failed to load data",
@@ -389,8 +373,6 @@ export default {
   sourceToShare: "Source to share",
   sourceToShareDescription:
     "Optionally limit sharing to a specific source. Leave empty to share all sources.",
-  confirmDelete: "Confirm Delete",
-  deleteSharingConfirmation: "Are you sure you want to delete this sharing permission?",
 
   // User Management
   userManagement: "User Management",

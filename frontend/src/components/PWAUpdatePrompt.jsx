@@ -86,47 +86,63 @@ const PWAUpdatePrompt = () => {
       setTimeout(() => window.location.reload(), 600);
     };
     try {
-      navigator.serviceWorker.addEventListener("controllerchange", onControllerChange);
-    } catch {}
+      try {
+        navigator.serviceWorker.addEventListener("controllerchange", onControllerChange);
+      } catch (err) {
+        console.warn("Failed to add controllerchange event listener:", err);
+      }
 
-    try {
       // Clear UI caches so new SW can precache fresh UI assets
       if ("caches" in window) {
-        const cacheNames = await caches.keys();
-        const uiCacheKeywords = [
-          "app-shell",
-          "static-resources",
-          "images-cache",
-          "icons-cache",
-          "fonts-cache",
-          "precache",
-          "workbox",
-        ];
-        const cachesToDelete = cacheNames.filter((name) =>
-          uiCacheKeywords.some((k) => name.includes(k)),
-        );
-        await Promise.all(cachesToDelete.map((name) => caches.delete(name)));
+        try {
+          const cacheNames = await caches.keys();
+          const uiCacheKeywords = [
+            "app-shell",
+            "static-resources",
+            "images-cache",
+            "icons-cache",
+            "fonts-cache",
+            "precache",
+            "workbox",
+          ];
+          const cachesToDelete = cacheNames.filter((name) =>
+            uiCacheKeywords.some((k) => name.includes(k)),
+          );
+          await Promise.all(cachesToDelete.map((name) => caches.delete(name)));
+        } catch (err) {
+          console.warn("Failed to clear caches:", err);
+        }
       }
 
       // Attempt multiple activation paths for robustness
       try {
         const reg = await navigator.serviceWorker.getRegistration();
         if (reg?.waiting) {
-          try { reg.waiting.postMessage({ type: "SKIP_WAITING" }); } catch {}
+          try { reg.waiting.postMessage({ type: "SKIP_WAITING" }); } catch (err) {
+            console.warn("Failed to postMessage to waiting worker:", err);
+          }
         }
-      } catch {}
+      } catch (err) {
+        console.warn("Failed to get service worker registration:", err);
+      }
 
       if (waitingWorker) {
-        try { waitingWorker.postMessage({ type: "SKIP_WAITING" }); } catch {}
+        try { waitingWorker.postMessage({ type: "SKIP_WAITING" }); } catch (err) {
+          console.warn("Failed to postMessage to waitingWorker:", err);
+        }
       }
 
       if (typeof window.__pwa_update_sw === "function") {
-        try { await window.__pwa_update_sw(); } catch {}
+        try { await window.__pwa_update_sw(); } catch (err) {
+          console.warn("Failed to execute PWA update service worker:", err);
+        }
       } else {
         try {
           const reg = await navigator.serviceWorker.getRegistration();
           await reg?.update();
-        } catch {}
+        } catch (err) {
+          console.warn("Failed to update service worker:", err);
+        }
       }
 
       // Fallback: if no controllerchange in a short while, reload anyway

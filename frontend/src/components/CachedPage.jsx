@@ -25,7 +25,6 @@ const CachedPage = memo(
           cacheUIElement(cacheKey, memoizedChildren);
         } catch (err) {
           // non-fatal
-          // eslint-disable-next-line no-console
           console.warn(
             "CachedPage: failed to cache UI element in UICacheContext",
             err,
@@ -34,7 +33,6 @@ const CachedPage = memo(
       }
 
       // Preloading functionality removed temporarily
-      // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [cacheKey, JSON.stringify(preloadUrls)]);
 
     return memoizedChildren;
