@@ -23,21 +23,6 @@ Performance
   - `scrollbar-gutter: stable both-edges` to avoid reflow on scrollbars.
   - Temporary `will-change`/translate3d warm-up on swipe containers and lazy preload of swipe engine code.
 
-Representative files changed (high level)
-- `frontend/src/components/ChartLegend.jsx` (added)
-- `frontend/src/pages/Reports.jsx`, `frontend/src/pages/Dashboard.jsx`, `frontend/src/pages/AdminTaxonomy.jsx` (reporting/UX changes)
-- `frontend/src/pages/AddTransaction.jsx`, `frontend/src/pages/EditTransaction.jsx`, `frontend/src/components/DropdownWithInput.jsx` (form/validation changes)
-- `controllers/categoryController.js`, `controllers/sourceController.js`, `controllers/targetController.js` (normalization/back-end lookups)
-- `frontend/src/styles/*` (styling and layout tweaks)
-
-Commits included (range v0.5.1..v0.5.2)
-- bb74a91 — optimizations: Enhance transaction editing and reporting features
-- 8fae1cd — UX: Expenses by Category — mobile scrollable legend + amounts; Admin Taxonomy consolidate & selection fixes; Chart legend recursion fix
-- acf61fd — UI: trim/dedupe in dropdowns; remove early createSource/Target; sanitize submit fields; validation treats whitespace-only as empty
-- 71d0e3b — Normalize names: trim/case-insensitive for category/source/target; prevent trailing-space duplicates; create new entities only on transaction save; UI trims and dedupes; backend lookups use LOWER(TRIM)
-- 6d26a18 — perf(pwa): smooth first swipes on mobile without visual changes
-
----
 
 ## [v0.5.1] - 2025-08-28
 
