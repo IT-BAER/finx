@@ -38,7 +38,7 @@ const getCategories = async (req, res) => {
     }
     // Pull all categories (optionally filtered), then dedupe by lower(name)
     const result = await db.query(
-      `SELECT id, name FROM categories ${where} ORDER BY name ASC`,
+      `SELECT id, TRIM(name) AS name FROM categories ${where} ORDER BY TRIM(name) ASC`,
       params,
     );
     const seen = new Set();

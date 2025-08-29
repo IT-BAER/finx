@@ -312,10 +312,9 @@ const EditTransaction = () => {
         // Prepare payload but omit category/category_id for income transactions
         const _base = {
           ...formData,
-          target:
-            formData.target && String(formData.target).trim()
-              ? formData.target
-              : defaultTarget,
+          category: formData.type !== "income" ? String(formData.category || "").trim() : "",
+          source: String(formData.source || "").trim(),
+          target: String(formData.target || "").trim() || defaultTarget,
         };
         // For income transactions explicitly clear category_id so backend will remove it
         if (_base.type === "income") {
@@ -341,9 +340,9 @@ const EditTransaction = () => {
           category_id:
             formData.type === "income"
               ? null
-              : categories.find((c) => c.name === formData.category)?.id || null,
-          source: formData.source || null,
-          target: dataToSend.target || null,
+              : categories.find((c) => String(c.name || "").trim().toLowerCase() === String(formData.category || "").trim().toLowerCase())?.id || null,
+          source: String(formData.source || "").trim() || null,
+          target: String(dataToSend.target || "").trim() || null,
           description: formData.description || null,
           recurrence_type: formData.recurrence_type,
           recurrence_interval: parseInt(formData.recurrence_interval),
@@ -527,15 +526,16 @@ const EditTransaction = () => {
                   }}
                   onCreate={async (name) => {
                     try {
-                      if (!name) return;
-                      if (!categories.some((c) => c.name === name)) {
+                      const trimmed = String(name || "").trim();
+                      if (!trimmed) return;
+                      if (!categories.some((c) => String(c.name || "").trim().toLowerCase() === trimmed.toLowerCase())) {
                         setCategories([
                           ...categories,
-                          { id: Date.now(), name },
+                          { id: Date.now(), name: trimmed },
                         ]);
                       }
-                      if (name !== formData.category) {
-                        setFormData({ ...formData, category: name });
+                      if (trimmed !== formData.category) {
+                        setFormData({ ...formData, category: trimmed });
                       }
                     } catch (err) {
                       console.error("Error creating category:", err);
@@ -599,24 +599,22 @@ const EditTransaction = () => {
                   }}
                   onCreate={async (name) => {
                     try {
-                      if (!name) return;
-                      // For INCOME the "source" dropdown shows targets, so create a target.
+                      const trimmed = String(name || "").trim();
+                      if (!trimmed) return;
                       if (formData.type === "income") {
-                        await offlineAPI.createTarget({ name });
-                        if (!targets.includes(name)) {
-                          setTargets([...targets, name]);
+                        if (!targets.some((n) => String(n).trim().toLowerCase() === trimmed.toLowerCase())) {
+                          setTargets([...targets, trimmed]);
                         }
                       } else {
-                        await offlineAPI.createSource({ name });
-                        if (!sources.includes(name)) {
-                          setSources([...sources, name]);
+                        if (!sources.some((n) => String(n).trim().toLowerCase() === trimmed.toLowerCase())) {
+                          setSources([...sources, trimmed]);
                         }
                       }
-                      if (name !== formData.source) {
-                        setFormData({ ...formData, source: name });
+                      if (trimmed !== formData.source) {
+                        setFormData({ ...formData, source: trimmed });
                       }
                     } catch (err) {
-                      console.error("Error creating source/target:", err);
+                      console.error("Error handling new source/target:", err);
                     }
                   }}
                   placeholder={t("enterSource")}
@@ -638,24 +636,22 @@ const EditTransaction = () => {
                   }}
                   onCreate={async (name) => {
                     try {
-                      if (!name) return;
-                      // For INCOME the "target" dropdown should show sources, so create a source.
+                      const trimmed = String(name || "").trim();
+                      if (!trimmed) return;
                       if (formData.type === "income") {
-                        await offlineAPI.createSource({ name });
-                        if (!sources.includes(name)) {
-                          setSources([...sources, name]);
+                        if (!sources.some((n) => String(n).trim().toLowerCase() === trimmed.toLowerCase())) {
+                          setSources([...sources, trimmed]);
                         }
                       } else {
-                        await offlineAPI.createTarget({ name });
-                        if (!targets.includes(name)) {
-                          setTargets([...targets, name]);
+                        if (!targets.some((n) => String(n).trim().toLowerCase() === trimmed.toLowerCase())) {
+                          setTargets([...targets, trimmed]);
                         }
                       }
-                      if (name !== formData.target) {
-                        setFormData({ ...formData, target: name });
+                      if (trimmed !== formData.target) {
+                        setFormData({ ...formData, target: trimmed });
                       }
                     } catch (err) {
-                      console.error("Error creating target/source:", err);
+                      console.error("Error handling new target/source:", err);
                     }
                   }}
                   placeholder={t("enterTarget")}

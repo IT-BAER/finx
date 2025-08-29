@@ -7,7 +7,7 @@ class Target {
       VALUES ($1, $2)
       RETURNING *
     `;
-    const values = [user_id, name];
+  const values = [user_id, String(name).trim()];
     const result = await db.query(query, values);
     return result.rows[0];
   }
@@ -59,7 +59,7 @@ class Target {
       WHERE id = $2
       RETURNING *
     `;
-    const values = [name, id];
+  const values = [String(name).trim(), id];
     const result = await db.query(query, values);
     return result.rows[0];
   }
@@ -76,8 +76,9 @@ class Target {
 
   static async findByNameAndUserId(user_id, name) {
     const query = `
-      SELECT * FROM targets
-      WHERE user_id = $1 AND name = $2
+  SELECT * FROM targets
+  WHERE user_id = $1 AND LOWER(TRIM(name)) = LOWER(TRIM($2))
+  LIMIT 1
     `;
     const result = await db.query(query, [user_id, name]);
     return result.rows[0];

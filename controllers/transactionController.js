@@ -25,14 +25,22 @@ const createTransaction = async (req, res) => {
       return res.status(400).json({ message: "Amount and type are required" });
     }
 
+    // Normalize incoming strings
+    const norm = (s) => (s == null ? null : String(s).trim());
+    const normLower = (s) => (s == null ? null : String(s).trim().toLowerCase());
+
+    const inCategory = norm(category);
+    const inSource = norm(source);
+    const inTarget = norm(target);
+
     // Handle category (global by name)
     let categoryId = null;
-    if (category) {
+    if (inCategory) {
       try {
         // Try to find any category with the same name regardless of owner
         const categoryResult = await db.query(
-          "SELECT id FROM categories WHERE LOWER(name) = LOWER($1) ORDER BY id ASC LIMIT 1",
-          [category],
+          "SELECT id FROM categories WHERE LOWER(TRIM(name)) = LOWER(TRIM($1)) ORDER BY id ASC LIMIT 1",
+          [inCategory],
         );
         if (categoryResult.rows.length > 0) {
           categoryId = categoryResult.rows[0].id;
@@ -40,7 +48,7 @@ const createTransaction = async (req, res) => {
           // Create a new category owned by the current user but globally discoverable by name
           const newCategory = await db.query(
             "INSERT INTO categories (user_id, name) VALUES ($1, $2) RETURNING id",
-            [req.user.id, category],
+            [req.user.id, inCategory],
           );
           categoryId = newCategory.rows[0].id;
         }
@@ -52,11 +60,11 @@ const createTransaction = async (req, res) => {
 
     // Handle source
     let source_id = null;
-    if (source) {
+    if (inSource) {
       // Try to find existing source
       const sourceResult = await db.query(
-        "SELECT id FROM sources WHERE user_id = $1 AND name = $2",
-        [req.user.id, source],
+        "SELECT id FROM sources WHERE user_id = $1 AND LOWER(TRIM(name)) = LOWER(TRIM($2)) LIMIT 1",
+        [req.user.id, inSource],
       );
 
       if (sourceResult.rows.length > 0) {
@@ -65,7 +73,7 @@ const createTransaction = async (req, res) => {
         // Create new source
         const newSource = await db.query(
           "INSERT INTO sources (user_id, name) VALUES ($1, $2) RETURNING id",
-          [req.user.id, source],
+          [req.user.id, inSource],
         );
         source_id = newSource.rows[0].id;
       }
@@ -73,11 +81,11 @@ const createTransaction = async (req, res) => {
 
     // Handle target
     let target_id = null;
-    if (target) {
+    if (inTarget) {
       // Try to find existing target
       const targetResult = await db.query(
-        "SELECT id FROM targets WHERE user_id = $1 AND name = $2",
-        [req.user.id, target],
+        "SELECT id FROM targets WHERE user_id = $1 AND LOWER(TRIM(name)) = LOWER(TRIM($2)) LIMIT 1",
+        [req.user.id, inTarget],
       );
 
       if (targetResult.rows.length > 0) {
@@ -86,7 +94,7 @@ const createTransaction = async (req, res) => {
         // Create new target
         const newTarget = await db.query(
           "INSERT INTO targets (user_id, name) VALUES ($1, $2) RETURNING id",
-          [req.user.id, target],
+          [req.user.id, inTarget],
         );
         target_id = newTarget.rows[0].id;
       }
@@ -117,10 +125,10 @@ const createTransaction = async (req, res) => {
       date || new Date(),
       amount,
       transactionType,
-      description || "",
-      category || null,
-      source || null,
-      target || null,
+  description || "",
+  inCategory || null,
+  inSource || null,
+  inTarget || null,
     ]);
 
     if (dupRes.rows.length > 0) {
@@ -459,11 +467,11 @@ const getTransactionById = async (req, res) => {
     if (category_id !== undefined) {
       categoryId = category_id;
     }
-    if (category) {
+    if (inCategory) {
       // Try to find existing category globally by name (shared across users)
       const categoryResult = await db.query(
-        "SELECT id FROM categories WHERE LOWER(name) = LOWER($1) ORDER BY id ASC LIMIT 1",
-        [category],
+        "SELECT id FROM categories WHERE LOWER(TRIM(name)) = LOWER(TRIM($1)) ORDER BY id ASC LIMIT 1",
+        [inCategory],
       );
 
       if (categoryResult.rows.length > 0) {
@@ -472,7 +480,7 @@ const getTransactionById = async (req, res) => {
         // Create new category under the owner for consistency
         const newCategory = await db.query(
           "INSERT INTO categories (user_id, name) VALUES ($1, $2) RETURNING id",
-          [ownerId, category],
+          [ownerId, inCategory],
         );
         categoryId = newCategory.rows[0].id;
       }
@@ -502,11 +510,11 @@ const getTransactionById = async (req, res) => {
     // Handle source
   let source_id = transaction.source_id;
     if (source !== undefined) {
-      if (source) {
+      if (inSource) {
         // Try to find existing source
         const sourceResult = await db.query(
-      "SELECT id FROM sources WHERE user_id = $1 AND name = $2",
-      [ownerId, source],
+      "SELECT id FROM sources WHERE user_id = $1 AND LOWER(TRIM(name)) = LOWER(TRIM($2)) LIMIT 1",
+      [ownerId, inSource],
         );
 
         if (sourceResult.rows.length > 0) {
@@ -515,7 +523,7 @@ const getTransactionById = async (req, res) => {
           // Create new source
           const newSource = await db.query(
             "INSERT INTO sources (user_id, name) VALUES ($1, $2) RETURNING id",
-            [ownerId, source],
+            [ownerId, inSource],
           );
           source_id = newSource.rows[0].id;
         }
@@ -527,11 +535,11 @@ const getTransactionById = async (req, res) => {
     // Handle target
   let target_id = transaction.target_id;
     if (target !== undefined) {
-      if (target) {
+      if (inTarget) {
         // Try to find existing target
         const targetResult = await db.query(
-      "SELECT id FROM targets WHERE user_id = $1 AND name = $2",
-      [ownerId, target],
+      "SELECT id FROM targets WHERE user_id = $1 AND LOWER(TRIM(name)) = LOWER(TRIM($2)) LIMIT 1",
+      [ownerId, inTarget],
         );
 
         if (targetResult.rows.length > 0) {
@@ -540,7 +548,7 @@ const getTransactionById = async (req, res) => {
           // Create new target
           const newTarget = await db.query(
             "INSERT INTO targets (user_id, name) VALUES ($1, $2) RETURNING id",
-            [ownerId, target],
+            [ownerId, inTarget],
           );
           target_id = newTarget.rows[0].id;
         }

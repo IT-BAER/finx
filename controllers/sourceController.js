@@ -6,13 +6,14 @@ const { getAccessibleUserIds, validateAsUserId } = require("../utils/access");
 const createSource = async (req, res) => {
   try {
     const { name } = req.body;
+    const trimmed = name != null ? String(name).trim() : "";
 
-    if (!name) {
+    if (!trimmed) {
       return res.status(400).json({ message: "Name is required" });
     }
 
     // Check if source already exists for this user
-    const existingSource = await Source.findByNameAndUserId(req.user.id, name);
+    const existingSource = await Source.findByNameAndUserId(req.user.id, trimmed);
     if (existingSource) {
       return res.status(200).json({
         success: true,
@@ -20,7 +21,7 @@ const createSource = async (req, res) => {
       });
     }
 
-    const source = await Source.create(req.user.id, name);
+    const source = await Source.create(req.user.id, trimmed);
 
     res.status(201).json({
       success: true,
@@ -51,10 +52,10 @@ const getSources = async (req, res) => {
       .map((_, i) => `$${i + 1}`)
       .join(", ");
     const query = `
-      SELECT DISTINCT name
+      SELECT DISTINCT TRIM(name) AS name
       FROM sources
       WHERE user_id IN (${placeholders})
-      ORDER BY name ASC
+      ORDER BY TRIM(name) ASC
     `;
     const result = await db.query(query, accessibleUserIds);
     res.json({

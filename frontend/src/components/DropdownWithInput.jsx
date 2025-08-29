@@ -24,17 +24,22 @@ const DropdownWithInput = ({
   const interactingWithMenuRef = useRef(false);
   const touchStartYRef = useRef(0);
 
+  // Helpers
+  const normalize = (s) => (typeof s === "string" ? s.trim() : s);
+  const normalizeLower = (s) => (typeof s === "string" ? s.trim().toLowerCase() : s);
+
   // Update filtered options when options or input value changes
   useEffect(() => {
     if (showAllOptions) {
       // Show all options when dropdown is first opened
-      setFilteredOptions(options);
+      setFilteredOptions(options.map((o) => (typeof o === "string" ? o.trim() : o)));
     } else {
       // Filter options based on input value
+      const needle = String(inputValue || "").toLowerCase();
       setFilteredOptions(
-        options.filter((option) =>
-          option.toLowerCase().includes(inputValue.toLowerCase()),
-        ),
+        options
+          .map((o) => (typeof o === "string" ? o.trim() : o))
+          .filter((option) => option.toLowerCase().includes(needle)),
       );
     }
   }, [options, inputValue, showAllOptions]);
@@ -160,8 +165,13 @@ const DropdownWithInput = ({
         return;
       }
       // Only create when dropdown is open to prevent loops via prop sync
-      if (isOpen && inputValue && !options.includes(inputValue)) {
-        handleCreateNew();
+      if (isOpen && inputValue) {
+        const exists = options.some(
+          (o) => normalizeLower(o) === normalizeLower(inputValue),
+        );
+        if (!exists) {
+          handleCreateNew();
+        }
       }
       setIsOpen(false);
       setShowAllOptions(false); // Reset showAllOptions when dropdown is closed
@@ -178,11 +188,14 @@ const DropdownWithInput = ({
   };
 
   const handleCreateNew = () => {
-    if (inputValue && !options.includes(inputValue)) {
+    const trimmed = String(inputValue || "").trim();
+    if (!trimmed) return;
+    const exists = options.some((o) => normalizeLower(o) === trimmed.toLowerCase());
+    if (!exists) {
       // Mark internal update before notifying parent to avoid immediate prop-sync loop
       isInternalUpdateRef.current = true;
-      onCreate(inputValue);
-      onChange({ target: { name, value: inputValue } });
+      onCreate(trimmed);
+      onChange({ target: { name, value: trimmed } });
       setIsOpen(false);
       setShowAllOptions(false); // Reset showAllOptions when new option is created
     }
@@ -190,8 +203,12 @@ const DropdownWithInput = ({
 
   const handleKeyDown = (e) => {
     if (e.key === "Enter" && inputValue) {
-      if (filteredOptions.includes(inputValue)) {
-        handleOptionSelect(inputValue);
+      const trimmed = String(inputValue).trim();
+      const existing = filteredOptions.find(
+        (o) => normalizeLower(o) === trimmed.toLowerCase(),
+      );
+      if (existing) {
+        handleOptionSelect(existing);
       } else {
         handleCreateNew();
       }

@@ -6,13 +6,14 @@ const { getAccessibleUserIds, validateAsUserId } = require("../utils/access");
 const createTarget = async (req, res) => {
   try {
     const { name } = req.body;
+    const trimmed = name != null ? String(name).trim() : "";
 
-    if (!name) {
+    if (!trimmed) {
       return res.status(400).json({ message: "Name is required" });
     }
 
     // Check if target already exists for this user
-    const existingTarget = await Target.findByNameAndUserId(req.user.id, name);
+    const existingTarget = await Target.findByNameAndUserId(req.user.id, trimmed);
     if (existingTarget) {
       return res.status(200).json({
         success: true,
@@ -20,7 +21,7 @@ const createTarget = async (req, res) => {
       });
     }
 
-    const target = await Target.create(req.user.id, name);
+    const target = await Target.create(req.user.id, trimmed);
 
     res.status(201).json({
       success: true,
@@ -51,10 +52,10 @@ const getTargets = async (req, res) => {
       .map((_, i) => `$${i + 1}`)
       .join(", ");
     const query = `
-      SELECT DISTINCT name
+      SELECT DISTINCT TRIM(name) AS name
       FROM targets
       WHERE user_id IN (${placeholders})
-      ORDER BY name ASC
+      ORDER BY TRIM(name) ASC
     `;
     const result = await db.query(query, accessibleUserIds);
     res.json({
