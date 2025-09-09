@@ -218,17 +218,28 @@ const AddTransaction = () => {
     try {
       // Default empty target to localized "Misc"/"Sonstiges"
       const defaultTarget = language === "de" ? "Sonstiges" : "Misc";
-      const _base = {
-        ...formData,
-        category: formData.type !== "income" ? String(formData.category || "").trim() : "",
-        source: String(formData.source || "").trim(),
-        target: String(formData.target || "").trim() || defaultTarget,
-      };
-      if (_base.type === "income") {
-        _base.category = "";
-        _base.category_id = null;
+      
+      let dataToSend;
+      if (formData.type === "income") {
+        // For income transactions, swap source and target in the backend payload
+        // Frontend: source = refund origin (Amazon), target = destination (Bank)
+        // Backend: source = destination (Bank), target = refund origin (Amazon)
+        dataToSend = {
+          ...formData,
+          category: "", // Income has no category
+          category_id: null,
+          source: String(formData.target || "").trim(), // Backend source = frontend target
+          target: String(formData.source || "").trim() || defaultTarget, // Backend target = frontend source
+        };
+      } else {
+        // For expense transactions, keep normal mapping
+        dataToSend = {
+          ...formData,
+          category: String(formData.category || "").trim(),
+          source: String(formData.source || "").trim(),
+          target: String(formData.target || "").trim() || defaultTarget,
+        };
       }
-      const dataToSend = _base;
 
       // Always create the base transaction first
       const result = await offlineAPI.createTransaction(dataToSend);
@@ -512,7 +523,8 @@ const AddTransaction = () => {
                     try {
                       const trimmed = String(name || "").trim();
                       if (!trimmed) return;
-                      // Do not create immediately; only reflect in UI list and set field
+                      // For income, source (refund origin) should go to targets list
+                      // For expense, source (funding) should go to sources list
                       if (formData.type === "income") {
                         if (!targets.some((n) => String(n).trim().toLowerCase() === trimmed.toLowerCase())) {
                           setTargets([...targets, trimmed]);
@@ -526,7 +538,7 @@ const AddTransaction = () => {
                         setFormData({ ...formData, source: trimmed });
                       }
                     } catch (err) {
-                      console.error("Error handling new source/target:", err);
+                      console.error("Error handling new source:", err);
                     }
                   }}
                   placeholder={t("enterSource")}
@@ -551,7 +563,8 @@ const AddTransaction = () => {
                     try {
                       const trimmed = String(name || "").trim();
                       if (!trimmed) return;
-                      // Do not create immediately; only reflect in UI list and set field
+                      // For income, target (destination) should go to sources list
+                      // For expense, target (destination) should go to targets list
                       if (formData.type === "income") {
                         if (!sources.some((n) => String(n).trim().toLowerCase() === trimmed.toLowerCase())) {
                           setSources([...sources, trimmed]);
@@ -565,7 +578,7 @@ const AddTransaction = () => {
                         setFormData({ ...formData, target: trimmed });
                       }
                     } catch (err) {
-                      console.error("Error handling new target/source:", err);
+                      console.error("Error handling new target:", err);
                     }
                   }}
                   placeholder={t("enterTarget")}

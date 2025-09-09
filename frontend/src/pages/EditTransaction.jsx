@@ -222,8 +222,13 @@ const EditTransaction = () => {
         amount: transaction.amount ? String(transaction.amount) : "",
         type: transaction.type || "expense",
         description: transaction.description || "",
-        source: transaction.source_name || transaction.source || "",
-        target: transaction.target_name || transaction.target || "",
+        // For income transactions, swap the source/target mapping from backend
+        source: transaction.type === "income" 
+          ? (transaction.target_name || transaction.target || "")  // Frontend source = backend target
+          : (transaction.source_name || transaction.source || ""), // Frontend source = backend source
+        target: transaction.type === "income"
+          ? (transaction.source_name || transaction.source || "")  // Frontend target = backend source
+          : (transaction.target_name || transaction.target || ""), // Frontend target = backend target
         date: formattedDate,
         isRecurring: !!transaction.recurring,
         recurrence_type: transaction.recurring?.recurrence_type || "monthly",
@@ -319,19 +324,28 @@ const EditTransaction = () => {
       try {
         // Default empty target to localized "Misc"/"Sonstiges"
         const defaultTarget = language === "de" ? "Sonstiges" : "Misc";
-        // Prepare payload but omit category/category_id for income transactions
-        const _base = {
-          ...formData,
-          category: formData.type !== "income" ? String(formData.category || "").trim() : "",
-          source: String(formData.source || "").trim(),
-          target: String(formData.target || "").trim() || defaultTarget,
-        };
-        // For income transactions explicitly clear category_id so backend will remove it
-        if (_base.type === "income") {
-          _base.category = "";
-          _base.category_id = null;
+        
+        let dataToSend;
+        if (formData.type === "income") {
+          // For income transactions, swap source and target in the backend payload
+          // Frontend: source = refund origin (Amazon), target = destination (Bank)
+          // Backend: source = destination (Bank), target = refund origin (Amazon)
+          dataToSend = {
+            ...formData,
+            category: "", // Income has no category
+            category_id: null,
+            source: String(formData.target || "").trim() || defaultTarget, // Backend source = frontend target
+            target: String(formData.source || "").trim(), // Backend target = frontend source
+          };
+        } else {
+          // For expense transactions, keep normal mapping
+          dataToSend = {
+            ...formData,
+            category: String(formData.category || "").trim(),
+            source: String(formData.source || "").trim(),
+            target: String(formData.target || "").trim() || defaultTarget,
+          };
         }
-        const dataToSend = _base;
 
         // First, update the base transaction
         const result = await offlineAPI.updateTransaction(id, dataToSend);
@@ -351,7 +365,8 @@ const EditTransaction = () => {
             formData.type === "income"
               ? null
               : categories.find((c) => String(c.name || "").trim().toLowerCase() === String(formData.category || "").trim().toLowerCase())?.id || null,
-          source: String(formData.source || "").trim() || null,
+          // Use the same field mapping as dataToSend for consistency
+          source: String(dataToSend.source || "").trim() || null,
           target: String(dataToSend.target || "").trim() || null,
           description: formData.description || null,
           recurrence_type: formData.recurrence_type,
@@ -612,6 +627,8 @@ const EditTransaction = () => {
                     try {
                       const trimmed = String(name || "").trim();
                       if (!trimmed) return;
+                      // For income, source (refund origin) should go to targets list
+                      // For expense, source (funding) should go to sources list
                       if (formData.type === "income") {
                         if (!targets.some((n) => String(n).trim().toLowerCase() === trimmed.toLowerCase())) {
                           setTargets([...targets, trimmed]);
@@ -625,7 +642,7 @@ const EditTransaction = () => {
                         setFormData({ ...formData, source: trimmed });
                       }
                     } catch (err) {
-                      console.error("Error handling new source/target:", err);
+                      console.error("Error handling new source:", err);
                     }
                   }}
                   placeholder={t("enterSource")}
@@ -650,6 +667,8 @@ const EditTransaction = () => {
                     try {
                       const trimmed = String(name || "").trim();
                       if (!trimmed) return;
+                      // For income, target (destination) should go to sources list
+                      // For expense, target (destination) should go to targets list
                       if (formData.type === "income") {
                         if (!sources.some((n) => String(n).trim().toLowerCase() === trimmed.toLowerCase())) {
                           setSources([...sources, trimmed]);
@@ -663,7 +682,7 @@ const EditTransaction = () => {
                         setFormData({ ...formData, target: trimmed });
                       }
                     } catch (err) {
-                      console.error("Error handling new target/source:", err);
+                      console.error("Error handling new target:", err);
                     }
                   }}
                   placeholder={t("enterTarget")}

@@ -20,6 +20,22 @@ const Transactions = () => {
   // Track IDs we've already rendered to avoid duplicates when appending
   const seenKeysRef = useRef(new Set());
 
+  // Helper function to get display source and target for transactions
+  // For income transactions, we need to swap them for correct semantic display
+  const getDisplaySourceTarget = (transaction) => {
+    if (transaction.type === "income") {
+      return {
+        displaySource: transaction.target_name || transaction.target,
+        displayTarget: transaction.source_name || transaction.source,
+      };
+    } else {
+      return {
+        displaySource: transaction.source_name || transaction.source,
+        displayTarget: transaction.target_name || transaction.target,
+      };
+    }
+  };
+
   // State for infinite scrolling
   const [rawTransactions, setRawTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -591,17 +607,22 @@ const Transactions = () => {
                                     color: "rgb(79, 91, 111)",
                                   }}
                                 >
-                                  <span className="dark:text-[rgb(153,165,190)]">
-                                    {transaction.source_name ||
-                                      transaction.source}
-                                  </span>
-                                  <span className="mx-1 dark:text-[rgb(153,165,190)]">
-                                    →
-                                  </span>
-                                  <span className="dark:text-[rgb(153,165,190)]">
-                                    {transaction.target_name ||
-                                      transaction.target}
-                                  </span>
+                                  {(() => {
+                                    const { displaySource, displayTarget } = getDisplaySourceTarget(transaction);
+                                    return (
+                                      <>
+                                        <span className="dark:text-[rgb(153,165,190)]">
+                                          {displaySource}
+                                        </span>
+                                        <span className="mx-1 dark:text-[rgb(153,165,190)]">
+                                          →
+                                        </span>
+                                        <span className="dark:text-[rgb(153,165,190)]">
+                                          {displayTarget}
+                                        </span>
+                                      </>
+                                    );
+                                  })()}
                                 </div>
                               ) : transaction.source_name ||
                                 transaction.source ? (
@@ -614,8 +635,7 @@ const Transactions = () => {
                                 >
                                   <span className="dark:text-[rgb(153,165,190)]">
                                     {t("source")}:{" "}
-                                    {transaction.source_name ||
-                                      transaction.source}
+                                    {getDisplaySourceTarget(transaction).displaySource}
                                   </span>
                                 </div>
                               ) : transaction.target_name ||
@@ -629,8 +649,7 @@ const Transactions = () => {
                                 >
                                   <span className="dark:text-[rgb(153,165,190)]">
                                     {t("target")}:{" "}
-                                    {transaction.target_name ||
-                                      transaction.target}
+                                    {getDisplaySourceTarget(transaction).displayTarget}
                                   </span>
                                 </div>
                               ) : null}
@@ -777,17 +796,22 @@ const Transactions = () => {
                                   color: "rgb(79, 91, 111)",
                                 }}
                               >
-                                <span className="dark:text-[rgb(153,165,190)]">
-                                  {transaction.source_name ||
-                                    transaction.source}
-                                </span>
-                                <span className="mx-1 dark:text-[rgb(153,165,190)]">
-                                  →
-                                </span>
-                                <span className="dark:text-[rgb(153,165,190)]">
-                                  {transaction.target_name ||
-                                    transaction.target}
-                                </span>
+                                {(() => {
+                                  const { displaySource, displayTarget } = getDisplaySourceTarget(transaction);
+                                  return (
+                                    <>
+                                      <span className="dark:text-[rgb(153,165,190)]">
+                                        {displaySource}
+                                      </span>
+                                      <span className="mx-1 dark:text-[rgb(153,165,190)]">
+                                        →
+                                      </span>
+                                      <span className="dark:text-[rgb(153,165,190)]">
+                                        {displayTarget}
+                                      </span>
+                                    </>
+                                  );
+                                })()}
                               </div>
                               {transaction.recurring_id && (
                                 <Icon
@@ -809,7 +833,7 @@ const Transactions = () => {
                             >
                               <span className="dark:text-[rgb(153,165,190)]">
                                 {t("source")}:{" "}
-                                {transaction.source_name || transaction.source}
+                                {getDisplaySourceTarget(transaction).displaySource}
                               </span>
                             </div>
                           ) : transaction.target_name || transaction.target ? (
@@ -822,7 +846,7 @@ const Transactions = () => {
                             >
                               <span className="dark:text-[rgb(153,165,190)]">
                                 {t("target")}:{" "}
-                                {transaction.target_name || transaction.target}
+                                {getDisplaySourceTarget(transaction).displayTarget}
                               </span>
                             </div>
                           ) : null}

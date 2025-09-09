@@ -58,8 +58,10 @@ const createTransaction = async (req, res) => {
       }
     }
 
-    // Handle source
+    // Handle source and target normally - let frontend manage the semantic mapping
     let source_id = null;
+    let target_id = null;
+
     if (inSource) {
       // Try to find existing source
       const sourceResult = await db.query(
@@ -79,8 +81,6 @@ const createTransaction = async (req, res) => {
       }
     }
 
-    // Handle target
-    let target_id = null;
     if (inTarget) {
       // Try to find existing target
       const targetResult = await db.query(
