@@ -216,7 +216,7 @@ const Settings = () => {
 
   return (
   <div className="container mx-auto px-4 pt-4 md:pt-0 pb-4 min-h-0">
-      <h1 className="display-2 mb-8">{t("settingsTitle")}</h1>
+      <h1 className="display-2 leading-none mb-8">{t("settingsTitle")}</h1>
 
       <Modal
         show={showImport}

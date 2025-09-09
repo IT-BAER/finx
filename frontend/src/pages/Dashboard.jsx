@@ -1,8 +1,11 @@
 import { useState, useEffect, useRef } from "react";
-import { transactionAPI } from "../services/api.jsx";
+import { transactionAPI, sharingAPI } from "../services/api.jsx";
 import offlineAPI from "../services/offlineAPI.js";
 import { useNavigate } from "react-router-dom";
 import Button from "../components/Button.jsx";
+import SourceCategoryBarChart from "../components/SourceCategoryBarChart.jsx";
+
+import MultiCheckboxDropdown from "../components/MultiCheckboxDropdown.jsx";
 
 import {
   LazyBar as Bar,
@@ -129,10 +132,25 @@ const Dashboard = () => {
   const [perSourceLegend, setPerSourceLegend] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  // removed prefetch indicator
+  const [sources, setSources] = useState([]);
+  const [selectedSources, setSelectedSources] = useState([]); // empty = all
   const isCurrentPage = useRef(true);
 
   const isIncomeTrackingDisabled = !!user?.income_tracking_disabled;
+
+  useEffect(() => {
+    // Load sources for filter dropdown - only owner and shared sources
+    (async () => {
+      try {
+        const res = await sharingAPI.getUserSources();
+        // Axios wraps response: { data: { success, data: [...] } }
+        const arr = Array.isArray(res?.data?.data) ? res.data.data : [];
+        setSources(arr);
+      } catch (err) {
+        setSources([]);
+      }
+    })();
+  }, []);
 
   const loadDashboardDataWrapper = async () => {
     try {
@@ -173,8 +191,7 @@ const Dashboard = () => {
   // Derive extra insights after data loads
   useEffect(() => {
     if (!dashboardData) return;
-
-  // Build per-source cumulative line chart for current month (expenses only), like balance trend but per source
+    // Single fetch of all transactions reused for derived charts (per-source + top expenses)
     (async () => {
       try {
         const all = await offlineAPI.getAllTransactions();
@@ -192,7 +209,13 @@ const Dashboard = () => {
           }
         }
 
-  // Group expenses by source_name per day index (daily totals)
+        // Filter transactions by selected sources
+        let filtered = all || [];
+        if (selectedSources.length > 0) {
+          filtered = filtered.filter((tx) => selectedSources.includes(tx.source_id || tx.source));
+        }
+
+        // Group expenses by source_name per day index (daily totals)
         const groups = new Map(); // source -> array of totals per day index
         const totalsBySource = new Map();
         const dayIndex = (d) => {
@@ -200,7 +223,7 @@ const Dashboard = () => {
           return dd.getDate() - 1; // 0-based
         };
 
-        (all || [])
+        (filtered || [])
           .filter((tx) => tx?.type === "expense")
           .forEach((tx) => {
             const d = new Date(tx.date);
@@ -275,14 +298,8 @@ const Dashboard = () => {
           total: Array.isArray(ds.data) && ds.data.length > 0 ? ds.data[ds.data.length - 1] : 0,
         }));
         setPerSourceLegend(legendItems);
-      } catch {}
-    })();
 
-    // Largest 5 expenses this month from local/all transactions
-    (async () => {
-      try {
-        const all = await offlineAPI.getAllTransactions();
-        const now = new Date();
+        // Largest 5 expenses this month from same dataset
         const start = new Date(now.getFullYear(), now.getMonth(), 1);
         const end = now;
         const top = (all || [])
@@ -611,17 +628,31 @@ const Dashboard = () => {
   // monthCompareData removed; replaced by perSourceChartData
 
   return (
-  <div className="container mx-auto px-4 pt-4 md:pt-0 pb-4 min-h-0">
 
-      <div className="flex flex-row items-center justify-between mb-8 gap-4">
-        <h1 className="display-2">{t("dashboard")}</h1>
-        <div className="text-gray-500 dark:text-gray-400 text-base font-medium text-right whitespace-nowrap">
-          {new Date().toLocaleDateString(
-            language === "de" ? "de-DE" : "en-US",
-            { month: "long" },
-          )}
-        </div>
+  <div className="container mx-auto px-4 pt-4 md:pt-0 pb-4 min-h-0">
+    <div className="flex flex-row items-center justify-between mb-8 gap-4 min-h-[3rem]">
+      <div className="flex items-center gap-4">
+        <h1 className="display-2 leading-none">{t("dashboard")}</h1>
+        <MultiCheckboxDropdown
+          options={sources}
+          selected={selectedSources}
+          onChange={setSelectedSources}
+          label={t("filterBySources")}
+          allLabel={t("allSources")}
+          id="dashboard-source-filter"
+          useIcon={true}
+        />
       </div>
+      <div className="text-gray-500 dark:text-gray-400 text-base font-medium text-right whitespace-nowrap">
+        {new Date().toLocaleDateString(
+          language === "de" ? "de-DE" : "en-US",
+          { month: "long" },
+        )}
+      </div>
+    </div>
+
+    {/* ...existing code... */}
+    {/* Source filter dropdown moved to title area */}
 
       {/* Summary Cards */}
       <div
@@ -818,6 +849,16 @@ const Dashboard = () => {
 
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+        {/* Source-Category Stacked Bar Chart */}
+        <div className="card md:h-[370px] mb-8">
+          <div className="card-body h-full flex flex-col min-h-0">
+            <h2 className="text-xl font-semibold mb-6">{t("sourceCategoryBreakdown")}</h2>
+            <SourceCategoryBarChart
+              selectedSources={selectedSources}
+              sources={sources}
+            />
+          </div>
+        </div>
         <div className="card md:h-[370px]">
           <div className="card-body h-full flex flex-col min-h-0">
             <h2 className="text-xl font-semibold mb-6">

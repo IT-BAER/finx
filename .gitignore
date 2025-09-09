@@ -80,6 +80,7 @@ frontend/.turbo
 .nvmrc
 # docs are part of the repository
 # docs/
+TODO.md
 frontend/dev-dist/
 .clinerules/
 .kiro/

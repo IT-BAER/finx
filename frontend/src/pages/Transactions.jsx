@@ -498,8 +498,8 @@ const Transactions = () => {
 
   return (
   <div className="container mx-auto px-4 pt-4 md:pt-0 pb-4 min-h-0">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
-        <h1 className="display-2">{t("transactions")}</h1>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6 min-h-[3rem]">
+        <h1 className="display-2 leading-none">{t("transactions")}</h1>
         <div className="relative w-full sm:w-72" role="search">
           <Icon
             src="/icons/search.svg"

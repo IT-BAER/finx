@@ -2,6 +2,32 @@
 
 All notable changes to this project are documented in this file.
 
+## [v0.5.3] - 2025-09-09
+
+Summary
+- UI polish release featuring page title vertical centering fixes, enhanced filter icons for dark mode, improved source filtering across Dashboard and Reports, new shared data source filtering, and PWA service worker update notifications.
+
+Added / Changed
+- **Page Title Vertical Centering**: All page titles now properly vertically centered with consistent typography using `leading-tight` for display classes and `leading-none` + `min-h-[3rem]` for individual page components (Dashboard, Transactions, Reports, Settings, AddTransaction, EditTransaction, AdminTaxonomy, ShareData, EditSharing, UserManagement).
+- **Enhanced Filter Icons**: Filter icons in MultiCheckboxDropdown now use proper Icon component with CSS mask-based theming for better dark mode visibility, reduced from 36px to 24px size, less prominent appearance with default variant, and improved vertical centering.
+- **Source Filtering Enhancements**: 
+  - Added source filter dropdowns to Dashboard and Reports pages using icon-only mode for space-efficient filtering
+  - Extended sharing system to include shared data sources with proper permission handling
+  - New `SourceCategoryBarChart` component for visualizing spending by category broken down by source
+  - Enhanced `getUserSources` endpoint to include both owned and shared sources with source_filter respect
+- **PWA Service Worker Updates**: Added comprehensive update notification system with user-friendly modal for app updates including skip waiting functionality and automatic reload.
+- **Component System**: New `MultiCheckboxDropdown` component with portal-based positioning, touch-friendly scrolling, and icon-only mode support.
+
+Fixed
+- Typography consistency with `leading-tight` applied to all display CSS classes
+- Filter icon visibility issues in dark themes resolved through proper CSS mask implementation
+- Filter icon sizing and prominence balanced for better visual hierarchy
+
+Performance / UX
+- Source filtering with real-time chart updates
+- Improved offline data caching with resource freshness tracking and transaction deduplication
+- Enhanced sharing system with proper source filtering support
+
 ## [v0.5.2] - 2025-08-29
 
 Summary

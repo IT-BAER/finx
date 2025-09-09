@@ -315,22 +315,42 @@ const getAllUsers = async (req, res) => {
   }
 };
 
-// Get all sources for the current user
+// Get all sources for the current user including shared ones (respecting source_filter)
 const getUserSources = async (req, res) => {
   try {
+    /*
+      We include:
+        1. Owned sources (always)
+        2. Sources of owners who shared with current user AND either:
+             - source_filter is NULL (all sources shared)
+             - OR the source id is contained in source_filter JSON array
+      permission_level currently supports 'read' or 'read_write'. Either grants visibility.
+    */
     const query = `
-    SELECT id, name
-    FROM sources
-    WHERE user_id = $1
-    ORDER BY name;
-  `;
+      WITH shared_sources AS (
+        SELECT s.id, s.name
+        FROM sharing_permissions sp
+        JOIN sources s ON s.user_id = sp.owner_user_id
+        WHERE sp.shared_with_user_id = $1
+          AND LOWER(TRIM(sp.permission_level)) IN ('read','read_write')
+          AND (
+            sp.source_filter IS NULL
+            OR s.id = ANY (
+              SELECT jsonb_array_elements_text(sp.source_filter::jsonb)::int
+            )
+          )
+      )
+      SELECT DISTINCT id, name, 'owned' AS ownership_type
+      FROM sources
+      WHERE user_id = $1
+      UNION ALL
+      SELECT DISTINCT id, name, 'shared' AS ownership_type
+      FROM shared_sources
+      ORDER BY ownership_type, name;
+    `;
 
     const result = await db.query(query, [req.user.id]);
-
-    res.json({
-      success: true,
-      data: result.rows,
-    });
+    res.json({ success: true, data: result.rows });
   } catch (err) {
     console.error("Get user sources error:", err.message);
     res.status(500).json({ message: "Server error" });

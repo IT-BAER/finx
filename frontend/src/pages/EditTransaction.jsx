@@ -399,7 +399,7 @@ const EditTransaction = () => {
   return (
     <div className="container mx-auto px-4 pt-0 pb-8 sm:pb-8 min-h-0">
       <div className="flex justify-between items-center mb-8">
-        <h1 className="display-2">{t("editTransactionTitle")}</h1>
+        <h1 className="display-2 leading-none">{t("editTransactionTitle")}</h1>
         <div className="flex items-center gap-2">
           {/* Mobile: Circled Icon */}
           <div className="md:hidden">

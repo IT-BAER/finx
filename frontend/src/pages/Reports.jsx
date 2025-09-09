@@ -9,11 +9,26 @@ import DateRangeToggle from "../components/DateRangeToggle.jsx";
 import { useAuth } from "../contexts/AuthContext";
 import { useTheme } from "../contexts/ThemeContext.jsx";
 import offlineAPI from "../services/offlineAPI.js";
-import { transactionAPI } from "../services/api.jsx";
+import MultiCheckboxDropdown from "../components/MultiCheckboxDropdown.jsx";
+import { transactionAPI, sharingAPI } from "../services/api.jsx";
 import { motion } from "framer-motion";
 import ChartLegend from "../components/ChartLegend.jsx";
 
 const Reports = () => {
+  const [sources, setSources] = useState([]);
+  const [selectedSources, setSelectedSources] = useState([]); // empty = all
+  useEffect(() => {
+    // Load sources for filter dropdown - only owner and shared sources
+    (async () => {
+      try {
+        const res = await sharingAPI.getUserSources();
+        const arr = Array.isArray(res?.data?.data) ? res.data.data : [];
+        setSources(arr);
+      } catch (err) {
+        setSources([]);
+      }
+    })();
+  }, []);
   const [timeRange, setTimeRange] = useState("weekly");
   const [currentDate, setCurrentDate] = useState(new Date());
   const [timeRangeDates, setTimeRangeDates] = useState(() => {
@@ -1125,9 +1140,21 @@ const dataSet = {
   })();
 
   return (
-  <div className="container mx-auto px-4 pt-4 md:pt-0 pb-4 min-h-0">
-      <div className="flex flex-col md:flex-row md:justify-between mb-8 gap-4">
-        <h1 className="display-2">{t("reportsAndAnalytics")}</h1>
+    <div className="container mx-auto px-4 pt-4 md:pt-0 pb-4 min-h-0">
+      {/* ...existing report UI... */}
+      <div className="flex flex-col md:flex-row md:justify-between mb-8 gap-4 min-h-[3rem]">
+        <div className="flex items-center gap-4">
+          <h1 className="display-2 leading-none">{t("reportsAndAnalytics")}</h1>
+          <MultiCheckboxDropdown
+            options={sources}
+            selected={selectedSources}
+            onChange={setSelectedSources}
+            label={t("filterBySources")}
+            allLabel={t("allSources")}
+            id="reports-source-filter"
+            useIcon={true}
+          />
+        </div>
         <div className="flex flex-col gap-2">
           <div>
             <DateRangeToggle

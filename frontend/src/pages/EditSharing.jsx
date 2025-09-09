@@ -148,7 +148,7 @@ const EditSharing = () => {
   return (
 <div className="container mx-auto px-4 pb-8 sm:py-8 min-h-0">
       <div className="flex justify-between items-center mb-8">
-        <h1 className="display-2">{t("editSharing")}</h1>
+        <h1 className="display-2 leading-none">{t("editSharing")}</h1>
         <div className="flex items-center gap-2">
           {/* Mobile: Circled Icon */}
           <div className="md:hidden">

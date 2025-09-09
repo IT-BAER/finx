@@ -17,13 +17,24 @@ class OfflineAPI {
   constructor() {
   this.isOnline = typeof window !== "undefined" ? getIsOnline() : true;
     this.cacheTimeout = null;
+  // Track in-flight full transaction fetches to prevent duplicate pagination loops
+  this._inFlightFullFetches = new Map();
+    // Cache the last full transactions dataset to reuse for snapshots/offline caching
+    this._lastFullTransactions = null;
+    this._lastFullTransactionsAt = 0;
+    // Track freshness timestamps for auxiliary resources
+    this._resourceFreshness = {
+      categories: 0,
+      sources: 0,
+      targets: 0,
+    };
     this.setupEventListeners();
     this.setupAxiosInterceptors();
     // Cache all data for offline use when the application starts
     // We'll check authentication inside the caching method
     if (this.isOnline) {
       setTimeout(() => {
-        this.cacheAllOfflineData();
+        this.cacheAllOfflineData({ preFetchedTransactions: this._lastFullTransactions });
       }, 1000); // Delay to allow app to initialize
     }
   }
@@ -50,7 +61,7 @@ class OfflineAPI {
         this.cacheTimeout = setTimeout(async () => {
           if (this.isAuthenticated()) {
             await this.cleanupDuplicateTransactions();
-            await this.cacheAllOfflineData();
+            await this.cacheAllOfflineData({ preFetchedTransactions: this._lastFullTransactions });
           }
           this.cacheTimeout = null;
           cache.remove(cacheKeys.DASHBOARD_DATA);
@@ -687,6 +698,96 @@ class OfflineAPI {
       }
     }
 
+    // In-flight de-duplication for full dataset fetches (online only, non pageOnly)
+    if (this.isOnline && !params.pageOnly && !params.forceRefresh) {
+      try {
+        const key = JSON.stringify({ all: true, params: { ...params, forceRefresh: undefined } });
+        if (this._inFlightFullFetches.has(key)) {
+          return await this._inFlightFullFetches.get(key);
+        }
+        const execPromise = (async () => {
+          try {
+            // Existing logic below (mirrors the try/catch further down) but isolated for dedup
+            const onlineTransactions = await this.getAllOnlineTransactions(params);
+            const localTransactions = await this.getLocalTransactions();
+
+            console.log(
+              "getAllTransactions - Online transactions (dedup in-flight):",
+              onlineTransactions.length,
+            );
+            console.log(
+              "getAllTransactions - Local transactions:",
+              localTransactions.length,
+            );
+
+            const transactionMap = new Map();
+            onlineTransactions.forEach((tx) => {
+              transactionMap.set(tx.id, { ...tx, _dataSource: "online" });
+            });
+            localTransactions.forEach((localTx) => {
+              if (transactionMap.has(localTx.id)) {
+                if (localTx._isOffline) {
+                  transactionMap.set(localTx.id, { ...transactionMap.get(localTx.id), ...localTx, _dataSource: "local" });
+                }
+                return;
+              }
+              if (localTx._isOffline) {
+                const possibleDuplicate = onlineTransactions.find(
+                  (onlineTx) =>
+                    onlineTx.description === localTx.description &&
+                    parseFloat(onlineTx.amount) === parseFloat(localTx.amount) &&
+                    onlineTx.type === localTx.type &&
+                    onlineTx.date === localTx.date,
+                );
+                if (possibleDuplicate) {
+                  this.removeLocalTransaction(localTx.id || localTx._tempId);
+                  return;
+                }
+                const keyLocal = localTx._tempId || localTx.id;
+                transactionMap.set(keyLocal, { ...localTx, _dataSource: "local" });
+              } else {
+                transactionMap.set(localTx.id, { ...localTx, _dataSource: "local" });
+              }
+            });
+            const allTransactions = Array.from(transactionMap.values());
+            console.log(
+              "getAllTransactions - Final deduplicated transactions (in-flight):",
+              allTransactions.length,
+            );
+            // Store snapshot for reuse
+            this._lastFullTransactions = allTransactions;
+            this._lastFullTransactionsAt = Date.now();
+            return allTransactions.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+          } catch (error) {
+            console.log(
+              "getAllTransactions - Error (in-flight path), returning merged local + snapshot:",
+              error.message,
+            );
+            const [snap, local] = await Promise.all([
+              this.getTransactionsSnapshot(),
+              this.getLocalTransactions(),
+            ]);
+            const map = new Map();
+            for (const tx of snap || []) map.set(tx.id, { ...tx, _dataSource: "snapshot" });
+            for (const tx of local || []) {
+              const keyLocal = tx._tempId || tx.id;
+              map.set(keyLocal, { ...map.get(keyLocal), ...tx, _dataSource: "local" });
+            }
+            const merged = Array.from(map.values());
+            return merged.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+          }
+        })();
+        this._inFlightFullFetches.set(key, execPromise);
+        try {
+          return await execPromise;
+        } finally {
+          this._inFlightFullFetches.delete(key);
+        }
+      } catch (e) {
+        // Fall through to normal logic if something unexpected happened
+      }
+    }
+
     try {
       // Fetch full online dataset (paginated) instead of a single page
       const onlineTransactions = await this.getAllOnlineTransactions(params);
@@ -782,9 +883,10 @@ class OfflineAPI {
       );
 
       // Sort by YYYY-MM-DD string, newest first (avoids timezone issues)
-  return allTransactions.sort((a, b) =>
-        (b.date || "").localeCompare(a.date || ""),
-      );
+  const sortedAll = allTransactions.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+  this._lastFullTransactions = sortedAll;
+  this._lastFullTransactionsAt = Date.now();
+  return sortedAll;
     } catch (error) {
       console.log(
         "getAllTransactions - Error, returning merged local + snapshot:",
@@ -1042,7 +1144,8 @@ class OfflineAPI {
     }
   }
 
-  async cacheAllOfflineData() {
+  async cacheAllOfflineData(options = {}) {
+    const { preFetchedTransactions = null, reuseLastFull = true } = options || {};
     if (!this.isOnline) return;
 
     // Check if user is authenticated before caching
@@ -1054,94 +1157,132 @@ class OfflineAPI {
     try {
       console.log("Caching all data for offline use...");
 
-      // Cache categories
-      const categoriesResponse = await this.get("/categories");
-      console.log("Cached categories:", categoriesResponse);
-      // Directly cache categories to ensure they're available offline
-      if (categoriesResponse) {
-        const categories =
-          categoriesResponse.categories ||
-          categoriesResponse.data?.categories ||
-          categoriesResponse.data ||
-          categoriesResponse;
-        if (Array.isArray(categories)) {
-          await offlineStorage.cacheCategories(categories);
+      const RESOURCE_TTL = 5 * 60 * 1000; // 5 minutes
+
+      // Helper to decide fetch
+      const nowTs = Date.now();
+
+      // Categories
+      if (nowTs - this._resourceFreshness.categories > RESOURCE_TTL) {
+        const categoriesResponse = await this.get("/categories");
+        console.log("Cached categories:", categoriesResponse);
+        if (categoriesResponse) {
+          const categories =
+            categoriesResponse.categories ||
+            categoriesResponse.data?.categories ||
+            categoriesResponse.data ||
+            categoriesResponse;
+          if (Array.isArray(categories)) {
+            await offlineStorage.cacheCategories(categories);
+            this._resourceFreshness.categories = nowTs;
+          }
         }
+      } else {
+        console.log("Skipping categories fetch - fresh");
       }
 
-      // Cache sources
-      const sourcesResponse = await this.get("/sources");
-      console.log("Cached sources:", sourcesResponse);
-      // Directly cache sources to ensure they're available offline
-      if (sourcesResponse) {
-        const sources =
-          sourcesResponse.sources ||
-          sourcesResponse.data?.sources ||
-          sourcesResponse.data ||
-          sourcesResponse;
-        if (Array.isArray(sources)) {
-          await offlineStorage.cacheSources(sources);
+      // Sources
+      if (nowTs - this._resourceFreshness.sources > RESOURCE_TTL) {
+        const sourcesResponse = await this.get("/sources");
+        console.log("Cached sources:", sourcesResponse);
+        if (sourcesResponse) {
+          const sources =
+            sourcesResponse.sources ||
+            sourcesResponse.data?.sources ||
+            sourcesResponse.data ||
+            sourcesResponse;
+          if (Array.isArray(sources)) {
+            await offlineStorage.cacheSources(sources);
+            this._resourceFreshness.sources = nowTs;
+          }
         }
+      } else {
+        console.log("Skipping sources fetch - fresh");
       }
 
-      // Cache targets
-      const targetsResponse = await this.get("/targets");
-      console.log("Cached targets:", targetsResponse);
-      // Directly cache targets to ensure they're available offline
-      if (targetsResponse) {
-        const targets =
-          targetsResponse.targets ||
-          targetsResponse.data?.targets ||
-          targetsResponse.data ||
-          targetsResponse;
-        if (Array.isArray(targets)) {
-          await offlineStorage.cacheTargets(targets);
+      // Targets
+      if (nowTs - this._resourceFreshness.targets > RESOURCE_TTL) {
+        const targetsResponse = await this.get("/targets");
+        console.log("Cached targets:", targetsResponse);
+        if (targetsResponse) {
+          const targets =
+            targetsResponse.targets ||
+            targetsResponse.data?.targets ||
+            targetsResponse.data ||
+            targetsResponse;
+          if (Array.isArray(targets)) {
+            await offlineStorage.cacheTargets(targets);
+            this._resourceFreshness.targets = nowTs;
+          }
         }
+      } else {
+        console.log("Skipping targets fetch - fresh");
       }
 
-      // Cache recent transactions (last 10) and store a full-list snapshot for offline relaunch
-      const transactionsResponse = await this.get("/transactions", { limit: 10 });
-      console.log("Cached recent transactions:", transactionsResponse);
+      // Reuse existing full transactions if available instead of refetching small slice
+      let transactionsList = Array.isArray(preFetchedTransactions)
+        ? preFetchedTransactions
+        : (reuseLastFull && Array.isArray(this._lastFullTransactions)
+            ? this._lastFullTransactions
+            : null);
 
-      // Persist a lightweight snapshot for list view on offline startup
+      if (!transactionsList) {
+        try {
+          // Fallback: minimal fetch only if we truly have nothing cached
+          const transactionsResponse = await this.get("/transactions", { limit: 10 });
+          console.log("Cached recent transactions (fallback fetch):", transactionsResponse);
+          transactionsList = (transactionsResponse && (transactionsResponse.transactions || transactionsResponse.data?.transactions)) || [];
+        } catch (e) {
+          console.warn("Failed to fetch fallback recent transactions", e);
+          transactionsList = [];
+        }
+      } else {
+        console.log("Reusing pre-fetched full transactions list for snapshot:", transactionsList.length);
+      }
+
+      // Build snapshot (limit to 50 recent by date)
       try {
         const userId = this.getCurrentUserId();
         if (userId) {
           const key = `transactions_snapshot_user_${userId}`;
-          const rows = (transactionsResponse && (transactionsResponse.transactions || transactionsResponse.data?.transactions)) || [];
-          const normalized = (rows || []).map((tx) => ({
-            id: tx.id,
-            _tempId: undefined,
-            _isOffline: false,
-            date: tx.date,
-            description: tx.description,
-            amount: tx.amount,
-            type: tx.type,
-            category_name: tx.category_name,
-            source_name: tx.source_name || tx.source || null,
-            target_name: tx.target_name || tx.target || null,
-            user_id: tx.user_id,
-          }));
-          await offlineStorage.storeOfflineData(key, normalized);
+          const sortedRecent = [...transactionsList]
+            .sort((a, b) => (b.date || "").localeCompare(a.date || ""))
+            .slice(0, 50)
+            .map((tx) => ({
+              id: tx.id,
+              _tempId: undefined,
+              _isOffline: false,
+              date: tx.date,
+              description: tx.description,
+              amount: tx.amount,
+              type: tx.type,
+              category_name: tx.category_name,
+              source_name: tx.source_name || tx.source || null,
+              target_name: tx.target_name || tx.target || null,
+              user_id: tx.user_id,
+            }));
+          await offlineStorage.storeOfflineData(key, sortedRecent);
         }
       } catch (e) {
         console.warn("Failed to store transactions snapshot", e);
       }
 
-      // Cache each transaction for offline editing
-      if (transactionsResponse.transactions) {
-        for (const transaction of transactionsResponse.transactions) {
-          // Ensure transaction has source_name and target_name for proper UI display
+      // Cache individual transactions for offline editing (limit to 25 most recent to bound storage)
+      try {
+        const forEditing = [...transactionsList]
+          .sort((a, b) => (b.date || "").localeCompare(a.date || ""))
+          .slice(0, 25);
+        for (const transaction of forEditing) {
           const transactionForCaching = {
             ...transaction,
             source_name: transaction.source_name || transaction.source || null,
             target_name: transaction.target_name || transaction.target || null,
           };
-          await offlineStorage.cacheTransactionForEditing(
-            transactionForCaching,
-          );
+          await offlineStorage.cacheTransactionForEditing(transactionForCaching);
         }
-        console.log("Cached individual transactions for offline editing");
+        console.log("Cached individual transactions for offline editing (reuse path)");
+      } catch (e) {
+        console.warn("Failed caching individual transactions (reuse path)", e);
       }
 
       // Pre-cache dashboard/report data for Reports page (weekly, monthly, yearly)

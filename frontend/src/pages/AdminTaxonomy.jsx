@@ -234,7 +234,7 @@ const AdminTaxonomy = () => {
   return (
     <div className="container mx-auto px-4 pt-4 md:pt-0 pb-4 min-h-0">
       <div className="flex items-center justify-between mb-8">
-        <h1 className="display-2">{t("adminTaxonomy")}</h1>
+        <h1 className="display-2 leading-none">{t("adminTaxonomy")}</h1>
 
         <div className="flex items-center gap-2">
           {/* Mobile: Circled Icon */}
