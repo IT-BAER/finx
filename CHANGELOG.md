@@ -2,6 +2,66 @@
 
 All notable changes to this project are documented in this file.
 
+## [v0.6.0] - 2025-09-09
+
+Summary
+- Major release aggregating all changes since v0.5.2 (includes v0.5.3–v0.5.5), with unified charts/layouts, improved filtering & sharing, PWA updates, and various fixes.
+
+Highlights
+- UI & Charts:
+  - Unified Reports with Dashboard visuals: removed “Income vs Expenses” on Reports, placed “Source Category Breakdown” next to “Expenses by Category” on desktop, moved “Balance Trend” below; unified card heights (md:h-[370px]).
+  - Dashboard: “Balance Trend” full-width on desktop (lg:col-span-2) with unified height.
+  - New reusable components: PerSourceExpensesTrend, PerSourceBalanceTrend, DailyExpensesChart, SummaryCards, ChartLegend.
+  - Chart improvements: theme-aware legends, improved color palettes and borders, percentage data labels, and dark-mode label color fixes.
+- Filtering & Sharing:
+  - Source filter dropdowns added to Dashboard and Reports (icon-only trigger).
+  - Persist selected sources per user and per page via localStorage.
+  - Enhanced shared source display names (e.g., “Source (Owner)”); getUserSources returns owned and shared sources respecting permissions/filters; improved filtering consistency and summary calculations.
+- PWA:
+  - Service worker registers only in production (fixes dev MIME errors) while preserving update notifications with skip-waiting modal.
+- Data & Backend:
+  - Name normalization across category/source/target (trim, case-insensitive) and controller lookups with LOWER(TRIM).
+  - Sharing controller includes owner info in source queries; strengthened validation and ownership checks.
+  - Optimized income transaction handling with automatic migration.
+  - Utilities for income source cleanup to migrate misclassified income sources to targets.
+- Fixes:
+  - Filter icon vertical alignment with titles; typography leading consistency.
+  - Source filtering edge cases; corrected filtered summary and daily-expense calculations.
+  - Dark-mode chart label visibility; mobile padding for prefixed inputs.
+- Performance / UX:
+  - Improved offline caching and resource freshness; transaction deduplication.
+  - Real-time chart updates with source filtering; smoother mobile interactions.
+
+Notes
+- 0.6.0 focuses on visual/UX unification. Earlier 0.5.3–0.5.4 introduced backend and migration improvements as listed above.
+
+## [v0.5.5] - 2025-09-09
+
+Summary
+- Align Dashboard and Reports chart layouts, remove redundant chart, unify card heights, and fix page title/filter icon vertical alignment.
+
+Added / Changed
+- Reports UI and charts:
+  - Removed "Income vs Expenses" chart on Reports to match Dashboard conventions.
+  - Placed "Source Category Breakdown" next to "Expenses by Category" on desktop (two columns), stacked on mobile.
+  - Moved "Balance Trend" below those two charts and set its height to md:h-[370px] for consistency.
+  - Made "Expenses by Source" and "Largest Expenses" sections full width on desktop (stacked on mobile).
+  - Ensured the new per-source trend components are wired consistently with Dashboard (PerSourceBalanceTrend / PerSourceExpensesTrend usage).
+- Dashboard UI:
+  - Made the "Balance Trend" chart full width on desktop (lg:col-span-2).
+  - Unified its height with other chart cards via md:h-[370px].
+- Filter icon alignment:
+  - MultiCheckboxDropdown icon-only trigger adjusted by increasing button bottom padding (p-2 !pb-[4px]) to visually align with page titles.
+- Minor layout polish:
+  - Reports header row uses md:items-center so title and filter control are vertically centered together on desktop.
+
+Fixed
+- Vertical misalignment between page titles and filter icon on Dashboard/Reports.
+- Inconsistent card heights between charts.
+
+Notes
+- These changes focus on visual and layout consistency; underlying data processing and time-range handling remain unchanged.
+
 ## [v0.5.4] - 2025-09-09
 
 Summary
@@ -117,6 +177,7 @@ Data / Backend
 ## [v0.5.0]
 
 (previous)
+
 
 
 

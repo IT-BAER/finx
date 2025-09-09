@@ -14,6 +14,10 @@ import { transactionAPI, sharingAPI } from "../services/api.jsx";
 import { motion } from "framer-motion";
 import ChartLegend from "../components/ChartLegend.jsx";
 import SourceCategoryBarChart from "../components/SourceCategoryBarChart.jsx";
+import PerSourceExpensesTrend from "../components/PerSourceExpensesTrend.jsx";
+import PerSourceBalanceTrend from "../components/PerSourceBalanceTrend.jsx";
+import DailyExpensesChart from "../components/DailyExpensesChart.jsx";
+import SummaryCards from "../components/SummaryCards.jsx";
 
 // Helper function to process filtered transactions into API-like format
 const processFilteredTransactions = (transactions, timeRange, startDate, endDate) => {
@@ -99,8 +103,37 @@ const getEmptyReportData = () => ({
 });
 
 const Reports = () => {
+  // Hooks that provide user/theme/i18n must be called before using their values
+  const { isIncomeTrackingDisabled, user } = useAuth();
+  const { t, formatCurrency, formatDate, language } = useTranslation();
+  const { dark } = useTheme();
+
   const [sources, setSources] = useState([]);
   const [selectedSources, setSelectedSources] = useState([]); // empty = all
+
+  // Persist reports filter per user
+  const userKeyPart = (user?.id ?? user?.email ?? user?.uid ?? "anon").toString();
+  const REPORTS_FILTER_STORAGE_KEY = `filters:reports:selectedSources:${userKeyPart}`;
+  // Load saved selection on mount or when user changes
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(REPORTS_FILTER_STORAGE_KEY);
+      if (raw) {
+        const arr = JSON.parse(raw);
+        if (Array.isArray(arr)) setSelectedSources(arr);
+      }
+    } catch {}
+  }, [REPORTS_FILTER_STORAGE_KEY]);
+  // Save whenever selection changes
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        REPORTS_FILTER_STORAGE_KEY,
+        JSON.stringify(selectedSources || []),
+      );
+    } catch {}
+  }, [selectedSources, REPORTS_FILTER_STORAGE_KEY]);
+
   useEffect(() => {
     // Load sources for filter dropdown - only owner and shared sources
     (async () => {
@@ -144,14 +177,15 @@ const Reports = () => {
   const [reportData, setReportData] = useState(null);
   const [dailyExpensesData, setDailyExpensesData] = useState(null);
   const [sourceShareData, setSourceShareData] = useState(null);
+  const [trendPerSourceChartData, setTrendPerSourceChartData] = useState(null);
+  const [trendPerSourceLegend, setTrendPerSourceLegend] = useState(null);
   const [topExpenses, setTopExpenses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const { t, formatCurrency, formatDate, language } = useTranslation();
-  const { isIncomeTrackingDisabled } = useAuth();
-  const { dark } = useTheme();
   const isCurrentPage = useRef(true);
   const [refreshTick, setRefreshTick] = useState(0);
+  // Treat "all individually selected" as no filter to avoid excluding uncategorized/unknown sources
+  const shouldFilter = selectedSources.length > 0 && selectedSources.length < (sources?.length || Infinity);
 
   useEffect(() => {
     // Set up visibility change listener for background data refresh
@@ -337,7 +371,7 @@ const Reports = () => {
         let res;
         
         // If sources are selected, we need to filter data differently
-        if (selectedSources.length > 0) {
+        if (shouldFilter) {
           // Get individual transactions and filter by sources
           try {
             const all = await offlineAPI.getAllTransactions();
@@ -353,11 +387,23 @@ const Reports = () => {
                 return d >= start && d <= end;
               });
               
-              // Apply source filtering
-              const selectedSourceIds = selectedSources.map(id => String(id));
+              // Apply source filtering: expenses by source_id; incomes by target_name mapped to selected source names (case-insensitive)
+              const selectedIdSet = new Set(selectedSources.map((id) => String(id)));
+              const selectedNameSet = new Set(
+                (sources || [])
+                  .filter((s) => selectedIdSet.has(String(s.id)))
+                  .map((s) => String(s.name || "").trim().toLowerCase())
+              );
               filtered = filtered.filter((tx) => {
-                const sourceId = String(tx.source_id || tx.source || '');
-                return selectedSourceIds.includes(sourceId);
+                const typ = String(tx.type || '').toLowerCase();
+                if (typ === 'expense') {
+                  const sourceId = String(tx.source_id || tx.source || '');
+                  return selectedIdSet.has(sourceId);
+                } else if (typ === 'income') {
+                  const tname = String(tx.target_name || '').trim().toLowerCase();
+                  return selectedNameSet.has(tname);
+                }
+                return false;
               });
               
               // Process filtered transactions to create API-like response structure
@@ -390,8 +436,24 @@ const Reports = () => {
 
         if (timeRange === "weekly") {
           // For weekly, show daily income vs expenses for exactly 7 days including today
-          const dailyExpensesData = res.data.data.dailyExpenses || [];
+          const rawDailyExpenses = res.data.data.dailyExpenses || [];
           const dailyIncomeData = res.data.data.incomeByDate || [];
+
+          // Fill last 7 days between startDate and endDate (inclusive)
+          const dailyMap = new Map((rawDailyExpenses || []).map((d) => [d.date, parseFloat(d.total || 0)]));
+          const filledDailyExpenses = (() => {
+            const start = new Date(startDate);
+            const end = new Date(endDate);
+            const out = [];
+            const cur = new Date(start);
+            while (cur <= end) {
+              const key = `${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, "0")}-${String(cur.getDate()).padStart(2, "0")}`;
+              out.push({ date: key, total: dailyMap.get(key) || 0 });
+              cur.setDate(cur.getDate() + 1);
+            }
+            return out;
+          })();
+          const dailyExpensesData = filledDailyExpenses;
 
           // Create a map of income by date for quick lookup with proper timezone handling
           const incomeByDateMap = {};
@@ -802,8 +864,19 @@ const processedCategoryData = {
           // Process trend data based on time range
           let trendData = [];
           if (timeRange === "weekly") {
-            // For weekly, show daily balance trend
-            trendData = res.data.data.dailyExpenses || [];
+            // For weekly, show daily balance trend (exactly last 7 days)
+            const rawTrendDaily = res.data.data.dailyExpenses || [];
+            const map = new Map((rawTrendDaily || []).map((d) => [d.date, parseFloat(d.total || 0)]));
+            const start = new Date(startDate);
+            const end = new Date(endDate);
+            const out = [];
+            const cur = new Date(start);
+            while (cur <= end) {
+              const key = `${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, "0")}-${String(cur.getDate()).padStart(2, "0")}`;
+              out.push({ date: key, total: map.get(key) || 0 });
+              cur.setDate(cur.getDate() + 1);
+            }
+            trendData = out;
           } else if (timeRange === "monthly") {
             // For monthly, we need to aggregate daily data into weeks
             const dailyData = res.data.data.dailyExpenses || [];
@@ -1046,8 +1119,19 @@ const processedCategoryData = {
           endDate
         });
         if (timeRange === "weekly") {
-          // For weekly, show daily expenses
-          processedDailyExpenses = res.data.data.dailyExpenses || [];
+          // For weekly, show daily expenses (exactly last 7 days)
+          const rawDaily = res.data.data.dailyExpenses || [];
+          const map = new Map((rawDaily || []).map((d) => [d.date, parseFloat(d.total || 0)]));
+          const start = new Date(startDate);
+          const end = new Date(endDate);
+          const out = [];
+          const cur = new Date(start);
+          while (cur <= end) {
+            const key = `${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, "0")}-${String(cur.getDate()).padStart(2, "0")}`;
+            out.push({ date: key, total: map.get(key) || 0 });
+            cur.setDate(cur.getDate() + 1);
+          }
+          processedDailyExpenses = out;
           console.log('Weekly processing - final data points:', processedDailyExpenses.length, processedDailyExpenses.map(d => d.date));
         } else if (timeRange === "monthly") {
           // For monthly, aggregate daily data into weeks
@@ -1156,6 +1240,223 @@ const processedCategoryData = {
         // Set processed daily expenses data
         setDailyExpensesData(processedDailyExpenses);
 
+        // =============================
+        // Trend per source (lines + legend), matching Dashboard behavior
+        // =============================
+        try {
+          const all = await offlineAPI.getAllTransactions();
+          if (Array.isArray(all) && all.length > 0) {
+            const { startDate: sd, endDate: ed } = getDateRange();
+            const start = new Date(sd);
+            const end = new Date(ed);
+            end.setHours(23, 59, 59, 999);
+
+            // Build buckets based on timeRange
+            const bucketStarts = [];
+            const bucketEnds = [];
+            const bucketLabels = [];
+
+            if (timeRange === "weekly") {
+              const cur = new Date(start);
+              while (cur <= end) {
+                const bs = new Date(cur);
+                const be = new Date(cur);
+                be.setHours(23,59,59,999);
+                bucketStarts.push(bs);
+                bucketEnds.push(be);
+                bucketLabels.push(`${bs.getFullYear()}-${String(bs.getMonth()+1).padStart(2,'0')}-${String(bs.getDate()).padStart(2,'0')}`);
+                cur.setDate(cur.getDate() + 1);
+              }
+            } else if (timeRange === "monthly") {
+              // Weekly buckets (Mon-Sun) within month range
+              let ws = new Date(start);
+              const day = ws.getDay();
+              const diff = ws.getDate() - day + (day === 0 ? -6 : 1);
+              ws.setDate(diff);
+              while (ws <= end) {
+                const we = new Date(ws);
+                we.setDate(ws.getDate() + 6);
+                we.setHours(23,59,59,999);
+                bucketStarts.push(new Date(ws));
+                bucketEnds.push(we);
+                bucketLabels.push(`${ws.getFullYear()}-${String(ws.getMonth()+1).padStart(2,'0')}-${String(ws.getDate()).padStart(2,'0')}`);
+                ws.setDate(ws.getDate() + 7);
+              }
+            } else {
+              // yearly: monthly buckets for all 12 months of the year in range
+              for (let m = 0; m < 12; m++) {
+                const ms = new Date(start.getFullYear(), m, 1);
+                const me = new Date(start.getFullYear(), m + 1, 0);
+                me.setHours(23,59,59,999);
+                bucketStarts.push(ms);
+                bucketEnds.push(me);
+                bucketLabels.push(`${ms.getFullYear()}-${String(ms.getMonth()+1).padStart(2,'0')}-01`);
+              }
+            }
+
+            const bucketCount = bucketStarts.length;
+
+            // Build source maps
+            const bySrcExp = new Map(); // id -> number[buckets]
+            const bySrcInc = new Map(); // id -> number[buckets]
+            const nameToIds = new Map();
+            (sources || []).forEach((s) => {
+              const nm = String(s.name || "").trim().toLowerCase();
+              if (!nameToIds.has(nm)) nameToIds.set(nm, []);
+              nameToIds.get(nm).push(String(s.id));
+            });
+
+            const selectedSet = new Set((selectedSources || []).map((x) => String(x)));
+
+            // Filter candidate transactions by range first
+            const inRange = (all || []).filter((tx) => {
+              const d = new Date(tx.date);
+              return d >= start && d <= end;
+            });
+
+            inRange.forEach((tx) => {
+              const d = new Date(tx.date);
+              // Find bucket index
+              let idx = -1;
+              for (let i = 0; i < bucketCount; i++) {
+                if (d >= bucketStarts[i] && d <= bucketEnds[i]) { idx = i; break; }
+              }
+              if (idx < 0) return;
+
+              // Determine source id
+              let sid = null;
+              if (String(tx.type).toLowerCase() === 'expense') {
+                sid = tx.source_id != null ? String(tx.source_id) : null;
+              } else if (String(tx.type).toLowerCase() === 'income') {
+                const tname = String(tx.target_name || '').trim().toLowerCase();
+                const ids = nameToIds.get(tname) || [];
+                if (ids.length > 0) {
+                  sid = shouldFilter ? (ids.find((id) => selectedSet.has(id)) || ids[0]) : ids[0];
+                }
+              }
+              if (!sid) return;
+
+              if (String(tx.type).toLowerCase() === 'expense') {
+                if (!bySrcExp.has(sid)) bySrcExp.set(sid, new Array(bucketCount).fill(0));
+                bySrcExp.get(sid)[idx] += Number(tx.amount || 0);
+              } else {
+                if (!bySrcInc.has(sid)) bySrcInc.set(sid, new Array(bucketCount).fill(0));
+                bySrcInc.get(sid)[idx] += Number(tx.amount || 0);
+              }
+            });
+
+            const sourceTotals = [];
+            const allIds = new Set([...bySrcExp.keys(), ...bySrcInc.keys()]);
+            allIds.forEach((id) => {
+              const e = bySrcExp.get(id) || new Array(bucketCount).fill(0);
+              const inc = bySrcInc.get(id) || new Array(bucketCount).fill(0);
+              const total = e.reduce((a,b)=>a+b,0) + inc.reduce((a,b)=>a+b,0);
+              sourceTotals.push({ id, total });
+            });
+            sourceTotals.sort((a,b)=> b.total - a.total);
+
+            const palette = [
+              "rgba(96, 165, 250, 1)",
+              "rgba(248, 113, 113, 1)",
+              "rgba(52, 211, 153, 1)",
+              "rgba(251, 191, 36, 1)",
+              "rgba(139, 92, 246, 1)",
+              "rgba(16, 185, 129, 1)",
+              "rgba(244, 114, 182, 1)",
+              "rgba(209, 213, 219, 1)",
+              "rgba(59, 130, 246, 1)",
+              "rgba(234, 179, 8, 1)",
+            ];
+
+            const idToLabel = (id) => {
+              const sObj = (sources || []).find((s) => String(s.id) === String(id));
+              return sObj ? (sObj.displayName || sObj.name || `Source ${id}`) : `Source ${id}`;
+            };
+
+            const datasets = [];
+            const idsToShow = shouldFilter
+              ? sourceTotals.map((x) => x.id)
+              : sourceTotals.slice(0,5).map((x) => x.id);
+
+            idsToShow.forEach((id, i) => {
+              const e = (bySrcExp.get(id) || new Array(bucketCount).fill(0)).slice();
+              const inc = (bySrcInc.get(id) || new Array(bucketCount).fill(0)).slice();
+              let series = new Array(bucketCount).fill(0);
+              if (isIncomeTrackingDisabled) {
+                for (let k = 1; k < e.length; k++) e[k] += e[k - 1];
+                series = e.map((v) => -v);
+              } else {
+                const net = e.map((v, idx) => (inc[idx] || 0) - v);
+                for (let k = 1; k < net.length; k++) net[k] += net[k - 1];
+                series = net;
+              }
+              datasets.push({
+                label: idToLabel(id),
+                data: series,
+                borderColor: palette[i % palette.length],
+                backgroundColor: palette[i % palette.length].replace(", 1)", ", 0.12)"),
+                borderWidth: 2,
+                tension: 0.35,
+                pointRadius: 0,
+              });
+            });
+
+            if (!shouldFilter && sourceTotals.length > 5) {
+              const restIds = sourceTotals.slice(5).map((x)=>x.id);
+              const aggE = new Array(bucketCount).fill(0);
+              const aggI = new Array(bucketCount).fill(0);
+              restIds.forEach((id) => {
+                const e = bySrcExp.get(id) || [];
+                const inc = bySrcInc.get(id) || [];
+                for (let i = 0; i < bucketCount; i++) {
+                  aggE[i] += Number(e[i] || 0);
+                  aggI[i] += Number(inc[i] || 0);
+                }
+              });
+              let series = new Array(bucketCount).fill(0);
+              if (isIncomeTrackingDisabled) {
+                for (let k = 1; k < aggE.length; k++) aggE[k] += aggE[k - 1];
+                series = aggE.map((v) => -v);
+              } else {
+                const net = aggE.map((v, idx) => (aggI[idx] || 0) - v);
+                for (let k = 1; k < net.length; k++) net[k] += net[k - 1];
+                series = net;
+              }
+              datasets.push({
+                label: t("other"),
+                data: series,
+                borderColor: "rgba(107, 114, 128, 1)",
+                backgroundColor: "rgba(107, 114, 128, 0.12)",
+                borderWidth: 2,
+                tension: 0.35,
+                pointRadius: 0,
+              });
+            }
+
+            // Build display labels for buckets
+            let labelsForChart = [];
+            if (timeRange === "weekly") {
+              labelsForChart = bucketLabels.map((d) => formatShortWeekday(d));
+            } else if (timeRange === "monthly") {
+              labelsForChart = bucketStarts.map((ws) => {
+                const weekNumber = getWeekNumber(ws);
+                return language === "de" ? `KW ${weekNumber}` : `CW ${weekNumber}`;
+              });
+            } else {
+              labelsForChart = bucketStarts.map((ms) => ms.toLocaleDateString(language === 'de' ? 'de-DE' : 'en-US', { month: 'short' }));
+            }
+
+            setTrendPerSourceChartData({ labels: labelsForChart, datasets });
+            const legendItems = datasets.map((ds)=> ({ label: ds.label, color: ds.borderColor, total: Array.isArray(ds.data) && ds.data.length > 0 ? ds.data[ds.data.length-1] : 0 }));
+            setTrendPerSourceLegend(legendItems);
+          } else {
+            setTrendPerSourceChartData(null);
+            setTrendPerSourceLegend(null);
+          }
+        } catch (e) {
+          console.warn("Reports: failed building per-source trend", e?.message || e);
+        }
+
         // Additional visuals: Expenses by Source (share) and Largest Expenses for the selected range
         try {
           const all = await offlineAPI.getAllTransactions();
@@ -1171,7 +1472,7 @@ const processedCategoryData = {
             });
 
             // Apply source filtering if sources are selected
-            if (selectedSources.length > 0) {
+            if (shouldFilter) {
               const selectedSourceIds = selectedSources.map(id => String(id));
               inRangeExpenses = inRangeExpenses.filter((tx) => {
                 const sourceId = String(tx.source_id || tx.source || '');
@@ -1179,29 +1480,42 @@ const processedCategoryData = {
               });
             }
 
-            // Compute source shares (top 7 + Other)
-            const totalsBySource = new Map();
+            // Compute source shares by source_id
+            const totalsById = new Map(); // id -> total
             inRangeExpenses.forEach((tx) => {
-              const name = (tx.source_name || "Other").trim() || "Other";
-              totalsBySource.set(
-                name,
-                (totalsBySource.get(name) || 0) + Number(tx.amount || 0),
-              );
+              const id = tx.source_id != null ? String(tx.source_id) : null;
+              if (!id) return;
+              totalsById.set(id, (totalsById.get(id) || 0) + Number(tx.amount || 0));
             });
-            const sorted = Array.from(totalsBySource.entries()).sort(
-              (a, b) => b[1] - a[1],
-            );
-            const top = sorted.slice(0, 7);
-            const rest = sorted.slice(7);
-            let labels = top.map(([n]) => n);
-            let data = top.map(([, v]) => v);
-            if (rest.length > 0) {
-              labels = [...labels, t("other")];
-              data = [
-                ...data,
-                rest.reduce((sum, [, v]) => sum + v, 0),
-              ];
+
+            // Helper to map id -> display label
+            const idToLabel = (id) => {
+              const sObj = (sources || []).find((s) => String(s.id) === String(id));
+              return sObj ? (sObj.displayName || sObj.name || `Source ${id}`) : `Source ${id}`;
+            };
+
+            let idsSorted = Array.from(totalsById.entries()).sort((a,b) => b[1] - a[1]).map(([id]) => id);
+            let labels = [];
+            let data = [];
+
+            if (shouldFilter) {
+              // Show ALL selected sources individually (no aggregation)
+              const selectedSet = new Set((selectedSources || []).map((x) => String(x)));
+              const filteredIds = idsSorted.filter((id) => selectedSet.has(String(id)));
+              labels = filteredIds.map((id) => idToLabel(id));
+              data = filteredIds.map((id) => totalsById.get(id) || 0);
+            } else {
+              // All sources: top 7 + Other
+              const topIds = idsSorted.slice(0, 7);
+              const restIds = idsSorted.slice(7);
+              labels = topIds.map((id) => idToLabel(id));
+              data = topIds.map((id) => totalsById.get(id) || 0);
+              if (restIds.length > 0) {
+                labels.push(t("other"));
+                data.push(restIds.reduce((sum, id) => sum + (totalsById.get(id) || 0), 0));
+              }
             }
+
             const bg = [
               "rgba(248, 113, 113, 0.8)",
               "rgba(96, 165, 250, 0.8)",
@@ -1223,7 +1537,7 @@ const processedCategoryData = {
               "rgba(139, 69, 19, 1)",
             ];
             const paletteSize = Math.max(labels.length, 0);
-const dataSet = {
+            const dataSet = {
               labels,
               datasets: [
                 {
@@ -1385,202 +1699,14 @@ const dataSet = {
 
       {/* Summary Cards */}
       {reportData?.summary && (
-        <div
-          className={`grid grid-cols-1 md:grid-cols-2 ${isIncomeTrackingDisabled ? "lg:grid-cols-2" : "lg:grid-cols-4"} gap-6 mb-8`}
-        >
-          {!isIncomeTrackingDisabled && (
-            <div
-              className="card"
-              style={{ borderColor: "rgba(52, 211, 153, 0.5)" }}
-            >
-              <div className="card-body">
-                <div className="flex items-center">
-                  <div className="p-3 rounded-full bg-green-100 dark:bg-green-900/30 mr-4">
-                    <svg
-                      className="w-6 h-6 text-green-500"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                      xmlns="http://www.w3.org/2000/svg"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                        d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                      ></path>
-                    </svg>
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                      {t("totalIncome")}
-                    </h3>
-                    <motion.p
-                      key={`income-value-${timeRange}`}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ duration: 0.3 }}
-                      className="text-xl font-bold text-green-600 dark:text-green-400"
-                    >
-                      {formatCurrency(reportData.summary.total_income || 0)}
-                    </motion.p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          <div
-            className="card"
-            style={{ borderColor: "rgba(248, 113, 113, 0.5)" }}
-          >
-            <div className="card-body">
-              <div className="flex items-center">
-                <div className="p-3 rounded-full bg-red-100 dark:bg-red-900/30 mr-4">
-                  <svg
-                    className="w-6 h-6 text-red-500"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                    ></path>
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                    {t("totalExpenses")}
-                  </h3>
-                  <motion.p
-                    key={`expenses-value-${timeRange}`}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ duration: 0.3 }}
-                    className="text-xl font-bold text-red-600 dark:text-red-400"
-                  >
-                    {formatCurrency(reportData.summary.total_expenses || 0)}
-                  </motion.p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {!isIncomeTrackingDisabled && (
-            <div
-              className="card"
-              style={{ borderColor: "rgba(168, 85, 247, 0.5)" }}
-            >
-              <div className="card-body">
-                <div className="flex items-center">
-                  <div className="p-3 rounded-full bg-purple-100 dark:bg-purple-900/30 mr-4">
-                    <svg
-                      className="w-6 h-6 text-purple-500"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                      xmlns="http://www.w3.org/2000/svg"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                        d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                      ></path>
-                    </svg>
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                      {t("netSavings")}
-                    </h3>
-                    <motion.p
-                      key={`savings-value-${timeRange}`}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ duration: 0.3 }}
-                      className="text-xl font-bold text-purple-600 dark:text-purple-400"
-                    >
-                      {formatCurrency(
-                        (reportData.summary.total_income || 0) -
-                          (reportData.summary.total_expenses || 0),
-                      )}
-                    </motion.p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          <div
-            className="card"
-            style={{
-              // Use theme accent for this card so Wednesday theme maps it to violet automatically
-              borderColor: "color-mix(in srgb, var(--accent) 50%, transparent)",
-            }}
-          >
-            <div className="card-body">
-              <div className="flex items-center">
-                <div className="p-3 rounded-full bg-blue-100 dark:bg-blue-900/30 mr-4 savings-icon-chip">
-                  <svg
-                    className="w-6 h-6 text-blue-500"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-                    ></path>
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                    {isIncomeTrackingDisabled
-                      ? `Ø ${t("dailyExpenses")}`
-                      : t("savingsRate")}
-                  </h3>
-                  <motion.p
-                    key={`rate-value-${timeRange}`}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ duration: 0.3 }}
-                    className="text-xl font-bold text-blue-600 dark:text-blue-400"
-                  >
-                    {isIncomeTrackingDisabled
-                      ? dailyExpensesData?.length > 0
-                        ? formatCurrency(
-                            dailyExpensesData.reduce(
-                              (sum, item) => sum + parseFloat(item.total || 0),
-                              0,
-                            ) /
-                              (() => {
-                                // Calculate actual number of days in the period
-                                const { startDate, endDate } = getDateRange();
-                                const start = new Date(startDate);
-                                const end = new Date(endDate);
-                                // Add 1 to include both start and end dates
-                                const diffTime = Math.abs(end - start);
-                                const diffDays =
-                                  Math.ceil(diffTime / (1000 * 60 * 60 * 24)) +
-                                  1;
-                                return diffDays;
-                              })(),
-                          )
-                        : formatCurrency(0)
-                      : `${savingsRate}%`}
-                  </motion.p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+        <SummaryCards
+          summary={reportData.summary}
+          timeRange={timeRange}
+          startDate={getDateRange().startDate}
+          endDate={getDateRange().endDate}
+          dailyExpensesSeries={dailyExpensesData || []}
+          incomeTrackingDisabled={isIncomeTrackingDisabled}
+        />
       )}
 
       {/* Daily Expenses Chart */}
@@ -1593,149 +1719,30 @@ const dataSet = {
                 ? t("weeklyExpenses")
                 : t("monthlyExpenses")}
           </h3>
-          {dailyExpensesData?.length > 0 ? (
-              <motion.div
-              key={`daily-expenses-chart-${timeRange}`}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.3 }}
-              className="w-full h-full flex-1"
-              style={{ minHeight: 0 }}
-            >
-              <Bar
-                data={{
-                  labels: dailyExpensesData.map((item) => {
-                    const date = new Date(item.date);
-                    if (timeRange === "weekly") {
-                      return formatShortWeekday(item.date);
-                    } else if (timeRange === "monthly") {
-                      const weekNumber = getWeekNumber(date);
-                      return language === "de"
-                        ? `KW ${weekNumber}`
-                        : `CW ${weekNumber}`;
-                    } else if (timeRange === "yearly") {
-                      return date.toLocaleDateString(
-                        language === "de" ? "de-DE" : "en-US",
-                        { month: "short" },
-                      );
-                    }
-                    return formatShortWeekday(item.date);
-                  }),
-                  datasets: [
-                    {
-                      label: t("expenses"),
-                      data: dailyExpensesData.map((item) =>
-                        parseFloat(item.total || 0),
-                      ),
-                      backgroundColor: "rgba(248, 113, 113, 0.7)",
-                      borderColor: "rgba(248, 113, 113, 1)",
-                      borderWidth: 2,
-                      borderRadius: 6,
-                    },
-                  ],
-                }}
-                options={{
-                  responsive: true,
-                  maintainAspectRatio: false,
-                  plugins: {
-                    legend: {
-                      display: false,
-                    },
-                    title: {
-                      display: false,
-                    },
-                    tooltip: {
-                      callbacks: {
-                        label: function (context) {
-                          return `${context.dataset.label}: ${formatCurrency(context.parsed.y)}`;
-                        },
-                      },
-                    },
-                    datalabels: {
-                      anchor: "center",
-                      align: "center",
-                      formatter: (value) =>
-                        value !== 0 ? formatCurrency(value) : "",
-                      color: "#FFFFFF",
-                      font: {
-                        weight: "bold",
-                        size: 10,
-                      },
-                      display: (context) =>
-                        context.dataset.data[context.dataIndex] !== 0,
-                    },
-                  },
-                  scales: {
-                    y: {
-                      display: false,
-                      beginAtZero: true,
-                      grid: {
-                        color: "rgba(0, 0, 0, 0.05)",
-                      },
-                      ticks: {
-                        color: "#6b7280",
-                        callback: function (value) {
-                          return formatCurrency(value);
-                        },
-                      },
-                    },
-                    x: {
-                      grid: {
-                        display: false,
-                      },
-                      ticks: {
-                        color: "#6b7280",
-                      },
-                    },
-                  },
-                }}
-              />
-            </motion.div>
-          ) : (
-            <motion.div
-              key={`daily-expenses-empty-${timeRange}`}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.3 }}
-              className="text-center py-8 text-gray-500"
-            >
-              {t("noDataAvailable")}
-            </motion.div>
-          )}
+          <DailyExpensesChart startDate={getDateRange().startDate} endDate={getDateRange().endDate} timeRange={timeRange} />
         </div>
       </div>
 
-      {/* Source Category Breakdown Chart */}
-      <div className="card md:h-[370px] mb-8">
-        <div className="card-body h-full flex flex-col min-h-0">
-          <h2 className="text-xl font-semibold mb-6">{t("sourceCategoryBreakdown")}</h2>
-          <SourceCategoryBarChart
-            selectedSources={selectedSources}
-            sources={sources}
-          />
-        </div>
-      </div>
+      
 
-      {/* Charts - Expenses by Category and Balance Trend */}
-      <div
-        className={`grid grid-cols-1 ${isIncomeTrackingDisabled ? "lg:grid-cols-1" : "lg:grid-cols-2"} gap-8 mb-8`}
-      >
+      {/* Charts - Source Category Breakdown and Expenses by Category */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+        {/* Source Spending by Category */}
         <div className="card md:h-[370px]">
           <div className="card-body h-full flex flex-col min-h-0">
-            <h3 className="text-xl font-semibold mb-6">
-              {t("expensesByCategory")}
-            </h3>
+            <h2 className="text-xl font-semibold mb-6">{t("sourceCategoryBreakdown")}</h2>
+            <SourceCategoryBarChart selectedSources={shouldFilter ? selectedSources : []} sources={sources} />
+          </div>
+        </div>
+        {/* Expenses by Category */}
+        <div className="card md:h-[370px]">
+          <div className="card-body h-full flex flex-col min-h-0">
+            <h3 className="text-xl font-semibold mb-6">{t("expensesByCategory")}</h3>
             {reportData?.category?.labels?.length > 0 ? (
               <>
                 {/* Mobile: custom scrollable legend with amounts */}
                 <div className="md:hidden">
-                  <motion.div
-                    key={`category-chart-mobile-${timeRange}`}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ duration: 0.3 }}
-                    className="w-full h-44"
-                  >
+                  <motion.div key={`category-chart-mobile-${timeRange}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }} className="w-full h-44">
                     <Pie
                       data={reportData.category}
                       options={{
@@ -1762,24 +1769,12 @@ const dataSet = {
                       }}
                     />
                   </motion.div>
-                  <ChartLegend
-                    labels={reportData.category.labels}
-                    values={reportData.category.datasets?.[0]?.data}
-                    backgroundColor={reportData.category.datasets?.[0]?.backgroundColor}
-                    formatCurrency={formatCurrency}
-                  />
+                  <ChartLegend labels={reportData.category.labels} values={reportData.category.datasets?.[0]?.data} backgroundColor={reportData.category.datasets?.[0]?.backgroundColor} formatCurrency={formatCurrency} />
                 </div>
 
                 {/* Desktop: pie + custom right-side table legend */}
                 <div className="hidden md:flex items-center gap-6 h-full flex-1">
-                  <motion.div
-                    key={`category-chart-desktop-${timeRange}`}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ duration: 0.3 }}
-                    className="flex-[2] flex-1 h-full min-w-0 overflow-hidden p-2 flex items-center justify-center"
-                    style={{ minHeight: 0 }}
-                  >
+                  <motion.div key={`category-chart-desktop-${timeRange}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }} className="flex-[2] flex-1 h-full min-w-0 overflow-hidden p-2 flex items-center justify-center" style={{ minHeight: 0 }}>
                     <Pie
                       data={reportData.category}
                       options={{
@@ -1788,7 +1783,6 @@ const dataSet = {
                         layout: { padding: 12 },
                         radius: "100%",
                         plugins: {
-                          // disable built-in legend for desktop: we render a table next to the chart
                           legend: { display: false },
                           title: { display: false },
                           datalabels: {
@@ -1815,256 +1809,8 @@ const dataSet = {
                     <table className="w-full text-sm">
                       <tbody>
                         {reportData.category.labels.map((label, idx) => {
-                          const amount = Number(
-                            reportData.category.datasets?.[0]?.data?.[idx] || 0,
-                          );
+                          const amount = Number(reportData.category.datasets?.[0]?.data?.[idx] || 0);
                           const bg = reportData.category.datasets?.[0]?.backgroundColor || [];
-                          const color = bg[idx % bg.length] || "#999";
-                          return (
-                            <tr key={`${label}-${idx}`} className="h-9">
-                              <td className="align-middle pr-3">
-                                <div className="flex items-center min-w-0">
-                                  <span
-                                    className="inline-block h-2.5 w-2.5 rounded-full mr-3 flex-shrink-0"
-                                    style={{ backgroundColor: color }}
-                                    aria-hidden="true"
-                                  />
-                                  <span className="text-gray-700 dark:text-gray-300 truncate">{label}</span>
-                                </div>
-                              </td>
-                              <td className="text-right align-middle text-gray-600 dark:text-gray-400 font-medium whitespace-nowrap">
-                                {formatCurrency(amount)}
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </>
-            ) : (
-              <motion.div
-                key={`category-empty-${timeRange}`}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.3 }}
-                className="text-center py-8 text-gray-500"
-              >
-                {t("noDataAvailable")}
-              </motion.div>
-            )}
-          </div>
-        </div>
-
-        <div className="card">
-          <div className="card-body">
-            <h3 className="text-xl font-semibold mb-6">{t("balanceTrend")}</h3>
-            {reportData?.trend?.labels?.length > 0 ? (
-                <motion.div
-                    key={`trend-chart-${timeRange}`}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ duration: 0.3 }}
-                    className="w-full h-full flex-1"
-                    style={{ minHeight: 0 }}
-                  >
-                <Line
-                  data={reportData.trend}
-                  options={{
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                      legend: {
-                        display: false,
-                      },
-                      title: {
-                        display: false,
-                      },
-                      tooltip: {
-                        mode: "index",
-                        intersect: false,
-                        callbacks: {
-                          label: function (context) {
-                            return `${context.dataset.label}: ${formatCurrency(context.parsed.y)}`;
-                          },
-                        },
-                      },
-                      datalabels: {
-                        display: false,
-                      },
-                    },
-                    scales: {
-                      y: {
-                        display: true, // Show y-axis for better context
-                        beginAtZero: false,
-                        grid: {
-                          color: "rgba(0, 0, 0, 0.05)",
-                        },
-                        ticks: {
-                          color: "#6b7280",
-                          callback: function (value) {
-                            return formatCurrency(value);
-                          },
-                          stepSize: function (context) {
-                            // Dynamically calculate step size based on data range to reduce number of ticks
-                            const chart = context.chart;
-                            const min = chart.scales.y.min;
-                            const max = chart.scales.y.max;
-                            const range = max - min;
-                            // Aim for 4-5 ticks by rounding to nice numbers
-                            const roughStep = range / 4;
-                            // Round to nearest significant value (10, 50, 100, 500, 1000, etc.)
-                            const magnitude = Math.pow(
-                              10,
-                              Math.floor(Math.log10(roughStep)),
-                            );
-                            const normalized = roughStep / magnitude;
-                            let niceStep;
-                            if (normalized < 1.5) {
-                              niceStep = 1 * magnitude;
-                            } else if (normalized < 3) {
-                              niceStep = 2 * magnitude;
-                            } else if (normalized < 7.5) {
-                              niceStep = 5 * magnitude;
-                            } else {
-                              niceStep = 10 * magnitude;
-                            }
-                            return niceStep;
-                          },
-                        },
-                      },
-                      x: {
-                        grid: {
-                          display: false,
-                        },
-                        ticks: {
-                          color: "#6b7280",
-                        },
-                      },
-                    },
-                    interaction: {
-                      mode: "nearest",
-                      axis: "x",
-                      intersect: false,
-                    },
-                    tension: 0.4, // Smoother curves
-                  }}
-                />
-              </motion.div>
-            ) : (
-              <motion.div
-                key={`trend-empty-${timeRange}`}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.3 }}
-                className="text-center py-8 text-gray-500"
-              >
-                {t("noDataAvailable")}
-              </motion.div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Income vs Expenses Chart - Moved to bottom to match Dashboard order */}
-      {/* Additional: Expenses by Source and Largest Expenses */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-        <div className="card md:h-[370px]">
-          <div className="card-body h-full flex flex-col min-h-0">
-            <h3 className="text-xl font-semibold mb-6">{t("expensesBySource")}</h3>
-            {sourceShareData && sourceShareData.labels?.length > 0 ? (
-              <>
-                {/* Mobile: pie + custom scrollable legend */}
-                <div className="md:hidden">
-                  <motion.div
-                    key={`source-share-mobile-${timeRange}`}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ duration: 0.3 }}
-                    className="w-full h-44"
-                  >
-                    <Pie
-                      data={sourceShareData}
-                      options={{
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        layout: { padding: 8 },
-                        plugins: {
-                          legend: { display: false },
-                          title: { display: false },
-                          datalabels: {
-                            color: "#fff",
-                            font: { weight: "bold", size: 12 },
-                            formatter: (value, context) => {
-                              const total = context.dataset.data.reduce((acc, v) => acc + v, 0);
-                              const pct = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
-                              return pct > 5 ? `${pct}%` : "";
-                            },
-                            anchor: "center",
-                            align: "center",
-                            clip: true,
-                          },
-                        },
-                        cutout: "60%",
-                      }}
-                    />
-                  </motion.div>
-                  <ChartLegend
-                    labels={sourceShareData.labels}
-                    values={sourceShareData.datasets?.[0]?.data}
-                    backgroundColor={sourceShareData.datasets?.[0]?.backgroundColor}
-                    formatCurrency={formatCurrency}
-                  />
-                </div>
-
-    {/* Desktop: pie + custom right-side table legend (show 4 rows, scroll rest) */}
-  <div className="hidden md:flex items-center gap-6 h-full flex-1">
-                  <motion.div
-                    key={`source-share-desktop-${timeRange}`}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ duration: 0.3 }}
-          className="flex-[2] flex-1 h-full min-w-0 overflow-hidden p-2 flex items-center justify-center"
-          style={{ minHeight: 0 }}
-                  >
-                    <Pie
-                      data={sourceShareData}
-                      options={{ ...{
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        layout: { padding: 12 },
-                        radius: "100%",
-                        plugins: {
-                          legend: { display: false },
-                          title: { display: false },
-                          datalabels: {
-                            color: "#fff",
-                            font: { weight: "bold", size: 12 },
-                            formatter: (value, context) => {
-                              const total = context.dataset.data.reduce((acc, v) => acc + v, 0);
-                              const pct = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
-                              return pct > 5 ? `${pct}%` : "";
-                            },
-                            anchor: "center",
-                            align: "center",
-                            clip: true,
-                          },
-                        },
-                        cutout: "60%",
-                      } }}
-                      style={{ height: "260px", width: "260px", margin: "0 auto" }}
-                    />
-                  </motion.div>
-
-                  <div className="w-52 max-h-[260px] overflow-y-auto pt-1 self-center scrollbar-thin-modern">
-                    <table className="w-full text-sm">
-                      <tbody>
-                        {sourceShareData.labels.map((label, idx) => {
-                          const amount = Number(
-                            sourceShareData.datasets?.[0]?.data?.[idx] || 0,
-                          );
-                          const bg = sourceShareData.datasets?.[0]?.backgroundColor || [];
                           const color = bg[idx % bg.length] || "#999";
                           return (
                             <tr key={`${label}-${idx}`} className="h-9">
@@ -2074,9 +1820,7 @@ const dataSet = {
                                   <span className="text-gray-700 dark:text-gray-300 truncate">{label}</span>
                                 </div>
                               </td>
-                              <td className="text-right align-middle text-gray-600 dark:text-gray-400 font-medium whitespace-nowrap">
-                                {formatCurrency(amount)}
-                              </td>
+                              <td className="text-right align-middle text-gray-600 dark:text-gray-400 font-medium whitespace-nowrap">{formatCurrency(amount)}</td>
                             </tr>
                           );
                         })}
@@ -2086,16 +1830,33 @@ const dataSet = {
                 </div>
               </>
             ) : (
-              <motion.div
-                key={`source-share-empty-${timeRange}`}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.3 }}
-                className="text-center py-8 text-gray-500"
-              >
-                {t("noDataAvailable")}
-              </motion.div>
+              <motion.div key={`category-empty-${timeRange}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }} className="text-center py-8 text-gray-500">{t("noDataAvailable")}</motion.div>
             )}
+          </div>
+        </div>
+      </div>
+
+      {/* Balance Trend */}
+      <div className="card md:h-[370px] mb-8">
+        <div className="card-body h-full flex flex-col min-h-0">
+          <h3 className="text-xl font-semibold mb-6">{t("balanceTrend")}</h3>
+          <PerSourceBalanceTrend startDate={getDateRange().startDate} endDate={getDateRange().endDate} timeRange={timeRange} selectedSources={selectedSources} sources={sources} incomeTrackingDisabled={isIncomeTrackingDisabled} />
+        </div>
+      </div>
+
+      {/* Income vs Expenses Chart - Moved to bottom to match Dashboard order */}
+      {/* Additional: Expenses by Source and Largest Expenses */}
+      <div className="grid grid-cols-1 gap-8 mb-8">
+        <div className="card md:h-[370px]">
+          <div className="card-body h-full flex flex-col min-h-0">
+            <h3 className="text-xl font-semibold mb-6">{t("expensesBySource")}</h3>
+            <PerSourceExpensesTrend
+              startDate={getDateRange().startDate}
+              endDate={getDateRange().endDate}
+              timeRange={timeRange}
+              selectedSources={selectedSources}
+              sources={sources}
+            />
           </div>
         </div>
 
@@ -2169,80 +1930,6 @@ const dataSet = {
           </div>
         </div>
       </div>
-      {!isIncomeTrackingDisabled && (
-        <div className="card md:h-[250px] mb-8">
-          <div className="card-body h-full flex flex-col min-h-0">
-            <h3 className="text-xl font-semibold mb-6">
-              {t("incomeVsExpenses")}
-            </h3>
-            {reportData?.monthly?.labels?.length > 0 ? (
-                <motion.div
-                key={`income-expenses-chart-${timeRange}`}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.3 }}
-                className="w-full h-full flex-1"
-                style={{ minHeight: 0 }}
-              >
-                <Bar
-                  data={reportData.monthly}
-                  options={{
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                      legend: {
-                        position: "top",
-                        labels: {
-                          color: "#6b7280",
-                          font: {
-                            size: 12,
-                          },
-                        },
-                      },
-                      title: {
-                        display: false,
-                      },
-                      datalabels: {
-                        display: false,
-                      },
-                    },
-                    scales: {
-                      y: {
-                        display: false,
-                        beginAtZero: true,
-                        grid: {
-                          color: "rgba(0, 0, 0, 0.05)",
-                        },
-                        ticks: {
-                          color: "#6b7280",
-                        },
-                      },
-                      x: {
-                        grid: {
-                          display: false,
-                        },
-                        ticks: {
-                          color: "#6b7280",
-                        },
-                      },
-                    },
-                  }}
-                />
-              </motion.div>
-            ) : (
-              <motion.div
-                key={`income-expenses-empty-${timeRange}`}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.3 }}
-                className="text-center py-8 text-gray-500"
-              >
-                {t("noDataAvailable")}
-              </motion.div>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 };

@@ -35,41 +35,55 @@ function showUpdateNotification(onUpdate, onDismiss) {
   };
 }
 
-if ("serviceWorker" in navigator) {
+// Only register service worker in production builds and when not explicitly disabled
+if (
+  "serviceWorker" in navigator &&
+  import.meta.env.PROD
+) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/sw.js").then((registration) => {
-      // Listen for updates
-      if (registration.waiting) {
-        // Already waiting: show notification
-        showUpdateNotification(() => {
-          registration.waiting.postMessage({ type: "SKIP_WAITING" });
-          window.location.reload();
-        });
-      }
-      registration.addEventListener("updatefound", () => {
-        const newWorker = registration.installing;
-        if (newWorker) {
-          newWorker.addEventListener("statechange", () => {
-            if (newWorker.state === "installed" && navigator.serviceWorker.controller) {
-              // New update available
-              showUpdateNotification(() => {
-                registration.waiting?.postMessage({ type: "SKIP_WAITING" });
-                window.location.reload();
-              });
-            }
-          });
-        }
-      });
-      // Listen for waiting via message (for Workbox)
-      navigator.serviceWorker.addEventListener("message", (event) => {
-        if (event.data && event.data.type === "NEW_VERSION_AVAILABLE") {
+    // VitePWA outputs /sw.js in production
+    navigator.serviceWorker
+      .register("/sw.js")
+      .then((registration) => {
+        // Listen for updates
+        if (registration.waiting) {
+          // Already waiting: show notification
           showUpdateNotification(() => {
-            registration.waiting?.postMessage({ type: "SKIP_WAITING" });
+            registration.waiting.postMessage({ type: "SKIP_WAITING" });
             window.location.reload();
           });
         }
+        registration.addEventListener("updatefound", () => {
+          const newWorker = registration.installing;
+          if (newWorker) {
+            newWorker.addEventListener("statechange", () => {
+              if (
+                newWorker.state === "installed" &&
+                navigator.serviceWorker.controller
+              ) {
+                // New update available
+                showUpdateNotification(() => {
+                  registration.waiting?.postMessage({ type: "SKIP_WAITING" });
+                  window.location.reload();
+                });
+              }
+            });
+          }
+        });
+        // Listen for waiting via message (for Workbox)
+        navigator.serviceWorker.addEventListener("message", (event) => {
+          if (event.data && event.data.type === "NEW_VERSION_AVAILABLE") {
+            showUpdateNotification(() => {
+              registration.waiting?.postMessage({ type: "SKIP_WAITING" });
+              window.location.reload();
+            });
+          }
+        });
+      })
+      .catch((err) => {
+        // Fail silently in production if registration fails; log for debugging
+        console.warn("SW registration failed:", err?.message || err);
       });
-    });
   });
 }
 

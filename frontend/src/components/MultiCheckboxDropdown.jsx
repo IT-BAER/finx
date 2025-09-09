@@ -34,21 +34,47 @@ export default function MultiCheckboxDropdown({
   useEffect(() => {
     if (!isOpen) return;
 
-    const handleClickOutside = (event) => {
-      if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(event.target) &&
-        menuRef.current &&
-        !menuRef.current.contains(event.target)
-      ) {
+    const handlePointerDownOutside = (event) => {
+      const triggerEl = dropdownRef.current;
+      const menuEl = menuRef.current;
+      // If click/touch started inside trigger or menu, ignore
+      if ((triggerEl && triggerEl.contains(event.target)) || (menuEl && menuEl.contains(event.target))) {
+        return;
+      }
+      setIsOpen(false);
+    };
+
+    // Use capture to avoid other components stopping propagation
+    document.addEventListener("pointerdown", handlePointerDownOutside, true);
+
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDownOutside, true);
+    };
+  }, [isOpen]);
+
+  // Close when scrolling outside the dropdown/menu
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleScrollOutside = (event) => {
+      const target = event.target;
+      const triggerEl = dropdownRef.current;
+      const menuEl = menuRef.current;
+      if (!triggerEl || !menuEl) return;
+      const insideTrigger = triggerEl.contains(target);
+      const insideMenu = menuEl.contains(target);
+      if (!insideTrigger && !insideMenu) {
         setIsOpen(false);
       }
     };
 
-    document.addEventListener("mousedown", handleClickOutside);
-    
+    // Use capture to catch scroll on ancestors; also listen on window for page scroll
+    document.addEventListener("scroll", handleScrollOutside, true);
+    window.addEventListener("scroll", handleScrollOutside, true);
+
     return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("scroll", handleScrollOutside, true);
+      window.removeEventListener("scroll", handleScrollOutside, true);
     };
   }, [isOpen]);
 
@@ -145,7 +171,7 @@ export default function MultiCheckboxDropdown({
         whileTap={{ scale: 0.95 }}
         className={
           useIcon
-            ? "p-2 rounded-lg transition-colors focus:outline-none hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center"
+            ? "p-2 !pb-[4px] rounded-lg transition-colors focus:outline-none hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center"
             : `form-input w-full h-[45px] flex items-center justify-between cursor-pointer ${noBorder ? "border-b-0" : ""}`
         }
         onClick={() => setIsOpen((v) => !v)}
@@ -161,6 +187,7 @@ export default function MultiCheckboxDropdown({
             alt="Filter"
             size="md"
             variant="default"
+            className="align-middle"
           />
         ) : (
           <>

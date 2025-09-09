@@ -88,12 +88,27 @@ async function loadDashboardData() {
     total: parseFloat(d.total || 0),
   }));
 
+  // Ensure weekly dailyExpenses always contain exactly the last 7 days (fill zeros for missing days)
+  const filledWeeklyDailyExpenses = (() => {
+    const map = new Map();
+    (weekly.dailyExpenses || []).forEach((d) => {
+      const key = toYYYYMMDD(d.date);
+      map.set(key, parseFloat(d.total || 0));
+    });
+    const arr = [];
+    const start = new Date(weekStart);
+    for (let i = 0; i < 7; i++) {
+      const day = new Date(start);
+      day.setDate(start.getDate() + i);
+      const key = toYYYYMMDD(day);
+      arr.push({ date: key, total: map.get(key) || 0 });
+    }
+    return arr;
+  })();
+
   return {
     summary: monthly.summary || { total_income: 0, total_expenses: 0, balance: 0 },
-    dailyExpenses: (weekly.dailyExpenses || []).map((d) => ({
-      date: d.date,
-      total: parseFloat(d.total || 0),
-    })),
+    dailyExpenses: filledWeeklyDailyExpenses,
     // Use monthly expense by category to reflect entire current month
     expenseByCategory: monthly.expenseByCategory || [],
     weeklyExpenses: weekly.weeklyExpenses || { total_expenses: 0, days_with_expenses: 0 },
@@ -130,10 +145,36 @@ const Dashboard = () => {
   const [topExpenses, setTopExpenses] = useState([]);
   const [perSourceChartData, setPerSourceChartData] = useState(null);
   const [perSourceLegend, setPerSourceLegend] = useState(null);
+  const [trendPerSourceChartData, setTrendPerSourceChartData] = useState(null);
+  const [trendPerSourceLegend, setTrendPerSourceLegend] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [sources, setSources] = useState([]);
   const [selectedSources, setSelectedSources] = useState([]); // empty = all
+
+  // Persist dashboard filter per user
+  const userKeyPart = (user?.id ?? user?.email ?? user?.uid ?? "anon").toString();
+  const DASHBOARD_FILTER_STORAGE_KEY = `filters:dashboard:selectedSources:${userKeyPart}`;
+  // Load saved selection on mount or when user changes
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(DASHBOARD_FILTER_STORAGE_KEY);
+      if (raw) {
+        const arr = JSON.parse(raw);
+        if (Array.isArray(arr)) setSelectedSources(arr);
+      }
+    } catch {}
+  }, [DASHBOARD_FILTER_STORAGE_KEY]);
+  // Save whenever selection changes
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        DASHBOARD_FILTER_STORAGE_KEY,
+        JSON.stringify(selectedSources || []),
+      );
+    } catch {}
+  }, [selectedSources, DASHBOARD_FILTER_STORAGE_KEY]);
+
   // Filtered data based on selected sources
   const [filteredSummary, setFilteredSummary] = useState(null);
   const [filteredDailyExpenses, setFilteredDailyExpenses] = useState([]);
@@ -142,6 +183,8 @@ const Dashboard = () => {
   const isCurrentPage = useRef(true);
 
   const isIncomeTrackingDisabled = !!user?.income_tracking_disabled;
+  // Treat "all individually selected" as no filter to avoid excluding uncategorized/unknown sources
+  const shouldFilter = selectedSources.length > 0 && selectedSources.length < (sources?.length || Infinity);
 
   useEffect(() => {
     // Load sources for filter dropdown - only owner and shared sources
@@ -222,7 +265,7 @@ const Dashboard = () => {
         const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
         const monthEnd = now;
 
-        // Days labels 1..today
+        // Days labels 1..today (for per-source monthly chart)
         const dayLabels = [];
         {
           const temp = new Date(monthStart);
@@ -234,16 +277,33 @@ const Dashboard = () => {
 
         // Filter transactions by selected sources
         let filtered = all || [];
-        if (selectedSources.length > 0) {
+        const shouldFilterLocal = selectedSources.length > 0 && selectedSources.length < (sources?.length || Infinity);
+        if (shouldFilterLocal) {
           // Convert selectedSources to strings for consistent comparison
-          const selectedSourceIds = selectedSources.map(id => String(id));
-          filtered = filtered.filter((tx) => {
-            const sourceId = String(tx.source_id || tx.source || '');
-            return selectedSourceIds.includes(sourceId);
+          const selectedSourceIds = new Set(selectedSources.map(id => String(id)));
+          // Also build a quick lookup of selected names (for mapping income target_name -> source)
+          const selectedNamesLower = new Set(
+            (sources || [])
+              .filter((s) => selectedSourceIds.has(String(s.id)))
+              .map((s) => String(s.name || "").trim().toLowerCase())
+          );
+
+          filtered = (all || []).filter((tx) => {
+            const sid = tx.source_id != null ? String(tx.source_id) : null;
+            if (sid && selectedSourceIds.has(sid)) return true;
+            // For incomes, map by target_name to selected source names (server does similar fallback)
+            if (String(tx.type).toLowerCase() === "income") {
+              const tname = String(tx.target_name || "").trim().toLowerCase();
+              if (tname && selectedNamesLower.has(tname)) return true;
+            }
+            return false;
           });
         }
 
-        // Group expenses by source_name per day index (daily totals)
+        // =============================
+        // Per-Source (Monthly) Trend
+        // =============================
+        // Group expenses by source_name per day index (daily totals for current month)
         const groups = new Map(); // source -> array of totals per day index
         const totalsBySource = new Map();
         const dayIndex = (d) => {
@@ -256,18 +316,17 @@ const Dashboard = () => {
           .forEach((tx) => {
             const d = new Date(tx.date);
             if (!(d >= monthStart && d <= monthEnd)) return;
-            const srcName = (tx.source_name || "Other").trim() || "Other";
+            const sid = tx.source_id != null ? String(tx.source_id) : null;
+            if (!sid) return;
             const idx = dayIndex(d);
             if (idx < 0 || idx >= dayLabels.length) return;
-            if (!groups.has(srcName)) groups.set(srcName, new Array(dayLabels.length).fill(0));
-            const arr = groups.get(srcName);
+            if (!groups.has(sid)) groups.set(sid, new Array(dayLabels.length).fill(0));
+            const arr = groups.get(sid);
             arr[idx] += Number(tx.amount || 0);
-            totalsBySource.set(srcName, (totalsBySource.get(srcName) || 0) + Number(tx.amount || 0));
+            totalsBySource.set(sid, (totalsBySource.get(sid) || 0) + Number(tx.amount || 0));
           });
 
-        // Limit to top 5 sources by total; collapse others into "Other"
         const sortedSources = Array.from(totalsBySource.entries()).sort((a, b) => b[1] - a[1]);
-        const topSources = sortedSources.slice(0, 5).map(([name]) => name);
         const datasets = [];
         const palette = [
           "rgba(96, 165, 250, 1)", // blue
@@ -275,61 +334,94 @@ const Dashboard = () => {
           "rgba(52, 211, 153, 1)", // green
           "rgba(251, 191, 36, 1)",  // amber
           "rgba(139, 92, 246, 1)",  // purple
+          "rgba(16, 185, 129, 1)",  // emerald
+          "rgba(244, 114, 182, 1)", // pink
+          "rgba(209, 213, 219, 1)", // gray-300
+          "rgba(59, 130, 246, 1)",  // blue-500
+          "rgba(234, 179, 8, 1)",   // yellow-500
         ];
 
-        topSources.forEach((name, i) => {
-          const daily = (groups.get(name) || new Array(dayLabels.length).fill(0)).slice();
-          // Convert to cumulative then invert to show decremental trend
-          for (let k = 1; k < daily.length; k++) daily[k] += daily[k - 1];
-          const cumulativeNegative = daily.map((v) => -v);
-          datasets.push({
-            label: name,
-            data: cumulativeNegative,
-            borderColor: palette[i % palette.length],
-            backgroundColor: palette[i % palette.length].replace(", 1)", ", 0.12)"),
-            borderWidth: 2,
-            tension: 0.35,
-            pointRadius: 0,
-          });
-        });
+        const idToLabel = (id) => {
+          const sObj = (sources || []).find((s) => String(s.id) === String(id));
+          return sObj ? (sObj.displayName || sObj.name || `Source ${id}`) : `Source ${id}`;
+        };
 
-        // Aggregate remaining sources into "Other" if any
-        const others = sortedSources.slice(5).map(([name]) => name);
-        if (others.length > 0) {
-          const otherDaily = new Array(dayLabels.length).fill(0);
-          others.forEach((name) => {
-            const arr = groups.get(name) || [];
-            for (let i = 0; i < dayLabels.length; i++) {
-              otherDaily[i] += Number(arr[i] || 0);
-            }
+        if (shouldFilterLocal) {
+          // Show ALL selected sources individually (no aggregation)
+          const ids = sortedSources.map(([id]) => id);
+          ids.forEach((id, i) => {
+            const daily = (groups.get(id) || new Array(dayLabels.length).fill(0)).slice();
+            for (let k = 1; k < daily.length; k++) daily[k] += daily[k - 1];
+            const cumulativeNegative = daily.map((v) => -v);
+            datasets.push({
+              label: idToLabel(id),
+              data: cumulativeNegative,
+              borderColor: palette[i % palette.length],
+              backgroundColor: palette[i % palette.length].replace(", 1)", ", 0.12)"),
+              borderWidth: 2,
+              tension: 0.35,
+              pointRadius: 0,
+            });
           });
-          // Convert to cumulative and invert to decremental
-          for (let k = 1; k < otherDaily.length; k++) otherDaily[k] += otherDaily[k - 1];
-          const otherCumulativeNegative = otherDaily.map((v) => -v);
-          datasets.push({
-            label: "Other",
-            data: otherCumulativeNegative,
-            borderColor: "rgba(107, 114, 128, 1)", // gray-500
-            backgroundColor: "rgba(107, 114, 128, 0.12)",
-            borderWidth: 2,
-            tension: 0.35,
-            pointRadius: 0,
+        } else {
+          // All sources view: limit to top 5 and group the rest as "Other"
+          const topIds = sortedSources.slice(0, 5).map(([id]) => id);
+          topIds.forEach((id, i) => {
+            const daily = (groups.get(id) || new Array(dayLabels.length).fill(0)).slice();
+            for (let k = 1; k < daily.length; k++) daily[k] += daily[k - 1];
+            const cumulativeNegative = daily.map((v) => -v);
+            datasets.push({
+              label: idToLabel(id),
+              data: cumulativeNegative,
+              borderColor: palette[i % palette.length],
+              backgroundColor: palette[i % palette.length].replace(", 1)", ", 0.12)"),
+              borderWidth: 2,
+              tension: 0.35,
+              pointRadius: 0,
+            });
           });
+          const others = sortedSources.slice(5).map(([id]) => id);
+          if (others.length > 0) {
+            const otherDaily = new Array(dayLabels.length).fill(0);
+            others.forEach((id) => {
+              const arr = groups.get(id) || [];
+              for (let i = 0; i < dayLabels.length; i++) {
+                otherDaily[i] += Number(arr[i] || 0);
+              }
+            });
+            for (let k = 1; k < otherDaily.length; k++) otherDaily[k] += otherDaily[k - 1];
+            const otherCumulativeNegative = otherDaily.map((v) => -v);
+            datasets.push({
+              label: "Other",
+              data: otherCumulativeNegative,
+              borderColor: "rgba(107, 114, 128, 1)", // gray-500
+              backgroundColor: "rgba(107, 114, 128, 0.12)",
+              borderWidth: 2,
+              tension: 0.35,
+              pointRadius: 0,
+            });
+          }
         }
 
         const chartData = { labels: dayLabels, datasets };
         setPerSourceChartData(chartData);
 
-        // Calculate filtered summary values from the filtered transactions
+        // =============================
+        // Filtered Summary (Current month only)
+        // =============================
         const filteredSummary = {
           total_income: 0,
           total_expenses: 0,
           balance: 0
         };
 
-        // Calculate filtered summary from raw transaction data
-        if (filtered && filtered.length > 0) {
-          filtered.forEach((tx) => {
+        const filteredMonthly = (filtered || []).filter((tx) => {
+          const d = new Date(tx.date);
+          return d >= monthStart && d <= monthEnd;
+        });
+
+        if (filteredMonthly.length > 0) {
+          filteredMonthly.forEach((tx) => {
             const amount = parseFloat(tx.amount) || 0;
             if (tx.type === 'income') {
               filteredSummary.total_income += amount;
@@ -341,33 +433,44 @@ const Dashboard = () => {
         }
         setFilteredSummary(filteredSummary);
 
-        // Calculate filtered daily expenses from the filtered data
-        const filteredDailyExpenses = [];
-        const dailyExpenseMap = new Map();
-        
-        // Group filtered expenses by date
-        filtered
+        // =============================
+        // Filtered Daily Expenses (STRICT last 7 days)
+        // =============================
+        const weekEnd = new Date(now);
+        weekEnd.setHours(23, 59, 59, 999);
+        const weekStart = new Date(now);
+        weekStart.setDate(now.getDate() - 6);
+        weekStart.setHours(0, 0, 0, 0);
+
+        // Pre-initialize map for last 7 days with zeros to ensure exactly 7 entries
+        const weekMap = new Map(); // YYYY-MM-DD -> total
+        for (let i = 0; i < 7; i++) {
+          const d = new Date(weekStart);
+          d.setDate(weekStart.getDate() + i);
+          weekMap.set(toYYYYMMDD(d), 0);
+        }
+
+        (filtered || [])
           .filter((tx) => tx?.type === "expense")
           .forEach((tx) => {
-            const date = tx.date;
-            if (!dailyExpenseMap.has(date)) {
-              dailyExpenseMap.set(date, 0);
-            }
-            dailyExpenseMap.set(date, dailyExpenseMap.get(date) + (parseFloat(tx.amount) || 0));
+            const d = new Date(tx.date);
+            if (d < weekStart || d > weekEnd) return; // enforce 7-day window
+            const key = toYYYYMMDD(d);
+            weekMap.set(key, (weekMap.get(key) || 0) + (parseFloat(tx.amount) || 0));
           });
 
-        // Convert to array format matching dashboardData.dailyExpenses
-        for (const [date, total] of dailyExpenseMap.entries()) {
-          filteredDailyExpenses.push({ date, total });
-        }
+        const filteredDailyExpenses = Array.from(weekMap.entries())
+          .sort((a, b) => new Date(a[0]) - new Date(b[0]))
+          .map(([date, total]) => ({ date, total }));
         setFilteredDailyExpenses(filteredDailyExpenses);
 
-        // Calculate filtered expense by category
+        // =============================
+        // Filtered Expense by Category (Current month only)
+        // =============================
         const filteredExpenseByCategory = [];
         const categoryExpenseMap = new Map();
         
-        // Group filtered expenses by category
-        filtered
+        filteredMonthly
           .filter((tx) => tx?.type === "expense")
           .forEach((tx) => {
             const categoryName = tx.category_name || "Other";
@@ -377,14 +480,16 @@ const Dashboard = () => {
             categoryExpenseMap.set(categoryName, categoryExpenseMap.get(categoryName) + (parseFloat(tx.amount) || 0));
           });
 
-        // Convert to array format matching dashboardData.expenseByCategory
         for (const [category_name, total] of categoryExpenseMap.entries()) {
           filteredExpenseByCategory.push({ category_name, total });
         }
         setFilteredExpenseByCategory(filteredExpenseByCategory);
 
-        // Calculate filtered recent transactions (top 10 most recent)
-        const filteredRecentTransactions = [...filtered]
+        // =============================
+        // Filtered Recent Transactions (Current month, top 10)
+        // =============================
+        const filteredRecentTransactions = filteredMonthly
+          .slice()
           .sort((a, b) => new Date(b.date) - new Date(a.date))
           .slice(0, 10)
           .map((tx) => ({
@@ -418,9 +523,166 @@ const Dashboard = () => {
           .sort((a, b) => Number(b.amount || 0) - Number(a.amount || 0))
           .slice(0, 5);
         setTopExpenses(top);
+
+        // =============================
+        // Trend (last 7 days) per source with legend
+        // =============================
+        const trendWeekStart = new Date(now);
+        trendWeekStart.setDate(now.getDate() - 6);
+        trendWeekStart.setHours(0, 0, 0, 0);
+        const trendWeekEnd = new Date(now);
+        trendWeekEnd.setHours(23, 59, 59, 999);
+
+        const dayKeys = [];
+        for (let i = 0; i < 7; i++) {
+          const d = new Date(trendWeekStart);
+          d.setDate(trendWeekStart.getDate() + i);
+          dayKeys.push(toYYYYMMDD(d));
+        }
+
+        const bySrcExp = new Map(); // sourceId -> number[7]
+        const bySrcInc = new Map(); // sourceId -> number[7]
+
+        // Map source name -> list of source ids from available sources
+        const nameToIds = new Map();
+        (sources || []).forEach((s) => {
+          const nm = String(s.name || "").trim().toLowerCase();
+          if (!nameToIds.has(nm)) nameToIds.set(nm, []);
+          nameToIds.get(nm).push(String(s.id));
+        });
+        const selectedSet = new Set((selectedSources || []).map((x) => String(x)));
+
+        (filtered || []).forEach((tx) => {
+          const d = new Date(tx.date);
+          if (d < trendWeekStart || d > trendWeekEnd) return;
+          const key = toYYYYMMDD(d);
+          const idx = dayKeys.indexOf(key);
+          if (idx < 0) return;
+
+          let sid = null;
+          if (String(tx.type).toLowerCase() === 'expense') {
+            sid = tx.source_id != null ? String(tx.source_id) : null;
+          } else if (String(tx.type).toLowerCase() === 'income') {
+            const tname = String(tx.target_name || '').trim().toLowerCase();
+            const ids = nameToIds.get(tname) || [];
+            if (ids.length > 0) {
+              sid = shouldFilterLocal ? (ids.find((id) => selectedSet.has(id)) || ids[0]) : ids[0];
+            }
+          }
+          if (!sid) return;
+
+          if (String(tx.type).toLowerCase() === 'expense') {
+            if (!bySrcExp.has(sid)) bySrcExp.set(sid, new Array(7).fill(0));
+            const arr = bySrcExp.get(sid);
+            arr[idx] += Number(tx.amount || 0);
+          } else {
+            if (!bySrcInc.has(sid)) bySrcInc.set(sid, new Array(7).fill(0));
+            const arr = bySrcInc.get(sid);
+            arr[idx] += Number(tx.amount || 0);
+          }
+        });
+
+        // Build datasets per source
+        const sourceTotals = [];
+        const allIdsSet = new Set([...bySrcExp.keys(), ...bySrcInc.keys()]);
+        allIdsSet.forEach((id) => {
+          const expArr = (bySrcExp.get(id) || new Array(7).fill(0)).slice();
+          const incArr = (bySrcInc.get(id) || new Array(7).fill(0)).slice();
+          const totalExp = expArr.reduce((a,b)=>a+b,0);
+          const totalInc = incArr.reduce((a,b)=>a+b,0);
+          sourceTotals.push({ id, totalExp, totalInc });
+        });
+        // Sort by magnitude of contribution
+        sourceTotals.sort((a,b)=> (b.totalExp + b.totalInc) - (a.totalExp + a.totalInc));
+
+        const palette2 = [
+          "rgba(96, 165, 250, 1)",
+          "rgba(248, 113, 113, 1)",
+          "rgba(52, 211, 153, 1)",
+          "rgba(251, 191, 36, 1)",
+          "rgba(139, 92, 246, 1)",
+          "rgba(16, 185, 129, 1)",
+          "rgba(244, 114, 182, 1)",
+          "rgba(209, 213, 219, 1)",
+          "rgba(59, 130, 246, 1)",
+          "rgba(234, 179, 8, 1)",
+        ];
+
+        const trendDatasets = [];
+        const namesForTrend = (() => {
+          if (shouldFilterLocal) return sourceTotals.map((x) => x.id);
+          return sourceTotals.slice(0, 5).map((x) => x.id); // All sources view: limit to top 5
+        })();
+
+        namesForTrend.forEach((id, i) => {
+          const expArr = (bySrcExp.get(id) || new Array(7).fill(0)).slice();
+          const incArr = (bySrcInc.get(id) || new Array(7).fill(0)).slice();
+          let series = new Array(7).fill(0);
+          if (isIncomeTrackingDisabled) {
+            // cumulative negative expenses
+            for (let k = 1; k < expArr.length; k++) expArr[k] += expArr[k - 1];
+            series = expArr.map((v) => -v);
+          } else {
+            const net = expArr.map((v, idx) => (incArr[idx] || 0) - v);
+            for (let k = 1; k < net.length; k++) net[k] += net[k - 1];
+            series = net;
+          }
+          trendDatasets.push({
+            label: (sources || []).find((s) => String(s.id) === String(id))?.displayName ||
+                   (sources || []).find((s) => String(s.id) === String(id))?.name || `Source ${id}`,
+            data: series,
+            borderColor: palette2[i % palette2.length],
+            backgroundColor: palette2[i % palette2.length].replace(", 1)", ", 0.12)"),
+            borderWidth: 2,
+            tension: 0.35,
+            pointRadius: 0,
+          });
+        });
+
+        // Aggregate 'Other' only when not filtering and there are more than 5
+        if (!shouldFilterLocal && sourceTotals.length > 5) {
+          const restIds = sourceTotals.slice(5).map((x) => x.id);
+          const aggExp = new Array(7).fill(0);
+          const aggInc = new Array(7).fill(0);
+          restIds.forEach((id) => {
+            const e = bySrcExp.get(id) || [];
+            const inc = bySrcInc.get(id) || [];
+            for (let i = 0; i < 7; i++) {
+              aggExp[i] += Number(e[i] || 0);
+              aggInc[i] += Number(inc[i] || 0);
+            }
+          });
+          let series = new Array(7).fill(0);
+          if (isIncomeTrackingDisabled) {
+            for (let k = 1; k < aggExp.length; k++) aggExp[k] += aggExp[k - 1];
+            series = aggExp.map((v) => -v);
+          } else {
+            const net = aggExp.map((v, idx) => (aggInc[idx] || 0) - v);
+            for (let k = 1; k < net.length; k++) net[k] += net[k - 1];
+            series = net;
+          }
+          trendDatasets.push({
+            label: "Other",
+            data: series,
+            borderColor: "rgba(107, 114, 128, 1)",
+            backgroundColor: "rgba(107, 114, 128, 0.12)",
+            borderWidth: 2,
+            tension: 0.35,
+            pointRadius: 0,
+          });
+        }
+
+        const trendLabels = dayKeys.map((d) => formatShortWeekday(d));
+        setTrendPerSourceChartData({ labels: trendLabels, datasets: trendDatasets });
+        const trendLegendItems = trendDatasets.map((ds) => ({
+          label: ds.label,
+          color: ds.borderColor,
+          total: Array.isArray(ds.data) && ds.data.length > 0 ? ds.data[ds.data.length - 1] : 0,
+        }));
+        setTrendPerSourceLegend(trendLegendItems);
       } catch {}
     })();
-  }, [dashboardData, selectedSources]);
+  }, [dashboardData, selectedSources, sources]);
 
   const refreshDashboardData = async () => {
     try {
@@ -667,7 +929,7 @@ const Dashboard = () => {
   let trendLabel = t("balanceTrend");
 
   // Use filtered data if sources are selected, otherwise use dashboardData
-  const trendDailyExpenses = selectedSources.length > 0 && filteredDailyExpenses.length > 0 
+  const trendDailyExpenses = shouldFilter && filteredDailyExpenses.length > 0 
     ? filteredDailyExpenses 
     : dashboardData?.dailyExpenses || [];
 
@@ -693,10 +955,10 @@ const Dashboard = () => {
     } else {
       // Show balance trend when income tracking is enabled
       // Calculate cumulative balance based on daily expenses with improved accuracy
-      const totalIncome = selectedSources.length > 0 && filteredSummary
+      const totalIncome = shouldFilter && filteredSummary
         ? filteredSummary.total_income
         : parseFloat(dashboardData.summary?.total_income) || 0;
-      const totalExpenses = selectedSources.length > 0 && filteredSummary
+      const totalExpenses = shouldFilter && filteredSummary
         ? filteredSummary.total_expenses  
         : parseFloat(dashboardData.summary?.total_expenses) || 0;
       const finalBalance = totalIncome - totalExpenses;
@@ -816,7 +1078,7 @@ const Dashboard = () => {
                   </h2>
                   <p className="text-2xl font-bold text-green-600 dark:text-green-400">
                     {formatCurrency(
-                      selectedSources.length > 0 && filteredSummary
+                      shouldFilter && filteredSummary
                         ? filteredSummary.total_income
                         : dashboardData?.summary?.total_income || 0
                     )}
@@ -855,7 +1117,7 @@ const Dashboard = () => {
                 </h2>
                 <p className="text-2xl font-bold text-red-600 dark:text-red-400">
                   {formatCurrency(
-                    selectedSources.length > 0 && filteredSummary
+                    shouldFilter && filteredSummary
                       ? filteredSummary.total_expenses
                       : dashboardData?.summary?.total_expenses || 0
                   )}
@@ -894,7 +1156,7 @@ const Dashboard = () => {
                   </h2>
                   <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">
                     {formatCurrency(
-                      selectedSources.length > 0 && filteredSummary
+                      shouldFilter && filteredSummary
                         ? filteredSummary.balance
                         : (dashboardData?.summary?.total_income || 0) -
                           (dashboardData?.summary?.total_expenses || 0)
@@ -937,7 +1199,7 @@ const Dashboard = () => {
                 <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">
                   {(() => {
                     // Use filtered data if sources are selected, otherwise use dashboardData
-                    const dailyExpensesData = selectedSources.length > 0 && filteredDailyExpenses.length > 0 
+                    const dailyExpensesData = shouldFilter && filteredDailyExpenses.length > 0 
                       ? filteredDailyExpenses 
                       : dashboardData?.dailyExpenses || [];
                     
@@ -952,10 +1214,13 @@ const Dashboard = () => {
                         : formatCurrency(0);
                     } else {
                       // For non-filtered case, use weekly expenses calculation
-                      if (selectedSources.length > 0 && filteredSummary) {
-                        // Calculate average from filtered daily expenses
+                      if (shouldFilter) {
+                        // Calculate average from filtered 7-day series directly for consistency
                         return dailyExpensesData.length > 0
-                          ? formatCurrency(filteredSummary.total_expenses / dailyExpensesData.length)
+                          ? formatCurrency(
+                              dailyExpensesData.reduce((sum, item) => sum + (parseFloat(item.total || 0)), 0) /
+                              dailyExpensesData.length
+                            )
                           : formatCurrency(0);
                       } else {
                         return dashboardData?.weeklyExpenses?.days_with_expenses > 0
@@ -980,7 +1245,7 @@ const Dashboard = () => {
           <h2 className="text-xl font-semibold mb-6">{t("dailyExpenses")}</h2>
           {(() => {
             // Use filtered data if sources are selected, otherwise use dashboardData
-            const dailyExpensesData = selectedSources.length > 0 && filteredDailyExpenses.length > 0 
+            const dailyExpensesData = shouldFilter && filteredDailyExpenses.length > 0 
               ? filteredDailyExpenses 
               : dashboardData?.dailyExpenses || [];
             
@@ -1030,7 +1295,7 @@ const Dashboard = () => {
           <div className="card-body h-full flex flex-col min-h-0">
             <h2 className="text-xl font-semibold mb-6">{t("sourceCategoryBreakdown")}</h2>
             <SourceCategoryBarChart
-              selectedSources={selectedSources}
+              selectedSources={shouldFilter ? selectedSources : []}
               sources={sources}
             />
           </div>
@@ -1042,7 +1307,7 @@ const Dashboard = () => {
             </h2>
             {(() => {
               // Use filtered data if sources are selected, otherwise use dashboardData
-              const expenseByCategoryData = selectedSources.length > 0 && filteredExpenseByCategory.length > 0 
+              const expenseByCategoryData = shouldFilter && filteredExpenseByCategory.length > 0 
                 ? filteredExpenseByCategory 
                 : dashboardData?.expenseByCategory || [];
               
@@ -1238,13 +1503,49 @@ const Dashboard = () => {
           </div>
         </div>
 
-        <div className="card">
-          <div className="card-body">
+        <div className="card md:h-[370px] lg:col-span-2">
+          <div className="card-body h-full flex flex-col min-h-0">
             <h2 className="text-xl font-semibold mb-6">{t("balanceTrend")}</h2>
-            {trendData.labels.length > 0 ? (
-              <div className="w-full h-full flex-1" style={{ minHeight: 0 }}>
-                <Line data={trendData} options={lineChartOptions} />
-              </div>
+            {trendPerSourceChartData && trendPerSourceChartData.labels.length > 0 ? (
+              <>
+                {/* Mobile: compact chart + legend list */}
+                <div className="md:hidden">
+                  <div className="w-full h-44">
+                    <Line data={trendPerSourceChartData} options={{ ...lineChartOptions, plugins: { ...lineChartOptions.plugins, legend: { display: false } } }} />
+                  </div>
+                  {trendPerSourceLegend && trendPerSourceLegend.length > 0 && (
+                    <ChartLegend
+                      labels={trendPerSourceLegend.map((i) => i.label)}
+                      values={trendPerSourceLegend.map((i) => Math.abs(Number(i.total || 0)))}
+                      backgroundColor={trendPerSourceLegend.map((i) => i.color)}
+                      formatCurrency={formatCurrency}
+                    />
+                  )}
+                </div>
+                {/* Desktop: full-height chart + compact chips */}
+                <div className="hidden md:flex flex-col w-full h-full flex-1 min-h-0">
+                  <div className="flex-1 min-h-0 w-full">
+                    <Line data={trendPerSourceChartData} options={lineChartOptions} style={{ height: "100%", width: "100%" }} />
+                  </div>
+                  {trendPerSourceLegend && trendPerSourceLegend.length > 0 && (
+                    <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2">
+                      {trendPerSourceLegend.map((item) => (
+                        <div key={item.label} className="flex items-center space-x-2">
+                          <span
+                            className="inline-block h-2.5 w-2.5 rounded-full"
+                            style={{ backgroundColor: item.color }}
+                            aria-hidden="true"
+                          />
+                          <span className="text-sm text-gray-700 dark:text-gray-300 font-medium">
+                            {item.label}
+                          </span>
+                          <span className="text-sm text-gray-500 dark:text-gray-400">• {formatCurrency(Number(item.total || 0))}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </>
             ) : (
               <div className="text-center py-8 text-gray-500">
                 {t("noDataAvailable")}
@@ -1451,7 +1752,7 @@ const Dashboard = () => {
           </div>
 {(() => {
             // Use filtered data if sources are selected, otherwise use dashboardData
-            const recentTransactionsData = selectedSources.length > 0 && filteredRecentTransactions.length > 0 
+            const recentTransactionsData = shouldFilter && filteredRecentTransactions.length > 0 
               ? filteredRecentTransactions 
               : dashboardData?.recentTransactions || [];
             
