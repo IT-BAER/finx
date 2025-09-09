@@ -52,7 +52,25 @@ const ShareData = () => {
         ]);
 
         setUsers(usersData);
-        setSources(sourcesData);
+        
+        // Process sources to add display names for shared sources
+        const processedSources = sourcesData.map(source => {
+          if (source.ownership_type === 'shared') {
+            const ownerName = source.owner_first_name || source.owner_email || 'Unknown';
+            return {
+              ...source,
+              displayName: `${source.name} (${ownerName})`,
+              name: source.name // Keep original name for filtering
+            };
+          }
+          return {
+            ...source,
+            displayName: source.name,
+            name: source.name
+          };
+        });
+        
+        setSources(processedSources);
 
         // Kick off context loads; they populate myPermissions/sharedWithMe
         await Promise.all([fetchMyPermissions(), fetchSharedWithMe()]);
@@ -236,15 +254,15 @@ const ShareData = () => {
                   id="source"
                   name="source"
                   label={t("selectSourceToShare")}
-                  options={sources.map((source) => source.name)}
+                  options={sources.map((source) => source.displayName)}
                   value={
                     selectedSource
-                      ? sources.find((s) => s.id == selectedSource)?.name || ""
+                      ? sources.find((s) => s.id == selectedSource)?.displayName || ""
                       : ""
                   }
                   onChange={(e) => {
                     const source = sources.find(
-                      (s) => s.name === e.target.value,
+                      (s) => s.displayName === e.target.value,
                     );
                     setSelectedSource(source ? source.id : "");
                   }}

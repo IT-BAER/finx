@@ -2,6 +2,36 @@
 
 All notable changes to this project are documented in this file.
 
+## [v0.5.4] - 2025-09-09
+
+Summary
+- Enhanced shared source display, improved chart visuals, dark mode compatibility, source filtering fixes, and income source cleanup utilities.
+
+Added / Changed
+- **Shared Source Display**: Enhanced display names for shared sources across all components showing format "Source Name (Owner Name)" for better identification in dropdowns and filters
+- **Chart Improvements**: 
+  - Enhanced `SourceCategoryBarChart` with theme-aware legend colors, improved styling, percentage tooltips, and smart data labeling
+  - Fixed dark mode label color compatibility (`#d1d5db` in dark mode, `#374151` in light mode)
+  - Added top 5 category filtering and enhanced color palettes with borders
+- **Source Filtering**: 
+  - Fixed source filtering consistency across Dashboard and Reports pages
+  - Improved string comparison for source IDs and proper handling of filtered data
+  - Enhanced filtered summary calculations and daily expenses processing
+- **Backend Enhancements**:
+  - Extended sharing controller to include owner information in source queries
+  - Added string normalization for transaction updates
+  - Improved source filter validation and ownership verification
+- **Debug Utilities**: Added comprehensive logging for filtered transaction processing and Reports data flow analysis
+
+Fixed
+- Dark mode chart label visibility issues resolved
+- Source filtering edge cases with proper string conversion
+- Filtered data calculations for summaries and daily expenses
+- Owner information display in shared source dropdowns
+
+Tools
+- **Income Source Cleanup**: New automated cleanup scripts (`cleanup-income-sources.js` and `.sh`) to identify and migrate incorrectly created income sources to targets, addressing source/target semantic confusion from earlier versions
+
 ## [v0.5.3] - 2025-09-09
 
 Summary

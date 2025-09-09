@@ -134,6 +134,11 @@ const Dashboard = () => {
   const [error, setError] = useState("");
   const [sources, setSources] = useState([]);
   const [selectedSources, setSelectedSources] = useState([]); // empty = all
+  // Filtered data based on selected sources
+  const [filteredSummary, setFilteredSummary] = useState(null);
+  const [filteredDailyExpenses, setFilteredDailyExpenses] = useState([]);
+  const [filteredExpenseByCategory, setFilteredExpenseByCategory] = useState([]);
+  const [filteredRecentTransactions, setFilteredRecentTransactions] = useState([]);
   const isCurrentPage = useRef(true);
 
   const isIncomeTrackingDisabled = !!user?.income_tracking_disabled;
@@ -144,8 +149,26 @@ const Dashboard = () => {
       try {
         const res = await sharingAPI.getUserSources();
         // Axios wraps response: { data: { success, data: [...] } }
-        const arr = Array.isArray(res?.data?.data) ? res.data.data : [];
-        setSources(arr);
+        const rawSources = Array.isArray(res?.data?.data) ? res.data.data : [];
+        
+        // Process sources to add display names for shared sources
+        const processedSources = rawSources.map(source => {
+          if (source.ownership_type === 'shared') {
+            const ownerName = source.owner_first_name || source.owner_email || 'Unknown';
+            return {
+              ...source,
+              displayName: `${source.name} (${ownerName})`,
+              name: source.name // Keep original name for filtering
+            };
+          }
+          return {
+            ...source,
+            displayName: source.name,
+            name: source.name
+          };
+        });
+        
+        setSources(processedSources);
       } catch (err) {
         setSources([]);
       }
@@ -212,7 +235,12 @@ const Dashboard = () => {
         // Filter transactions by selected sources
         let filtered = all || [];
         if (selectedSources.length > 0) {
-          filtered = filtered.filter((tx) => selectedSources.includes(tx.source_id || tx.source));
+          // Convert selectedSources to strings for consistent comparison
+          const selectedSourceIds = selectedSources.map(id => String(id));
+          filtered = filtered.filter((tx) => {
+            const sourceId = String(tx.source_id || tx.source || '');
+            return selectedSourceIds.includes(sourceId);
+          });
         }
 
         // Group expenses by source_name per day index (daily totals)
@@ -291,6 +319,85 @@ const Dashboard = () => {
 
         const chartData = { labels: dayLabels, datasets };
         setPerSourceChartData(chartData);
+
+        // Calculate filtered summary values from the filtered transactions
+        const filteredSummary = {
+          total_income: 0,
+          total_expenses: 0,
+          balance: 0
+        };
+
+        // Calculate filtered summary from raw transaction data
+        if (filtered && filtered.length > 0) {
+          filtered.forEach((tx) => {
+            const amount = parseFloat(tx.amount) || 0;
+            if (tx.type === 'income') {
+              filteredSummary.total_income += amount;
+            } else if (tx.type === 'expense') {
+              filteredSummary.total_expenses += amount;
+            }
+          });
+          filteredSummary.balance = filteredSummary.total_income - filteredSummary.total_expenses;
+        }
+        setFilteredSummary(filteredSummary);
+
+        // Calculate filtered daily expenses from the filtered data
+        const filteredDailyExpenses = [];
+        const dailyExpenseMap = new Map();
+        
+        // Group filtered expenses by date
+        filtered
+          .filter((tx) => tx?.type === "expense")
+          .forEach((tx) => {
+            const date = tx.date;
+            if (!dailyExpenseMap.has(date)) {
+              dailyExpenseMap.set(date, 0);
+            }
+            dailyExpenseMap.set(date, dailyExpenseMap.get(date) + (parseFloat(tx.amount) || 0));
+          });
+
+        // Convert to array format matching dashboardData.dailyExpenses
+        for (const [date, total] of dailyExpenseMap.entries()) {
+          filteredDailyExpenses.push({ date, total });
+        }
+        setFilteredDailyExpenses(filteredDailyExpenses);
+
+        // Calculate filtered expense by category
+        const filteredExpenseByCategory = [];
+        const categoryExpenseMap = new Map();
+        
+        // Group filtered expenses by category
+        filtered
+          .filter((tx) => tx?.type === "expense")
+          .forEach((tx) => {
+            const categoryName = tx.category_name || "Other";
+            if (!categoryExpenseMap.has(categoryName)) {
+              categoryExpenseMap.set(categoryName, 0);
+            }
+            categoryExpenseMap.set(categoryName, categoryExpenseMap.get(categoryName) + (parseFloat(tx.amount) || 0));
+          });
+
+        // Convert to array format matching dashboardData.expenseByCategory
+        for (const [category_name, total] of categoryExpenseMap.entries()) {
+          filteredExpenseByCategory.push({ category_name, total });
+        }
+        setFilteredExpenseByCategory(filteredExpenseByCategory);
+
+        // Calculate filtered recent transactions (top 10 most recent)
+        const filteredRecentTransactions = [...filtered]
+          .sort((a, b) => new Date(b.date) - new Date(a.date))
+          .slice(0, 10)
+          .map((tx) => ({
+            ...tx,
+            id: tx.id || 0,
+            amount: tx.amount || 0,
+            category_name: tx.category_name || "",
+            description: tx.description || "",
+            date: tx.date || toYYYYMMDD(new Date()),
+            type: tx.type || "expense",
+          }));
+        setFilteredRecentTransactions(filteredRecentTransactions);
+
         // Build legend items with current (last point) cumulative value per source
         const legendItems = datasets.map((ds) => ({
           label: ds.label,
@@ -313,7 +420,7 @@ const Dashboard = () => {
         setTopExpenses(top);
       } catch {}
     })();
-  }, [dashboardData]);
+  }, [dashboardData, selectedSources]);
 
   const refreshDashboardData = async () => {
     try {
@@ -351,6 +458,7 @@ const Dashboard = () => {
 
   const dailyExpensesChartOptions = {
     responsive: true,
+    maintainAspectRatio: false,
     animation: {
       duration: 0, // Disable animation to prevent datalabels from jumping
     },
@@ -367,6 +475,19 @@ const Dashboard = () => {
             return `${context.dataset.label}: ${formatCurrency(context.parsed.y)}`;
           },
         },
+      },
+      datalabels: {
+        anchor: "center",
+        align: "center",
+        formatter: (value) =>
+          value !== 0 ? formatCurrency(value) : "",
+        color: "#FFFFFF",
+        font: {
+          weight: "bold",
+          size: 10,
+        },
+        display: (context) =>
+          context.dataset.data[context.dataIndex] !== 0,
       },
     },
     scales: {
@@ -545,9 +666,14 @@ const Dashboard = () => {
   let trendValues = [];
   let trendLabel = t("balanceTrend");
 
-  if (dashboardData?.dailyExpenses) {
+  // Use filtered data if sources are selected, otherwise use dashboardData
+  const trendDailyExpenses = selectedSources.length > 0 && filteredDailyExpenses.length > 0 
+    ? filteredDailyExpenses 
+    : dashboardData?.dailyExpenses || [];
+
+  if (trendDailyExpenses.length > 0) {
     // Process data in chronological order
-    const sortedData = [...dashboardData.dailyExpenses].sort(
+    const sortedData = [...trendDailyExpenses].sort(
       (a, b) => new Date(a.date) - new Date(b.date),
     );
 
@@ -567,9 +693,12 @@ const Dashboard = () => {
     } else {
       // Show balance trend when income tracking is enabled
       // Calculate cumulative balance based on daily expenses with improved accuracy
-      const totalIncome = parseFloat(dashboardData.summary?.total_income) || 0;
-      const totalExpenses =
-        parseFloat(dashboardData.summary?.total_expenses) || 0;
+      const totalIncome = selectedSources.length > 0 && filteredSummary
+        ? filteredSummary.total_income
+        : parseFloat(dashboardData.summary?.total_income) || 0;
+      const totalExpenses = selectedSources.length > 0 && filteredSummary
+        ? filteredSummary.total_expenses  
+        : parseFloat(dashboardData.summary?.total_expenses) || 0;
       const finalBalance = totalIncome - totalExpenses;
 
       // Calculate running balance with improved algorithm
@@ -686,7 +815,11 @@ const Dashboard = () => {
                     {t("totalIncome")}
                   </h2>
                   <p className="text-2xl font-bold text-green-600 dark:text-green-400">
-                    {formatCurrency(dashboardData?.summary?.total_income || 0)}
+                    {formatCurrency(
+                      selectedSources.length > 0 && filteredSummary
+                        ? filteredSummary.total_income
+                        : dashboardData?.summary?.total_income || 0
+                    )}
                   </p>
                 </div>
               </div>
@@ -721,7 +854,11 @@ const Dashboard = () => {
                   {t("totalExpenses")}
                 </h2>
                 <p className="text-2xl font-bold text-red-600 dark:text-red-400">
-                  {formatCurrency(dashboardData?.summary?.total_expenses || 0)}
+                  {formatCurrency(
+                    selectedSources.length > 0 && filteredSummary
+                      ? filteredSummary.total_expenses
+                      : dashboardData?.summary?.total_expenses || 0
+                  )}
                 </p>
               </div>
             </div>
@@ -757,8 +894,10 @@ const Dashboard = () => {
                   </h2>
                   <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">
                     {formatCurrency(
-                      (dashboardData?.summary?.total_income || 0) -
-                        (dashboardData?.summary?.total_expenses || 0),
+                      selectedSources.length > 0 && filteredSummary
+                        ? filteredSummary.balance
+                        : (dashboardData?.summary?.total_income || 0) -
+                          (dashboardData?.summary?.total_expenses || 0)
                     )}
                   </p>
                 </div>
@@ -796,21 +935,38 @@ const Dashboard = () => {
                     : "Ø " + t("dailyExpenses")}
                 </h2>
                 <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">
-                  {isIncomeTrackingDisabled
-                    ? dashboardData?.dailyExpenses?.length > 0
-                      ? formatCurrency(
-                          dashboardData.dailyExpenses.reduce(
-                            (sum, item) => sum + parseFloat(item.total || 0),
-                            0,
-                          ) / dashboardData.dailyExpenses.length,
-                        )
-                      : formatCurrency(0)
-                    : dashboardData?.weeklyExpenses?.days_with_expenses > 0
-                      ? formatCurrency(
-                          dashboardData.weeklyExpenses.total_expenses /
-                            dashboardData.weeklyExpenses.days_with_expenses,
-                        )
-                      : formatCurrency(0)}
+                  {(() => {
+                    // Use filtered data if sources are selected, otherwise use dashboardData
+                    const dailyExpensesData = selectedSources.length > 0 && filteredDailyExpenses.length > 0 
+                      ? filteredDailyExpenses 
+                      : dashboardData?.dailyExpenses || [];
+                    
+                    if (isIncomeTrackingDisabled) {
+                      return dailyExpensesData.length > 0
+                        ? formatCurrency(
+                            dailyExpensesData.reduce(
+                              (sum, item) => sum + parseFloat(item.total || 0),
+                              0,
+                            ) / dailyExpensesData.length,
+                          )
+                        : formatCurrency(0);
+                    } else {
+                      // For non-filtered case, use weekly expenses calculation
+                      if (selectedSources.length > 0 && filteredSummary) {
+                        // Calculate average from filtered daily expenses
+                        return dailyExpensesData.length > 0
+                          ? formatCurrency(filteredSummary.total_expenses / dailyExpensesData.length)
+                          : formatCurrency(0);
+                      } else {
+                        return dashboardData?.weeklyExpenses?.days_with_expenses > 0
+                          ? formatCurrency(
+                              dashboardData.weeklyExpenses.total_expenses /
+                                dashboardData.weeklyExpenses.days_with_expenses,
+                            )
+                          : formatCurrency(0);
+                      }
+                    }
+                  })()}
                 </p>
               </div>
             </div>
@@ -822,34 +978,54 @@ const Dashboard = () => {
       <div className="card md:h-[250px] mb-8">
         <div className="card-body h-full flex flex-col min-h-0">
           <h2 className="text-xl font-semibold mb-6">{t("dailyExpenses")}</h2>
-          {dashboardData?.dailyExpenses?.length > 0 ? (
-            <div className="w-full h-full flex-1" style={{ minHeight: 0 }}>
-              <Bar
-                data={{
-                  labels: dashboardData.dailyExpenses.map((item) => formatShortWeekday(item.date)),
-                  datasets: [
-                    {
-                      label: t("expenses"),
-                      data: dashboardData.dailyExpenses.map((item) => parseFloat(item.total || 0)),
-                      backgroundColor: "rgba(248, 113, 113, 0.7)",
-                      borderColor: "rgba(248, 113, 113, 1)",
-                      borderWidth: 2,
-                      borderRadius: 6,
-                    },
-                  ],
-                }}
-                options={dailyExpensesChartOptions}
-              />
-            </div>
-          ) : (
-            <div className="text-center py-8 text-gray-500">{t("noDataAvailable")}</div>
-          )}
+          {(() => {
+            // Use filtered data if sources are selected, otherwise use dashboardData
+            const dailyExpensesData = selectedSources.length > 0 && filteredDailyExpenses.length > 0 
+              ? filteredDailyExpenses 
+              : dashboardData?.dailyExpenses || [];
+            
+            return dailyExpensesData.length > 0 ? (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.3 }}
+                className="w-full h-full flex-1"
+                style={{ minHeight: 0 }}
+              >
+                <Bar
+                  data={{
+                    labels: dailyExpensesData.map((item) => formatShortWeekday(item.date)),
+                    datasets: [
+                      {
+                        label: t("expenses"),
+                        data: dailyExpensesData.map((item) => parseFloat(item.total || 0)),
+                        backgroundColor: "rgba(248, 113, 113, 0.7)",
+                        borderColor: "rgba(248, 113, 113, 1)",
+                        borderWidth: 2,
+                        borderRadius: 6,
+                      },
+                    ],
+                  }}
+                  options={dailyExpensesChartOptions}
+                />
+              </motion.div>
+            ) : (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.3 }}
+                className="text-center py-8 text-gray-500"
+              >
+                {t("noDataAvailable")}
+              </motion.div>
+            );
+          })()}
         </div>
       </div>
 
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-        {/* Source-Category Stacked Bar Chart */}
+        {/* Source Spending by Category Chart */}
         <div className="card md:h-[370px] mb-8">
           <div className="card-body h-full flex flex-col min-h-0">
             <h2 className="text-xl font-semibold mb-6">{t("sourceCategoryBreakdown")}</h2>
@@ -864,44 +1040,50 @@ const Dashboard = () => {
             <h2 className="text-xl font-semibold mb-6">
               {t("expensesByCategory")}
             </h2>
-            {dashboardData?.expenseByCategory ? (
-              <>
-                {/* Mobile: custom legend with amounts (scrollable) */}
-                <div className="md:hidden">
-                  <div className="w-full h-44">
-                    <Pie
-                      data={{
-                        labels: dashboardData.expenseByCategory.map((item) => {
-                          const name = (item.category_name || "").trim();
-                          return name !== "" ? name : (t("uncategorized") || "Uncategorized");
-                        }),
-                        datasets: [
-                          {
-                            data: dashboardData.expenseByCategory.map((item) => parseFloat(item.total)),
-                            radius: "85%",
-                            backgroundColor: [
-                              "rgba(248, 113, 113, 0.8)",
-                              "rgba(96, 165, 250, 0.8)",
-                              "rgba(251, 191, 36, 0.8)",
-                              "rgba(139, 92, 246, 0.8)",
-                              "rgba(16, 185, 129, 0.8)",
-                              "rgba(244, 114, 182, 0.8)",
-                              "rgba(209, 213, 219, 0.8)",
-                              "rgba(139, 69, 19, 0.8)",
-                            ],
-                            borderColor: [
-                              "rgba(248, 113, 113, 1)",
-                              "rgba(96, 165, 250, 1)",
-                              "rgba(251, 191, 36, 1)",
-                              "rgba(139, 92, 246, 1)",
-                              "rgba(16, 185, 129, 1)",
-                              "rgba(244, 114, 182, 1)",
-                              "rgba(209, 213, 219, 1)",
-                              "rgba(139, 69, 19, 1)",
-                            ],
-                            borderWidth: 1,
-                          },
-                        ],
+            {(() => {
+              // Use filtered data if sources are selected, otherwise use dashboardData
+              const expenseByCategoryData = selectedSources.length > 0 && filteredExpenseByCategory.length > 0 
+                ? filteredExpenseByCategory 
+                : dashboardData?.expenseByCategory || [];
+              
+              return expenseByCategoryData.length > 0 ? (
+                <>
+                  {/* Mobile: custom legend with amounts (scrollable) */}
+                  <div className="md:hidden">
+                    <div className="w-full h-44">
+                      <Pie
+                        data={{
+                          labels: expenseByCategoryData.map((item) => {
+                            const name = (item.category_name || "").trim();
+                            return name !== "" ? name : (t("uncategorized") || "Uncategorized");
+                          }),
+                          datasets: [
+                            {
+                              data: expenseByCategoryData.map((item) => parseFloat(item.total)),
+                              radius: "85%",
+                              backgroundColor: [
+                                "rgba(248, 113, 113, 0.8)",
+                                "rgba(96, 165, 250, 0.8)",
+                                "rgba(251, 191, 36, 0.8)",
+                                "rgba(139, 92, 246, 0.8)",
+                                "rgba(16, 185, 129, 0.8)",
+                                "rgba(244, 114, 182, 0.8)",
+                                "rgba(209, 213, 219, 0.8)",
+                                "rgba(139, 69, 19, 0.8)",
+                              ],
+                              borderColor: [
+                                "rgba(248, 113, 113, 1)",
+                                "rgba(96, 165, 250, 1)",
+                                "rgba(251, 191, 36, 1)",
+                                "rgba(139, 92, 246, 1)",
+                                "rgba(16, 185, 129, 1)",
+                                "rgba(244, 114, 182, 1)",
+                                "rgba(209, 213, 219, 1)",
+                                "rgba(139, 69, 19, 1)",
+                              ],
+                              borderWidth: 1,
+                            },
+                          ],
                       }}
                       options={{
                         responsive: true,
@@ -925,14 +1107,14 @@ const Dashboard = () => {
                         },
                         cutout: "60%",
                       }}
-                    />
+                  />
                   </div>
                   <ChartLegend
-                    labels={dashboardData.expenseByCategory.map((item) => {
+                    labels={expenseByCategoryData.map((item) => {
                       const name = (item.category_name || "").trim();
                       return name !== "" ? name : (t("uncategorized") || "Uncategorized");
                     })}
-                    values={dashboardData.expenseByCategory.map((item) => parseFloat(item.total))}
+                    values={expenseByCategoryData.map((item) => parseFloat(item.total))}
                     backgroundColor={[
                       "rgba(248, 113, 113, 0.8)",
                       "rgba(96, 165, 250, 0.8)",
@@ -952,13 +1134,13 @@ const Dashboard = () => {
                   <div className="flex-[2] h-full flex-1 min-w-0 overflow-hidden p-2 flex items-center justify-center" style={{ minHeight: 0 }}>
                     <Pie
                       data={{
-                        labels: dashboardData.expenseByCategory.map((item) => {
+                        labels: expenseByCategoryData.map((item) => {
                           const name = (item.category_name || "").trim();
                           return name !== "" ? name : (t("uncategorized") || "Uncategorized");
                         }),
                         datasets: [
                           {
-                            data: dashboardData.expenseByCategory.map((item) => parseFloat(item.total)),
+                            data: expenseByCategoryData.map((item) => parseFloat(item.total)),
                             radius: "85%",
                             backgroundColor: [
                               "rgba(248, 113, 113, 0.8)",
@@ -1016,7 +1198,7 @@ const Dashboard = () => {
                   <div className="w-52 max-h-[260px] overflow-y-auto pt-1 self-center scrollbar-thin-modern">
                     <table className="w-full text-sm">
                       <tbody>
-                        {dashboardData.expenseByCategory.map((item, idx) => {
+                        {expenseByCategoryData.map((item, idx) => {
                           const name = (item.category_name || "").trim() || (t("uncategorized") || "Uncategorized");
                           const amount = Number(item.total || 0);
                           const bg = [
@@ -1049,9 +1231,10 @@ const Dashboard = () => {
                   </div>
                 </div>
               </>
-            ) : (
-              <div className="text-center py-8 text-gray-500">{t("noDataAvailable")}</div>
-            )}
+              ) : (
+                <div className="text-center py-8 text-gray-500">{t("noDataAvailable")}</div>
+              );
+            })()}
           </div>
         </div>
 
@@ -1266,18 +1449,72 @@ const Dashboard = () => {
               </a>
             </motion.div>
           </div>
-          {dashboardData?.recentTransactions ? (
-            (() => {
-              // Filter out income transactions if income tracking is disabled
-              const filteredTransactions = isIncomeTrackingDisabled
-                ? dashboardData.recentTransactions.filter(
-                    (t) => t.type === "expense",
-                  )
-                : dashboardData.recentTransactions;
+{(() => {
+            // Use filtered data if sources are selected, otherwise use dashboardData
+            const recentTransactionsData = selectedSources.length > 0 && filteredRecentTransactions.length > 0 
+              ? filteredRecentTransactions 
+              : dashboardData?.recentTransactions || [];
+            
+            if (recentTransactionsData.length === 0) {
+              return (
+                <div className="text-center py-12">
+                  <svg
+                    className="mx-auto h-12 w-12 text-gray-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+                    ></path>
+                  </svg>
+                  <h2 className="mt-2 text-sm font-medium text-gray-900 dark:text-gray-200">
+                    {t("noTransactions")}
+                  </h2>
+                  <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                    {t("getStartedAddTransaction")}
+                  </p>
+                  <div className="mt-6">
+                    <Button
+                      variant="primary"
+                      onClick={() => navigate("/add-transaction")}
+                      haptic="tap"
+                    >
+                      {t("addTransaction")}
+                    </Button>
+                  </div>
+                </div>
+              );
+            }
 
-              const displayTransactions = filteredTransactions.slice(0, 5);
+            // Filter out income transactions if income tracking is disabled
+            const filteredTransactions = isIncomeTrackingDisabled
+              ? recentTransactionsData.filter(
+                  (t) => t.type === "expense",
+                )
+              : recentTransactionsData;
 
-              return displayTransactions.length > 0 ? (
+            const displayTransactions = filteredTransactions.slice(0, 5);
+
+            if (displayTransactions.length === 0) {
+              return (
+                <div className="text-center py-12">
+                  <h2 className="text-sm font-medium text-gray-900 dark:text-gray-200">
+                    {t("noTransactions")}
+                  </h2>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    {t("getStartedAddTransaction")}
+                  </p>
+                </div>
+              );
+            }
+
+            return (
+              <div>
                 <div
                   className="overflow-x-auto md:overflow-x-visible"
                   style={{ touchAction: "pan-y" }}
@@ -1362,78 +1599,25 @@ const Dashboard = () => {
                     </table>
                   </div>
                 </div>
-              ) : (
-                <div className="text-center py-12">
-                  <svg
-                    className="mx-auto h-12 w-12 text-gray-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                    xmlns="http://www.w3.org/2000/svg"
+
+                {/* Add transaction button */}
+                <div className="text-center mt-6">
+                  <Button
+                    variant="primary"
+                    onClick={() => navigate("/add-transaction")}
+                    haptic="tap"
+                    aria-label={t("addTransaction")}
                   >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
-                    ></path>
-                  </svg>
-                  <h2 className="mt-2 text-sm font-medium text-gray-900 dark:text-gray-200">
-                    {t("noTransactions")}
-                  </h2>
-                  <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                    {t("getStartedAddTransaction")}
-                  </p>
-                  <div className="mt-6">
-                    <Button
-                      variant="primary"
-                      onClick={() => navigate("/add-transaction")}
-                      haptic="tap"
-                      aria-label={t("addTransaction")}
-                    >
-                      {t("addTransaction")}
-                    </Button>
-                  </div>
+                    {t("addTransaction")}
+                  </Button>
                 </div>
-              );
-            })()
-          ) : (
-            <div className="text-center py-12">
-              <svg
-                className="mx-auto h-12 w-12 text-gray-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
-                ></path>
-              </svg>
-              <h2 className="mt-2 text-sm font-medium text-gray-900 dark:text-gray-200">
-                {t("noTransactions")}
-              </h2>
-              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                {t("getStartedAddTransaction")}
-              </p>
-              <div className="mt-6">
-                <Button
-                  variant="primary"
-                  onClick={() => navigate("/add-transaction")}
-                  haptic="tap"
-                >
-                  {t("addTransaction")}
-                </Button>
               </div>
-            </div>
-          )}
+            );
+          })()}
         </div>
       </div>
     </div>
-    </div>
+  </div>
   );
 };
 

@@ -423,6 +423,14 @@ const getTransactionById = async (req, res) => {
        date,
      } = req.body;
 
+     // Normalize incoming strings
+     const norm = (s) => (s == null ? null : String(s).trim());
+     const normLower = (s) => (s == null ? null : String(s).trim().toLowerCase());
+
+     const inCategory = norm(category);
+     const inSource = norm(source);
+     const inTarget = norm(target);
+
      // Debug logs to help diagnose 404s when updating income transactions
     if (process.env.DEBUG === "true") {
       console.log(

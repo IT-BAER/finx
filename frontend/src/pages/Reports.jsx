@@ -13,6 +13,90 @@ import MultiCheckboxDropdown from "../components/MultiCheckboxDropdown.jsx";
 import { transactionAPI, sharingAPI } from "../services/api.jsx";
 import { motion } from "framer-motion";
 import ChartLegend from "../components/ChartLegend.jsx";
+import SourceCategoryBarChart from "../components/SourceCategoryBarChart.jsx";
+
+// Helper function to process filtered transactions into API-like format
+const processFilteredTransactions = (transactions, timeRange, startDate, endDate) => {
+  // Group expenses by date
+  const dailyExpenses = new Map();
+  const incomeByDate = new Map();
+  const expenseByCategory = new Map();
+  
+  transactions.forEach((tx) => {
+    const date = tx.date;
+    const amount = parseFloat(tx.amount) || 0;
+    
+    if (tx.type === 'expense') {
+      // Daily expenses
+      if (!dailyExpenses.has(date)) {
+        dailyExpenses.set(date, 0);
+      }
+      dailyExpenses.set(date, dailyExpenses.get(date) + amount);
+      
+      // Expense by category
+      const category = tx.category_name || 'Uncategorized';
+      if (!expenseByCategory.has(category)) {
+        expenseByCategory.set(category, 0);
+      }
+      expenseByCategory.set(category, expenseByCategory.get(category) + amount);
+    } else if (tx.type === 'income') {
+      // Income by date
+      if (!incomeByDate.has(date)) {
+        incomeByDate.set(date, 0);
+      }
+      incomeByDate.set(date, incomeByDate.get(date) + amount);
+    }
+  });
+  
+  // Convert to API format
+  const dailyExpensesData = Array.from(dailyExpenses.entries()).map(([date, total]) => ({
+    date,
+    total: total.toString()
+  }));
+  
+  console.log('processFilteredTransactions result:', {
+    dailyExpensesCount: dailyExpensesData.length,
+    dateRange: dailyExpensesData.map(d => d.date),
+    timeRange
+  });
+  
+  const incomeByDateData = Array.from(incomeByDate.entries()).map(([date, total]) => ({
+    date,
+    total: total.toString()
+  }));
+  
+  const expenseByCategoryData = Array.from(expenseByCategory.entries()).map(([category_name, total]) => ({
+    category_name,
+    total: total.toString()
+  }));
+  
+  // Calculate summary
+  const totalExpenses = Array.from(dailyExpenses.values()).reduce((sum, val) => sum + val, 0);
+  const totalIncome = Array.from(incomeByDate.values()).reduce((sum, val) => sum + val, 0);
+  
+  return {
+    dailyExpenses: dailyExpensesData,
+    incomeByDate: incomeByDateData,
+    expenseByCategory: expenseByCategoryData,
+    summary: {
+      total_expenses: totalExpenses,
+      total_income: totalIncome,
+      balance: totalIncome - totalExpenses
+    }
+  };
+};
+
+// Helper function to return empty report data
+const getEmptyReportData = () => ({
+  dailyExpenses: [],
+  incomeByDate: [],
+  expenseByCategory: [],
+  summary: {
+    total_expenses: 0,
+    total_income: 0,
+    balance: 0
+  }
+});
 
 const Reports = () => {
   const [sources, setSources] = useState([]);
@@ -22,8 +106,26 @@ const Reports = () => {
     (async () => {
       try {
         const res = await sharingAPI.getUserSources();
-        const arr = Array.isArray(res?.data?.data) ? res.data.data : [];
-        setSources(arr);
+        const rawSources = Array.isArray(res?.data?.data) ? res.data.data : [];
+        
+        // Process sources to add display names for shared sources
+        const processedSources = rawSources.map(source => {
+          if (source.ownership_type === 'shared') {
+            const ownerName = source.owner_first_name || source.owner_email || 'Unknown';
+            return {
+              ...source,
+              displayName: `${source.name} (${ownerName})`,
+              name: source.name // Keep original name for filtering
+            };
+          }
+          return {
+            ...source,
+            displayName: source.name,
+            name: source.name
+          };
+        });
+        
+        setSources(processedSources);
       } catch (err) {
         setSources([]);
       }
@@ -233,13 +335,52 @@ const Reports = () => {
         // Fetch real data from the API
         const { startDate, endDate } = getDateRange();
         let res;
-        try {
-          res = await transactionAPI.getReportData({ startDate, endDate });
-        } catch (e) {
-          // If offline and no cached API response is available via service, keep previous state
-          console.warn("Reports: using existing state due to offline/no cache", e?.message || e);
-          if (!reportData) setLoading(false);
-          return;
+        
+        // If sources are selected, we need to filter data differently
+        if (selectedSources.length > 0) {
+          // Get individual transactions and filter by sources
+          try {
+            const all = await offlineAPI.getAllTransactions();
+            if (Array.isArray(all) && all.length > 0) {
+              const start = new Date(startDate);
+              const end = new Date(endDate);
+              end.setHours(23, 59, 59, 999);
+              
+              // Filter by date range first
+              let filtered = all.filter((tx) => {
+                if (!tx) return false;
+                const d = new Date(tx.date);
+                return d >= start && d <= end;
+              });
+              
+              // Apply source filtering
+              const selectedSourceIds = selectedSources.map(id => String(id));
+              filtered = filtered.filter((tx) => {
+                const sourceId = String(tx.source_id || tx.source || '');
+                return selectedSourceIds.includes(sourceId);
+              });
+              
+              // Process filtered transactions to create API-like response structure
+              res = { data: { data: processFilteredTransactions(filtered, timeRange, startDate, endDate) } };
+            } else {
+              // No transactions available, create empty response
+              res = { data: { data: getEmptyReportData() } };
+            }
+          } catch (e) {
+            console.warn("Reports: error processing filtered transactions", e?.message || e);
+            if (!reportData) setLoading(false);
+            return;
+          }
+        } else {
+          // No source filtering, use regular API call
+          try {
+            res = await transactionAPI.getReportData({ startDate, endDate });
+          } catch (e) {
+            // If offline and no cached API response is available via service, keep previous state
+            console.warn("Reports: using existing state due to offline/no cache", e?.message || e);
+            if (!reportData) setLoading(false);
+            return;
+          }
         }
 
         // Process income vs expenses data based on time range
@@ -897,9 +1038,17 @@ const processedCategoryData = {
 
         // Process daily expenses data based on time range
         let processedDailyExpenses = [];
+        console.log('Daily expenses processing:', {
+          timeRange,
+          selectedSources: selectedSources.length,
+          rawDailyExpenses: res.data.data.dailyExpenses?.length || 0,
+          startDate,
+          endDate
+        });
         if (timeRange === "weekly") {
           // For weekly, show daily expenses
           processedDailyExpenses = res.data.data.dailyExpenses || [];
+          console.log('Weekly processing - final data points:', processedDailyExpenses.length, processedDailyExpenses.map(d => d.date));
         } else if (timeRange === "monthly") {
           // For monthly, aggregate daily data into weeks
           const dailyData = res.data.data.dailyExpenses || [];
@@ -1015,11 +1164,20 @@ const processedCategoryData = {
             const start = new Date(startDate);
             const end = new Date(endDate);
             end.setHours(23, 59, 59, 999);
-            const inRangeExpenses = all.filter((tx) => {
+            let inRangeExpenses = all.filter((tx) => {
               if (!tx || tx.type !== "expense") return false;
               const d = new Date(tx.date);
               return d >= start && d <= end;
             });
+
+            // Apply source filtering if sources are selected
+            if (selectedSources.length > 0) {
+              const selectedSourceIds = selectedSources.map(id => String(id));
+              inRangeExpenses = inRangeExpenses.filter((tx) => {
+                const sourceId = String(tx.source_id || tx.source || '');
+                return selectedSourceIds.includes(sourceId);
+              });
+            }
 
             // Compute source shares (top 7 + Other)
             const totalsBySource = new Map();
@@ -1104,7 +1262,7 @@ const dataSet = {
     };
 
     loadReportData();
-  }, [timeRange, currentDate, refreshTick]); // include refreshTick to rebuild on resume/data refresh
+  }, [timeRange, currentDate, refreshTick, selectedSources]); // include selectedSources to reload when filter changes
 
   // Calculate total expenses for percentage calculation
   const totalExpenses =
@@ -1544,6 +1702,17 @@ const dataSet = {
               {t("noDataAvailable")}
             </motion.div>
           )}
+        </div>
+      </div>
+
+      {/* Source Category Breakdown Chart */}
+      <div className="card md:h-[370px] mb-8">
+        <div className="card-body h-full flex flex-col min-h-0">
+          <h2 className="text-xl font-semibold mb-6">{t("sourceCategoryBreakdown")}</h2>
+          <SourceCategoryBarChart
+            selectedSources={selectedSources}
+            sources={sources}
+          />
         </div>
       </div>
 

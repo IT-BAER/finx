@@ -240,7 +240,7 @@ export default function MultiCheckboxDropdown({
                         readOnly
                         className="form-checkbox h-4 w-4 text-blue-600 mr-2"
                       />
-                      <span className="truncate text-sm text-[var(--text)]">{opt.name || opt.label || opt.source_name || opt.id}</span>
+                      <span className="truncate text-sm text-[var(--text)]">{opt.displayName || opt.name || opt.label || opt.source_name || opt.id}</span>
                     </div>
                   );
                 })}

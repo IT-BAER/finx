@@ -328,9 +328,10 @@ const getUserSources = async (req, res) => {
     */
     const query = `
       WITH shared_sources AS (
-        SELECT s.id, s.name
+        SELECT s.id, s.name, u.first_name AS owner_first_name, u.email AS owner_email
         FROM sharing_permissions sp
         JOIN sources s ON s.user_id = sp.owner_user_id
+        JOIN users u ON u.id = sp.owner_user_id
         WHERE sp.shared_with_user_id = $1
           AND LOWER(TRIM(sp.permission_level)) IN ('read','read_write')
           AND (
@@ -340,11 +341,11 @@ const getUserSources = async (req, res) => {
             )
           )
       )
-      SELECT DISTINCT id, name, 'owned' AS ownership_type
+      SELECT DISTINCT id, name, 'owned' AS ownership_type, NULL AS owner_first_name, NULL AS owner_email
       FROM sources
       WHERE user_id = $1
       UNION ALL
-      SELECT DISTINCT id, name, 'shared' AS ownership_type
+      SELECT DISTINCT id, name, 'shared' AS ownership_type, owner_first_name, owner_email
       FROM shared_sources
       ORDER BY ownership_type, name;
     `;
