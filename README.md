@@ -47,6 +47,24 @@ Modern, offline-capable personal finance app with sharing, recurring transaction
 - Sharing with fine-grained can_edit access; visibility honored server-side
 - Admin taxonomy management (categories/sources/targets)
 - Clean Express API with JWT auth; PostgreSQL persistence
+- User-controlled PWA update flow (v0.6.1): updates download silently; user chooses when to activate (no forced reload after dismiss)
+
+<br>
+
+### 🔄 PWA Update Flow (v0.6.1+)
+
+Starting with v0.6.1 the service worker update behavior changed from near‑automatic activation to an explicit opt‑in model:
+
+* `vite.config.js` uses `registerType: "prompt"`, `skipWaiting: false`, `clientsClaim: false`.
+* A new worker enters the `waiting` state and a UI prompt (`PWAUpdatePrompt.jsx`) appears.
+* User actions:
+   * Update Now → clears selected UI caches, sends `SKIP_WAITING`, waits for `controllerchange`, then reloads.
+   * Not now → prompt dismissed and snoozed for 30 minutes (`localStorage` key `pwa_update_snooze_until`). No background activation occurs.
+* A version badge (`VersionBadge.jsx`) shows the current app version at the top center and in the footer.
+
+To debug updates: build, modify a file, rebuild, then in DevTools > Application > Service Workers click "Update" and trigger navigation; the prompt should appear.
+
+To revert to auto updates: set `registerType: "autoUpdate"` and (optionally) `clientsClaim: true`.
 
 <br>
 
@@ -159,6 +177,26 @@ Debian/Ubuntu installer:
 ```bash
 sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/IT-BAER/finx/main/setup.sh)"
 ```
+
+### Income Source Cleanup (v0.6.1+)
+
+If you're upgrading from a version before v0.6.1, you may have incorrectly created expense sources that were generated when adding income transactions. Run this cleanup to fix the issue:
+
+```bash
+# Analysis mode (safe, no changes)
+node scripts/cleanup-income-sources.js
+
+# Fix mode (requires confirmation)
+node scripts/cleanup-income-sources.js --fix
+# or use the shell script
+./scripts/cleanup-income-sources.sh --fix
+```
+
+This cleanup:
+- Identifies sources only used in income transactions
+- Converts them to targets or merges with existing targets
+- Updates income transactions to use `target_id` instead of `source_id`
+- Removes orphaned sources to clean up dropdown lists
 
 <br>
 

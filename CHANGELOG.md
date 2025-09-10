@@ -2,6 +2,22 @@
 
 All notable changes to this project are documented in this file.
 
+## [v0.6.1] - 2025-09-10
+
+### feat
+- **PWA**: User-controlled update flow - service workers wait for explicit user confirmation instead of auto-updating
+- **PWA**: Added 30-minute snooze for "Not now" option with localStorage persistence
+- **UI**: Version badge component with GitHub link in footer
+- **UI**: Dropdown components now show max 6 entries with smooth scrolling
+
+### fix
+- **PWA**: Removed forced reload after 5 seconds when dismissing update prompt
+- **Charts**: Improved label alignment under bars in "Source Spending by Category" chart
+- **Migration**: Fixed income source cleanup migration (007) logic to prevent failures
+
+### chore
+- Updated version numbers to 0.6.1 across package.json files
+
 ## [v0.6.0] - 2025-09-09
 
 Summary
