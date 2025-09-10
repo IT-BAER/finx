@@ -179,12 +179,21 @@ export default function SourceCategoryBarChart({ selectedSources, sources }) {
             },
             ticks: {
               color: "#6b7280",
-              maxRotation: 45,
+              maxRotation: 0,
               minRotation: 0,
               font: {
-                size: 12
+                size: 11
+              },
+              padding: 5,
+              callback: function(value, index, ticks) {
+                // Truncate long labels to fit better
+                const label = this.getLabelForValue(value);
+                return label.length > 8 ? label.substring(0, 8) + '...' : label;
               }
             },
+            offset: true,
+            categoryPercentage: 1.0,
+            barPercentage: 0.9,
           },
           y: { 
             stacked: true, 

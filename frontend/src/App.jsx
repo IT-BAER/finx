@@ -24,6 +24,7 @@ import Navbar from "./components/Navbar.jsx";
 import Footer from "./components/Footer.jsx";
 import InstallPrompt from "./components/InstallPrompt.jsx";
 import PWAUpdatePrompt from "./components/PWAUpdatePrompt.jsx";
+import VersionBadge from "./components/VersionBadge.jsx";
 import { lazy, Suspense } from "react";
 import "./services/realtime.js";
 

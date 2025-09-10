@@ -3,8 +3,27 @@ import { motion, AnimatePresence } from "framer-motion";
 import { trackPWAEvent } from "../utils/pwa.js";
 import { tRaw } from "../lib/i18n";
 
-// Prevent showing the update prompt multiple times within the same session
+// Prevent showing the update prompt multiple times; also allow snooze across session within a period
 let hasShownUpdatePrompt = false;
+const SNOOZE_KEY = "pwa_update_snooze_until";
+const SNOOZE_MINUTES = 30; // user won't be prompted again for 30 minutes when choosing Not now
+
+function isSnoozed() {
+  try {
+    const ts = parseInt(localStorage.getItem(SNOOZE_KEY) || "0", 10);
+    if (!ts) return false;
+    return Date.now() < ts;
+  } catch {
+    return false;
+  }
+}
+
+function setSnooze() {
+  try {
+    const until = Date.now() + SNOOZE_MINUTES * 60 * 1000;
+    localStorage.setItem(SNOOZE_KEY, String(until));
+  } catch {}
+}
 
 const PWAUpdatePrompt = () => {
   const [showUpdatePrompt, setShowUpdatePrompt] = useState(false);
@@ -16,7 +35,11 @@ const PWAUpdatePrompt = () => {
       navigator.serviceWorker.ready
         .then((registration) => {
           // If a worker is already waiting when the app starts, prompt immediately
-          if (registration.waiting && navigator.serviceWorker.controller) {
+          if (
+            registration.waiting &&
+            navigator.serviceWorker.controller &&
+            !isSnoozed()
+          ) {
             setWaitingWorker(registration.waiting);
             if (!hasShownUpdatePrompt) {
               hasShownUpdatePrompt = true;
@@ -31,7 +54,8 @@ const PWAUpdatePrompt = () => {
             newWorker.addEventListener("statechange", () => {
               if (
                 newWorker.state === "installed" &&
-                navigator.serviceWorker.controller
+                navigator.serviceWorker.controller &&
+                !isSnoozed()
               ) {
                 setWaitingWorker(newWorker);
                 if (!hasShownUpdatePrompt) {
@@ -47,7 +71,7 @@ const PWAUpdatePrompt = () => {
     }
     // Also react to app-level signal from virtual:pwa-register
     const onPwaUpdate = () => {
-      if (!hasShownUpdatePrompt) {
+      if (!hasShownUpdatePrompt && !isSnoozed()) {
         hasShownUpdatePrompt = true;
         setShowUpdatePrompt(true);
       }
@@ -145,17 +169,7 @@ const PWAUpdatePrompt = () => {
         }
       }
 
-      // Fallback: if no controllerchange in a short while, reload anyway
-      setTimeout(() => {
-        if (!reloaded) {
-          window.toastWithHaptic.dismiss(toastId);
-          window.toastWithHaptic.success(tRaw("appUpdatedReloading"), {
-            duration: 1200,
-            id: "pwa-update-success-fallback",
-          });
-          window.location.reload();
-        }
-      }, 2500);
+      // Removed forced fallback reload; user explicitly requested update, rely on controllerchange.
     } catch (err) {
       console.error("PWA update failed:", err);
       window.toastWithHaptic.dismiss(toastId);
@@ -167,6 +181,7 @@ const PWAUpdatePrompt = () => {
 
   const handleDismiss = () => {
     setShowUpdatePrompt(false);
+    setSnooze();
     trackPWAEvent("sw_update_dismissed");
   };
 

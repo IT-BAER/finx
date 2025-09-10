@@ -1,5 +1,6 @@
 import { useTranslation } from "../hooks/useTranslation";
 import { useAuth } from "../contexts/AuthContext";
+import VersionBadge from "./VersionBadge.jsx";
 
 const Footer = () => {
   const { t } = useTranslation();
@@ -17,7 +18,8 @@ const Footer = () => {
             {t("footerText").split(" - ")[1]}
           </p>
         </div>
-        <div className="flex items-center">
+        <div className="flex items-center space-x-3">
+          <VersionBadge />
           <a
             href="https://github.com/IT-BAER"
             target="_blank"

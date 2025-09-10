@@ -156,11 +156,12 @@ const Dropdown = ({
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: -10, scale: 0.95 }}
                 transition={{ duration: 0.15, ease: "easeOut" }}
-                className="fixed z-[99999] bg-white/95 dark:bg-gray-800/95 shadow-2xl rounded-lg max-h-60 overflow-auto border border-gray-200 dark:border-gray-700 ring-1 ring-black/5 dark:ring-white/10"
+                className="fixed z-[99999] bg-white/95 dark:bg-gray-800/95 shadow-2xl rounded-lg overflow-auto border border-gray-200 dark:border-gray-700 ring-1 ring-black/5 dark:ring-white/10"
                 style={{
                   left: "0px",
                   top: "0px",
                   width: "240px",
+                  maxHeight: "252px", // 6 items × 42px = 252px max height (py-2 makes items ~42px)
                 }}
               >
                 {options.map((option) => (

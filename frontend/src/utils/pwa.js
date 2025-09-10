@@ -192,7 +192,7 @@ import { getIsOnline } from "../services/connectivity.js";
 export const getAppInfo = () => {
   return {
     name: "FinX",
-    version: "1.0.0",
+  version: "0.6.1",
     isStandalone: isStandalone(),
     displayMode: getDisplayMode(),
     platform: navigator.platform,

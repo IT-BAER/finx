@@ -16,7 +16,10 @@ export default defineConfig(({ mode }) => {
     plugins: [
       react(),
       VitePWA({
-        registerType: "autoUpdate",
+        // Use prompt mode so we decide when to update (no background auto activation)
+        registerType: "prompt",
+        // Explicitly inject registration script; we'll still control flow via registerSW in App.jsx
+        injectRegister: "script",
         includeAssets: [
           "favicon.ico",
           "apple-touch-icon.png",
@@ -175,9 +178,10 @@ export default defineConfig(({ mode }) => {
               },
             },
           ],
-          // Do not auto-activate new service workers; let users decide via in-app prompt
+          // Do NOT auto-activate: skipWaiting false and clientsClaim false ensures
+          // the new SW stays in waiting state until user explicitly confirms.
           skipWaiting: false,
-          clientsClaim: true,
+          clientsClaim: false,
           cleanupOutdatedCaches: true,
         },
       }),
