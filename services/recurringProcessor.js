@@ -106,11 +106,47 @@ async function processRecurringJobs(app = null) {
         }
 
         // Create a new transaction record for this occurrence
+        // Handle source: look up or create from name
+        let source_id = null;
+        if (r.source) {
+          const sourceResult = await db.query(
+            "SELECT id FROM sources WHERE user_id = $1 AND LOWER(TRIM(name)) = LOWER(TRIM($2)) LIMIT 1",
+            [r.user_id, r.source],
+          );
+          if (sourceResult.rows.length > 0) {
+            source_id = sourceResult.rows[0].id;
+          } else {
+            const newSource = await db.query(
+              "INSERT INTO sources (user_id, name) VALUES ($1, $2) RETURNING id",
+              [r.user_id, r.source],
+            );
+            source_id = newSource.rows[0].id;
+          }
+        }
+
+        // Handle target: look up or create from name
+        let target_id = null;
+        if (r.target) {
+          const targetResult = await db.query(
+            "SELECT id FROM targets WHERE user_id = $1 AND LOWER(TRIM(name)) = LOWER(TRIM($2)) LIMIT 1",
+            [r.user_id, r.target],
+          );
+          if (targetResult.rows.length > 0) {
+            target_id = targetResult.rows[0].id;
+          } else {
+            const newTarget = await db.query(
+              "INSERT INTO targets (user_id, name) VALUES ($1, $2) RETURNING id",
+              [r.user_id, r.target],
+            );
+            target_id = newTarget.rows[0].id;
+          }
+        }
+
   const created = await Transaction.create(
           r.user_id,
           r.category_id,
-          null, // source_id - keep null because recurring stores source name, not id
-          null, // target_id
+          source_id,
+          target_id,
           r.amount,
           r.type,
           r.description,
