@@ -54,6 +54,7 @@ Modern, offline-capable personal finance app with sharing, recurring transaction
 
 - Docker Desktop (Windows/macOS) or Docker Engine (Linux) with Docker Compose (for Docker Setup)
 - Debian/Ubuntu (for non-Docker Setup)
+- Node.js 20.19+ (for local builds and the Debian installer; aligns with Vite 6 runtime requirement)
 - Open ports: 3000 (frontend)
 - curl
 - ~300MB+ free disk space for images and DB volume

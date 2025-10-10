@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented in this file.
 
+## [v0.6.2] - 2025-10-10
+
+### security
+- **Build tooling**: Upgraded Vite stack to 6.3.6 / @vitejs/plugin-react 5.0.4 to pick up fs.strict HTML guard and sirv 3.0.2 fixes ([vite@6.3.6](https://github.com/vitejs/vite/releases/tag/v6.3.6))
+- **HTTP client**: Bumped axios to 1.12.x to keep pace with upstream fetch interoperability hardening ([axios@1.12.2](https://github.com/axios/axios/releases/tag/v1.12.2))
+
+### chore
+- Raised minimum Node.js version to 20.19+ per Vite 6 guidance
+- Regenerated frontend lockfile to reflect the dependency updates above
+
 ## [v0.6.1] - 2025-09-10
 
 ### feat
