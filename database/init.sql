@@ -102,7 +102,8 @@ CREATE TABLE IF NOT EXISTS transactions (
     type VARCHAR(10) CHECK (type IN ('income', 'expense')) NOT NULL,
     description TEXT,
     date DATE DEFAULT CURRENT_DATE,
-    is_sample BOOLEAN DEFAULT FALSE
+    is_sample BOOLEAN DEFAULT FALSE,
+    recurring_transaction_id INTEGER
 );
 
 -- Sharing permissions table (consolidated latest schema: no can_view_* booleans)
@@ -203,6 +204,23 @@ END $$;
 CREATE INDEX IF NOT EXISTS idx_recurring_due ON recurring_transactions (start_date, end_date);
 CREATE INDEX IF NOT EXISTS idx_recurring_updated_at ON recurring_transactions (updated_at);
 
+-- Add foreign key constraint for transactions -> recurring_transactions
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'fk_transactions_recurring'
+      AND conrelid = 'transactions'::regclass
+  ) THEN
+    ALTER TABLE transactions
+      ADD CONSTRAINT fk_transactions_recurring
+      FOREIGN KEY (recurring_transaction_id)
+      REFERENCES recurring_transactions(id)
+      ON DELETE SET NULL;
+  END IF;
+END $$;
+
+CREATE INDEX IF NOT EXISTS idx_transactions_recurring_id ON transactions(recurring_transaction_id);
 CREATE INDEX IF NOT EXISTS idx_transactions_category ON transactions(category_id);
 CREATE INDEX IF NOT EXISTS idx_transactions_source ON transactions(source_id);
 CREATE INDEX IF NOT EXISTS idx_transactions_target ON transactions(target_id);

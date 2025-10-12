@@ -106,6 +106,23 @@ async function processRecurringJobs(app = null) {
         }
 
         // Create a new transaction record for this occurrence
+        // Handle category: verify it exists and is valid for this user
+        let category_id = null;
+        if (r.category_id) {
+          const categoryResult = await db.query(
+            "SELECT id FROM categories WHERE id = $1 AND user_id = $2 LIMIT 1",
+            [r.category_id, r.user_id],
+          );
+          if (categoryResult.rows.length > 0) {
+            category_id = categoryResult.rows[0].id;
+          } else {
+            // Category was deleted or invalid; log warning and skip category
+            console.warn(
+              `Recurring processor: category_id ${r.category_id} not found for user ${r.user_id}, creating transaction without category`,
+            );
+          }
+        }
+
         // Handle source: look up or create from name
         let source_id = null;
         if (r.source) {
@@ -144,13 +161,14 @@ async function processRecurringJobs(app = null) {
 
   const created = await Transaction.create(
           r.user_id,
-          r.category_id,
+          category_id,
           source_id,
           target_id,
           r.amount,
           r.type,
           r.description,
           nextDate,
+          r.id, // recurring_transaction_id - links back to the recurring rule
         );
 
         // Link the created transaction to the recurring rule by setting transaction_id for initial record
@@ -167,7 +185,7 @@ async function processRecurringJobs(app = null) {
   createdCount++;
 
         console.log(
-          `Recurring processor: created transaction ${created.id} for recurring ${r.id} on ${nextDate.toISOString().substring(0, 10)}`,
+          `Recurring processor: created transaction ${created.id} for recurring ${r.id} on ${nextDate.toISOString().substring(0, 10)} (category: ${category_id || "none"}, source: ${source_id || "none"}, target: ${target_id || "none"})`,
         );
         // Notify via SSE (best-effort)
         try {

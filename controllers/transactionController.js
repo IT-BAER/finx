@@ -209,12 +209,12 @@ const getTransactions = async (req, res) => {
       .join(", ");
     const query = `
       SELECT t.*, c.name as category_name, s.name as source_name, tg.name as target_name,
-             rt.id as recurring_id, rt.recurrence_type as recurring_recurrence_type
+             t.recurring_transaction_id as recurring_id, rt.recurrence_type as recurring_recurrence_type
       FROM transactions t
       LEFT JOIN categories c ON t.category_id = c.id
       LEFT JOIN sources s ON t.source_id = s.id
       LEFT JOIN targets tg ON t.target_id = tg.id
-      LEFT JOIN recurring_transactions rt ON t.id = rt.transaction_id
+      LEFT JOIN recurring_transactions rt ON t.recurring_transaction_id = rt.id
       WHERE t.user_id IN (${placeholders})
       ORDER BY t.date DESC, t.id DESC
       LIMIT $${accessibleUserIds.length + 1} OFFSET $${accessibleUserIds.length + 2};
@@ -392,8 +392,17 @@ const getTransactionById = async (req, res) => {
     }
 
     // Check for associated recurring transaction
-    const recurringTransaction =
-      await RecurringTransaction.findByTransactionId(id);
+    // Two cases: 
+    // 1. This is the initial transaction that created the recurring rule (recurring_transactions.transaction_id = this transaction)
+    // 2. This is an auto-created transaction from a recurring rule (this transaction has recurring_transaction_id set)
+    let recurringTransaction = await RecurringTransaction.findByTransactionId(id);
+    
+    if (!recurringTransaction && transaction.recurring_transaction_id) {
+      // This is an auto-created transaction, fetch the recurring rule it belongs to
+      recurringTransaction = await RecurringTransaction.findById(
+        transaction.recurring_transaction_id
+      );
+    }
 
     res.json({
       success: true,

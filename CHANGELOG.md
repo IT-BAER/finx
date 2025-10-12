@@ -2,6 +2,23 @@
 
 All notable changes to this project are documented in this file.
 
+## [v0.6.3] - 2025-10-12
+
+### feat
+- **Recurring Transactions**: Auto-created transactions now properly include category, source, and target fields
+- **Recurring Transactions**: Auto-created transactions now display recurring icon (🔁) in transaction lists
+- **Recurring Transactions**: Added ability to edit recurring transaction rules through any auto-created transaction
+- **Database**: Added `recurring_transaction_id` column to transactions table for better tracking
+
+### fix
+- **Recurring Processor**: Added category validation to ensure categories exist before creating transactions
+- **Recurring Processor**: Enhanced logging to show which fields (category, source, target) are set when creating transactions
+- **API**: Updated transaction queries to properly return recurring transaction data for auto-created transactions
+
+### chore
+- Added database migration 008 for recurring_transaction_id column
+- Updated version numbers to 0.6.3 across package.json files
+
 ## [v0.6.2] - 2025-10-10
 
 ### security
