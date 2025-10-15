@@ -3,6 +3,10 @@ const { getSharingPermissionMeta, getUsersSharedWithOwner } = require("../utils/
 
 // Helpers
 function toYMD(date) {
+  // If date is already a string in YYYY-MM-DD format, return it as-is
+  if (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    return date;
+  }
   const d = new Date(date);
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
@@ -14,6 +18,17 @@ function normalizeDateInput(v) {
   if (v === undefined || v === null) return null;
   const s = String(v).trim();
   if (!s) return null;
+  
+  // If already in YYYY-MM-DD format, validate and return as-is to avoid timezone shifts
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+    const [year, month, day] = s.split('-').map(Number);
+    // Basic validation
+    if (year >= 1900 && year <= 2100 && month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+      return s;
+    }
+  }
+  
+  // For other formats, parse and convert
   const d = new Date(s);
   if (Number.isNaN(d.getTime())) return null;
   return toYMD(d);
