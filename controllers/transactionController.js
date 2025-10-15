@@ -393,15 +393,18 @@ const getTransactionById = async (req, res) => {
 
     // Check for associated recurring transaction
     // Two cases: 
-    // 1. This is the initial transaction that created the recurring rule (recurring_transactions.transaction_id = this transaction)
-    // 2. This is an auto-created transaction from a recurring rule (this transaction has recurring_transaction_id set)
-    let recurringTransaction = await RecurringTransaction.findByTransactionId(id);
+    // 1. This transaction belongs to a recurring rule (has recurring_transaction_id set)
+    // 2. This is the initial transaction that created a recurring rule (recurring_transactions.transaction_id = this transaction)
+    let recurringTransaction = null;
     
-    if (!recurringTransaction && transaction.recurring_transaction_id) {
-      // This is an auto-created transaction, fetch the recurring rule it belongs to
+    if (transaction.recurring_transaction_id) {
+      // Priority: If this transaction has recurring_transaction_id, use that specific rule
       recurringTransaction = await RecurringTransaction.findById(
         transaction.recurring_transaction_id
       );
+    } else {
+      // Otherwise, check if this is the initial transaction that created a recurring rule
+      recurringTransaction = await RecurringTransaction.findByTransactionId(id);
     }
 
     res.json({
