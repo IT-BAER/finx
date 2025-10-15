@@ -491,40 +491,26 @@ ensure_repo() {
         fi
     fi
 
-    # After release detection, if ARCHIVE_URL is now set, use archive path instead of git
+
+    # If release detection found an archive URL, use it instead of git clone
     if [ -n "${ARCHIVE_URL}" ]; then
         say "Using release archive: ${ARCHIVE_URL}"
         ensure_tool curl
         ensure_tool file
-        # For updates, remove existing git repo to avoid conflicts with archive extraction
+        # For updates, remove existing git repo to avoid conflicts
         if [ -d "${INSTALL_DIR}/.git" ]; then
             say "Removing existing git repository for archive-based update"
             $SUDO rm -rf "${INSTALL_DIR}/.git"
         fi
-        # Determine filename
         TMP=$(mktemp -t finx-archive-XXXX)
-        # Download as the target user if created, else as current user
-        if [ "${CREATE_USER}" = "y" ]; then
-            run_as_user "${APP_USER}" curl -fsSL "${ARCHIVE_URL}" -o "${TMP}"
-        else
-            curl -fsSL "${ARCHIVE_URL}" -o "${TMP}"
-        fi
-        # Detect archive type and extract
+        curl -fsSL "${ARCHIVE_URL}" -o "${TMP}"
         if file -b "${TMP}" | grep -qi 'gzip\|tar'; then
             ensure_tool tar
-            if [ "${CREATE_USER}" = "y" ]; then
-                run_as_user "${APP_USER}" tar -xzf "${TMP}" -C "${INSTALL_DIR}" --strip-components=1
-            else
-                tar -xzf "${TMP}" -C "${INSTALL_DIR}" --strip-components=1
-            fi
+            tar -xzf "${TMP}" -C "${INSTALL_DIR}" --strip-components=1
         else
             ensure_tool unzip
-            if [ "${CREATE_USER}" = "y" ]; then
-                run_as_user "${APP_USER}" unzip -q "${TMP}" -d "${INSTALL_DIR}"
-            else
-                unzip -q "${TMP}" -d "${INSTALL_DIR}"
-            fi
-            # If the archive extracted into a single top-level directory, flatten it
+            unzip -q "${TMP}" -d "${INSTALL_DIR}"
+            # Flatten if needed
             local entries first
             entries=$(ls -1A "${INSTALL_DIR}" | wc -l | tr -d ' ')
             if [ "${entries}" = "1" ]; then
@@ -541,7 +527,6 @@ ensure_repo() {
         ok "Using APP_DIR=${APP_DIR} (from release archive ${REF})"
         return 0
     fi
-
     ensure_tool git
     say "Preparing FinX repo in ${INSTALL_DIR}${REF:+ (ref: ${REF})}"
     if [ -d "${INSTALL_DIR}/.git" ]; then
