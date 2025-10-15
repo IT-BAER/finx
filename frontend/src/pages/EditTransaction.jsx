@@ -234,7 +234,18 @@ const EditTransaction = () => {
         recurrence_type: transaction.recurring?.recurrence_type || "monthly",
         recurrence_interval: transaction.recurring?.recurrence_interval || 1,
         end_date: transaction.recurring?.end_date 
-          ? new Date(transaction.recurring.end_date).toISOString().split("T")[0]
+          ? (() => {
+              // Parse end_date as local date to avoid timezone shift
+              const dateStr = transaction.recurring.end_date;
+              if (typeof dateStr === "string" && dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                return dateStr; // Already in YYYY-MM-DD format
+              }
+              // If it's a full ISO string, extract date part treating it as local
+              const dateObj = new Date(dateStr);
+              return dateObj.getFullYear() + "-" +
+                String(dateObj.getMonth() + 1).padStart(2, "0") + "-" +
+                String(dateObj.getDate()).padStart(2, "0");
+            })()
           : "",
         max_occurrences: transaction.recurring?.max_occurrences || "",
         recurring_id: transaction.recurring?.id || null,
