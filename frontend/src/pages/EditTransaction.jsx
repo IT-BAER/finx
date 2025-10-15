@@ -233,7 +233,9 @@ const EditTransaction = () => {
         isRecurring: !!transaction.recurring,
         recurrence_type: transaction.recurring?.recurrence_type || "monthly",
         recurrence_interval: transaction.recurring?.recurrence_interval || 1,
-        end_date: transaction.recurring?.end_date || "",
+        end_date: transaction.recurring?.end_date 
+          ? new Date(transaction.recurring.end_date).toISOString().split("T")[0]
+          : "",
         max_occurrences: transaction.recurring?.max_occurrences || "",
         recurring_id: transaction.recurring?.id || null,
       });
