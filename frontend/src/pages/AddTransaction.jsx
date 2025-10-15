@@ -284,14 +284,8 @@ const AddTransaction = () => {
           const recurringResult = await recurringTransactionAPI.create(recurringData);
           window.toastWithHaptic.success(t("recurringTransactionCreated"));
           
-          // Update the transaction to link it back to the recurring rule
-          // This ensures the recurring icon appears on the initial transaction
-          if (recurringResult && recurringResult.recurring && recurringResult.recurring.id) {
-            await offlineAPI.updateTransaction(result.transaction.id, {
-              ...dataToSend,
-              recurring_transaction_id: recurringResult.recurring.id,
-            });
-          }
+          // The backend already updated the transaction with recurring_transaction_id
+          // No need to call updateTransaction - it will be included when the list refreshes
         } catch (err) {
           console.error("Error creating recurring transaction:", err);
           window.toastWithHaptic.error(
