@@ -106,17 +106,17 @@ class Realtime {
     if (!msg || !msg.type) return;
     // Dispatch precise UI refreshes
     const t = String(msg.type);
-    if (t.startsWith("transaction:")) {
+    if (t.startsWith("transaction:") || t.startsWith("recurring:")) {
       // Notify transactions list to refresh first page
-  // Invalidate dashboard/report caches so next fetch is fresh
-  removeByPrefix(cacheKeys.DASHBOARD_DATA);
-  removeByPrefix(cacheKeys.REPORT_DATA);
-  window.dispatchEvent(new CustomEvent("dataRefreshNeeded"));
+      // Invalidate dashboard/report caches so next fetch is fresh
+      removeByPrefix(cacheKeys.DASHBOARD_DATA);
+      removeByPrefix(cacheKeys.REPORT_DATA);
+      window.dispatchEvent(new CustomEvent("dataRefreshNeeded"));
     }
-    if (t.startsWith("dashboard:") || t.startsWith("transaction:")) {
+    if (t.startsWith("dashboard:") || t.startsWith("transaction:") || t.startsWith("recurring:")) {
       // Let dashboard/reports decide what to refresh
-  removeByPrefix(cacheKeys.DASHBOARD_DATA);
-  window.dispatchEvent(new CustomEvent("dataRefreshNeeded"));
+      removeByPrefix(cacheKeys.DASHBOARD_DATA);
+      window.dispatchEvent(new CustomEvent("dataRefreshNeeded"));
     }
   }
 }

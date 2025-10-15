@@ -1,5 +1,5 @@
 const RecurringTransaction = require("../models/RecurringTransaction");
-const { getSharingPermissionMeta } = require("../utils/access");
+const { getSharingPermissionMeta, getUsersSharedWithOwner } = require("../utils/access");
 
 // Helpers
 function toYMD(date) {
@@ -121,6 +121,24 @@ const createRecurringTransaction = async (req, res) => {
       success: true,
       recurring: recurringTransaction,
     });
+
+    // Emit create event for real-time sync across devices
+    try {
+      const sse = req.app.get("sse");
+      if (sse) {
+        const sharedWith = await getUsersSharedWithOwner(req.user.id);
+        const payload = { 
+          type: "recurring:create", 
+          recurringTransactionId: recurringTransaction.id, 
+          ownerId: req.user.id, 
+          at: Date.now() 
+        };
+        sse.broadcastToUser(req.user.id, payload);
+        if (sharedWith && sharedWith.length) sse.broadcastToUsers(sharedWith, payload);
+      }
+    } catch (e) {
+      console.error("Failed to broadcast recurring transaction create:", e);
+    }
   } catch (err) {
     console.error("Create recurring transaction error:", err.message);
     res.status(500).json({ message: "Server error" });
@@ -259,6 +277,24 @@ const updateRecurringTransaction = async (req, res) => {
       success: true,
       recurringTransaction: updatedRecurringTransaction,
     });
+
+    // Emit update event for real-time sync across devices
+    try {
+      const sse = req.app.get("sse");
+      if (sse) {
+        const sharedWith = await getUsersSharedWithOwner(ownerId);
+        const payload = { 
+          type: "recurring:update", 
+          recurringTransactionId: updatedRecurringTransaction.id, 
+          ownerId, 
+          at: Date.now() 
+        };
+        sse.broadcastToUser(ownerId, payload);
+        if (sharedWith && sharedWith.length) sse.broadcastToUsers(sharedWith, payload);
+      }
+    } catch (e) {
+      console.error("Failed to broadcast recurring transaction update:", e);
+    }
   } catch (err) {
     console.error("Update recurring transaction error:", err.message);
     res.status(500).json({ message: "Server error" });
@@ -307,6 +343,24 @@ const deleteRecurringTransaction = async (req, res) => {
       success: true,
       message: "Recurring transaction deleted successfully",
     });
+
+    // Emit delete event for real-time sync across devices
+    try {
+      const sse = req.app.get("sse");
+      if (sse) {
+        const sharedWith = await getUsersSharedWithOwner(ownerId);
+        const payload = { 
+          type: "recurring:delete", 
+          recurringTransactionId: id, 
+          ownerId, 
+          at: Date.now() 
+        };
+        sse.broadcastToUser(ownerId, payload);
+        if (sharedWith && sharedWith.length) sse.broadcastToUsers(sharedWith, payload);
+      }
+    } catch (e) {
+      console.error("Failed to broadcast recurring transaction delete:", e);
+    }
   } catch (err) {
     console.error("Delete recurring transaction error:", err.message);
     res.status(500).json({ message: "Server error" });
