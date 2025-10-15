@@ -106,9 +106,20 @@ const createRecurringTransaction = async (req, res) => {
       txnId,
     );
 
+    // If this recurring transaction is linked to a base transaction,
+    // update that transaction to set its recurring_transaction_id
+    // This ensures the recurring icon appears on the initial transaction
+    if (txnId && recurringTransaction && recurringTransaction.id) {
+      const db = require("../config/db");
+      await db.query(
+        "UPDATE transactions SET recurring_transaction_id = $1 WHERE id = $2 AND user_id = $3",
+        [recurringTransaction.id, txnId, req.user.id],
+      );
+    }
+
     res.status(201).json({
       success: true,
-      recurringTransaction,
+      recurring: recurringTransaction,
     });
   } catch (err) {
     console.error("Create recurring transaction error:", err.message);

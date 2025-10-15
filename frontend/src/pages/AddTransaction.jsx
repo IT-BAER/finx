@@ -254,7 +254,51 @@ const AddTransaction = () => {
         window.toastWithHaptic.success(t("transactionAddedSuccess"));
       }
 
-      
+      // If this is a recurring transaction, create the recurring transaction rule
+      if (formData.isRecurring && result.transaction && result.transaction.id) {
+        const recurringData = {
+          title:
+            formData.description ||
+            `${formData.type === "income" ? t("income") : t("expense")} - ${formData.category}`,
+          amount: parseFloat(formData.amount),
+          type: formData.type,
+          category_id:
+            formData.type === "income"
+              ? null
+              : categories.find((c) => String(c.name || "").trim().toLowerCase() === String(formData.category || "").trim().toLowerCase())?.id || null,
+          // Use the same field mapping as dataToSend for consistency
+          source: String(dataToSend.source || "").trim() || null,
+          target: String(dataToSend.target || "").trim() || null,
+          description: formData.description || null,
+          recurrence_type: formData.recurrence_type,
+          recurrence_interval: parseInt(formData.recurrence_interval),
+          start_date: formData.date,
+          end_date: formData.end_date || null,
+          max_occurrences: formData.max_occurrences
+            ? parseInt(formData.max_occurrences)
+            : null,
+          transaction_id: result.transaction.id,
+        };
+
+        try {
+          const recurringResult = await recurringTransactionAPI.create(recurringData);
+          window.toastWithHaptic.success(t("recurringTransactionCreated"));
+          
+          // Update the transaction to link it back to the recurring rule
+          // This ensures the recurring icon appears on the initial transaction
+          if (recurringResult && recurringResult.recurring && recurringResult.recurring.id) {
+            await offlineAPI.updateTransaction(result.transaction.id, {
+              ...dataToSend,
+              recurring_transaction_id: recurringResult.recurring.id,
+            });
+          }
+        } catch (err) {
+          console.error("Error creating recurring transaction:", err);
+          window.toastWithHaptic.error(
+            err.response?.data?.message || t("failedToCreateRecurringTransaction")
+          );
+        }
+      }
 
       // Dispatch a custom event to notify the Transactions page to refresh
       window.dispatchEvent(new CustomEvent("transactionAdded"));

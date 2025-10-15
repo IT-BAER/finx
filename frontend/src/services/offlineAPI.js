@@ -1260,6 +1260,7 @@ class OfflineAPI {
               source_name: tx.source_name || tx.source || null,
               target_name: tx.target_name || tx.target || null,
               user_id: tx.user_id,
+              recurring_id: tx.recurring_id || null,
             }));
           await offlineStorage.storeOfflineData(key, sortedRecent);
         }
