@@ -78,6 +78,7 @@ frontend/.turbo
 # Development and documentation files
 .editorconfig
 .nvmrc
+tasksync
 # docs are part of the repository
 # docs/
 TODO.md

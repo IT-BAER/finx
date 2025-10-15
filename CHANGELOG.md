@@ -2,6 +2,22 @@
 
 All notable changes to this project are documented in this file.
 
+## [v0.6.4] - 2025-10-15
+
+### fix
+- **Installation**: Fixed setup.sh to correctly install latest GitHub release instead of arbitrary versions
+  - Installer now properly uses release archive when detected via GitHub API
+  - Added `--strip-components=1` for correct archive extraction
+  - Removes existing .git directory when switching from git-based to archive-based installation
+  - Ensures users always get the actual latest release instead of older cached versions
+
+### security  
+- **Frontend Dependencies**: Updated PostCSS from 8.5.6 to 8.4.49 for latest security patches
+- **Frontend Dependencies**: Updated vite-plugin-pwa from 0.21.2 to 1.1.0 for security improvements and Vite 6+ compatibility
+
+### chore
+- Updated version numbers to 0.6.4 across package.json files
+
 ## [v0.6.3] - 2025-10-12
 
 ### feat
