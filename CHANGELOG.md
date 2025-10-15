@@ -16,6 +16,13 @@ All notable changes to this project are documented in this file.
   - Frontend: Fixed offlineAPI snapshot mapping to include recurring_id field
   - Backend: recurringTransactionController now updates transaction.recurring_transaction_id after creating recurring rule
   - Resolved bidirectional relationship issue between transactions and recurring rules
+- **Recurring Transactions**: Fixed date format warnings in EditTransaction page
+  - HTML date inputs now receive proper yyyy-MM-dd format instead of ISO timestamps
+- **Recurring Transactions**: Fixed timezone issue causing date shifts in end dates
+  - Backend now preserves yyyy-MM-dd format dates without timezone conversion
+  - Prevents dates like 2025-10-16 from shifting to 2025-10-15
+- **Recurring Transactions**: Fixed prefetch transaction cache not clearing on recurring changes
+  - Real-time updates now properly clear all relevant caches for immediate UI refresh
 - **Installation**: Fixed setup.sh to correctly install latest GitHub release instead of arbitrary versions
   - Installer now properly uses release archive when detected via GitHub API
   - Added `--strip-components=1` for correct archive extraction
