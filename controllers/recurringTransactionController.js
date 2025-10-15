@@ -104,6 +104,13 @@ const createRecurringTransaction = async (req, res) => {
       ? parseInt(transaction_id, 10)
       : null;
 
+    // Validate and normalize recurrence_type
+    const safeRecurrenceType = String(recurrence_type || "monthly").toLowerCase().trim();
+    if (safeRecurrenceType !== "daily" && safeRecurrenceType !== "weekly" && 
+        safeRecurrenceType !== "monthly" && safeRecurrenceType !== "yearly") {
+      return res.status(400).json({ message: "Recurrence type must be 'daily', 'weekly', 'monthly', or 'yearly'" });
+    }
+
     const recurringTransaction = await RecurringTransaction.create(
       req.user.id,
       titleFinal,
@@ -113,7 +120,7 @@ const createRecurringTransaction = async (req, res) => {
       source || null,
       target || null,
       description,
-      String(recurrence_type || "monthly").toLowerCase(),
+      safeRecurrenceType,
       safeInterval,
       startDateYMD,
       endDateYMD,
@@ -280,6 +287,14 @@ const updateRecurringTransaction = async (req, res) => {
       const t = String(updatesRaw.type || "").toLowerCase().trim();
       if (t === "income" || t === "expense") normalized.type = t;
       else delete normalized.type;
+    }
+    if (Object.prototype.hasOwnProperty.call(updatesRaw, "recurrence_type")) {
+      const rt = String(updatesRaw.recurrence_type || "").toLowerCase().trim();
+      if (rt === "daily" || rt === "weekly" || rt === "monthly" || rt === "yearly") {
+        normalized.recurrence_type = rt;
+      } else {
+        delete normalized.recurrence_type;
+      }
     }
 
     // Authorized: perform unscoped update by id (owner remains unchanged)
