@@ -4,7 +4,18 @@ All notable changes to this project are documented in this file.
 
 ## [v0.6.4] - 2025-10-15
 
+### feat
+- **Real-time Sync**: Recurring transaction changes now broadcast to all connected devices via SSE
+  - Backend emits recurring:create, recurring:update, and recurring:delete events
+  - Frontend automatically refreshes when other users or devices modify recurring transactions
+  - Ensures immediate visibility of changes across all sessions
+
 ### fix
+- **Recurring Transactions**: Fixed recurring transaction icon not appearing on newly created transactions
+  - Frontend: Added recurring transaction creation logic to AddTransaction page
+  - Frontend: Fixed offlineAPI snapshot mapping to include recurring_id field
+  - Backend: recurringTransactionController now updates transaction.recurring_transaction_id after creating recurring rule
+  - Resolved bidirectional relationship issue between transactions and recurring rules
 - **Installation**: Fixed setup.sh to correctly install latest GitHub release instead of arbitrary versions
   - Installer now properly uses release archive when detected via GitHub API
   - Added `--strip-components=1` for correct archive extraction
