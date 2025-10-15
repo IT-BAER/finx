@@ -111,6 +111,7 @@ class Realtime {
       // Invalidate dashboard/report caches so next fetch is fresh
       removeByPrefix(cacheKeys.DASHBOARD_DATA);
       removeByPrefix(cacheKeys.REPORT_DATA);
+      removeByPrefix(cacheKeys.PREFETCH_TRANSACTIONS); // Clear prefetched transactions
       window.dispatchEvent(new CustomEvent("dataRefreshNeeded"));
     }
     if (t.startsWith("dashboard:") || t.startsWith("transaction:") || t.startsWith("recurring:")) {
