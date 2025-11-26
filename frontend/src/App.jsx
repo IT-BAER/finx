@@ -33,6 +33,7 @@ const Dashboard = lazy(() => import("./pages/Dashboard.jsx"));
 const Transactions = lazy(() => import("./pages/Transactions.jsx"));
 const Reports = lazy(() => import("./pages/Reports.jsx"));
 const Settings = lazy(() => import("./pages/Settings.jsx"));
+const Goals = lazy(() => import("./pages/Goals.jsx"));
 const Login = lazy(() => import("./pages/Login.jsx"));
 const Register = lazy(() => import("./pages/Register.jsx"));
 
@@ -102,7 +103,7 @@ const SWIPEABLE_ROUTES = [
   { path: "/dashboard", component: Dashboard },
   { path: "/transactions", component: Transactions },
   { path: "/reports", component: Reports },
-  { path: "/settings", component: Settings },
+  { path: "/goals", component: Goals },
 ];
 
 // Check if device is mobile
@@ -241,7 +242,7 @@ function App() {
       "/dashboard": () => import("./pages/Dashboard.jsx"),
       "/transactions": () => import("./pages/Transactions.jsx"),
       "/reports": () => import("./pages/Reports.jsx"),
-      "/settings": () => import("./pages/Settings.jsx"),
+      "/goals": () => import("./pages/Goals.jsx"),
     };
 
     const scheduleIdle = (fn) => {
@@ -505,6 +506,22 @@ function App() {
                               }
                             >
                               <ComponentWrapper Component={Settings} />
+                            </Suspense>
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="/goals"
+                        element={
+                          <ProtectedRoute offlineDisabled>
+                            <Suspense
+                              fallback={
+                                <div className="flex items-center justify-center h-full">
+                                  <div className="spinner"></div>
+                                </div>
+                              }
+                            >
+                              <ComponentWrapper Component={Goals} />
                             </Suspense>
                           </ProtectedRoute>
                         }

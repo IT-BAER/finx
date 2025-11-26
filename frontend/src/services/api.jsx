@@ -436,3 +436,20 @@ export const recurringTransactionAPI = {
   update: (id, data) => api.put(`/recurring-transactions/${id}`, data),
   delete: (id) => api.delete(`/recurring-transactions/${id}`),
 };
+
+// Goals endpoints
+export const goalAPI = {
+  create: (data) => api.post("/goals", data),
+  getAll: (includeCompleted = true) =>
+    api.get("/goals", { params: { includeCompleted } }),
+  getById: (id) => api.get(`/goals/${id}`),
+  update: (id, data) => api.put(`/goals/${id}`, data),
+  delete: (id) => api.delete(`/goals/${id}`),
+  addContribution: (id, data) => api.post(`/goals/${id}/contributions`, data),
+  getContributions: (id) => api.get(`/goals/${id}/contributions`),
+  deleteContribution: (contributionId) =>
+    api.delete(`/goals/contributions/${contributionId}`),
+  setCurrentAmount: (id, amount) =>
+    api.put(`/goals/${id}/amount`, { amount }),
+  getSummary: () => api.get("/goals/summary"),
+};

@@ -2,6 +2,33 @@
 
 All notable changes to this project are documented in this file.
 
+## [v0.7.0] - 2025-11-26
+
+### feat
+- **Goals**: New savings goals feature for tracking financial targets
+  - Create, edit, and delete savings goals with custom names, target amounts, and deadlines
+  - Visual progress bars showing current amount vs target
+  - Add contributions to goals with optional notes
+  - Goal icons (savings, vacation, car, home, education, emergency, gift, tech, health)
+  - Customizable goal colors (10 color options)
+  - Summary dashboard showing total saved, total target, active goals, and overall progress
+  - Mark goals as completed with celebration indicator
+  - Filter toggle to show/hide completed goals (preference persists in localStorage)
+  - Deadline tracking with overdue/near-deadline warnings
+- **Navigation**: Goals page added to mobile bottom navigation (replaces Settings)
+- **Navigation**: Goals page added to desktop sidebar navigation
+- **Database**: New goals and goal_contributions tables with auto-updating triggers
+- **API**: Full CRUD endpoints for goals at /api/goals
+- **i18n**: Complete English and German translations for goals feature (40+ keys)
+
+### fix
+- **Swipe Navigation**: Fixed swipeable-wrapper not filling viewport height
+  - Added CSS for .swipeable-wrapper flex container
+  - Set min-height on .swipeable-page for full swipe detection area
+
+### chore
+- Updated version numbers to 0.7.0 across package.json files
+
 ## [v0.6.4] - 2025-10-15
 
 ### feat

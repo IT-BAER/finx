@@ -238,6 +238,14 @@
 }
 
 /* Swipeable container styles */
+.swipeable-wrapper {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+}
+
 .swipeable-container {
   flex: 1;
   width: 100%;
@@ -264,14 +272,21 @@
 .swipeable-page {
   position: relative;
   width: 100%;
-  /* Let page content drive height */
-  min-height: auto;
+  /* Ensure minimum height fills available space for swipe detection */
+  min-height: calc(100vh - 10rem);
   height: auto;
   box-sizing: border-box;
   top: auto;
   left: auto;
   right: auto;
   bottom: auto;
+}
+
+@media (max-width: 768px) {
+  .swipeable-page {
+    /* Account for mobile bottom nav */
+    min-height: calc(100vh - 12rem);
+  }
 }
 
 /* Prevent horizontal scrolling during swipe */

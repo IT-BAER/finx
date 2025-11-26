@@ -122,6 +122,9 @@ const Navbar = () => {
                     <NavLink to="/reports" icon="/icons/reports.svg">
                       {t("reports")}
                     </NavLink>
+                    <NavLink to="/goals" icon="/icons/goals.svg">
+                      {t("goals")}
+                    </NavLink>
                   </div>
 
                   <div className="flex items-center gap-4 ml-2 pl-4 border-l border-gray-200 dark:border-gray-700">
@@ -352,7 +355,7 @@ const Navbar = () => {
                     ? "100%"
                     : location.pathname === "/reports"
                       ? "300%"
-                      : location.pathname === "/settings"
+                      : location.pathname === "/goals"
                         ? "400%"
                         : "0%",
               opacity: [
@@ -360,7 +363,7 @@ const Navbar = () => {
                 "/dashboard",
                 "/transactions",
                 "/reports",
-                "/settings",
+                "/goals",
               ].includes(location.pathname)
                 ? 1
                 : 0,
@@ -508,17 +511,17 @@ const Navbar = () => {
                 try {
                   window.__finx_navigate_with_animation = true;
                 } catch (e) {}
-                if (location.pathname !== "/settings") navigate("/settings");
+                if (location.pathname !== "/goals") navigate("/goals");
               }}
               className="mobile-menu-item"
               style={{ color: "inherit" }}
             >
               <img
-                src="/icons/settings.svg"
-                alt="Settings"
+                src="/icons/goals.svg"
+                alt="Goals"
                 className="mobile-menu-icon icon-tint-accent"
               />
-              <span className="mobile-menu-label">{t("settings")}</span>
+              <span className="mobile-menu-label">{t("goals")}</span>
             </motion.button>
           </div>
         </div>

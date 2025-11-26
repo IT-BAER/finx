@@ -147,6 +147,7 @@ app.use("/api/targets", require("./routes/target"));
 app.use("/api/sharing", require("./routes/sharing"));
 app.use("/api/users", require("./routes/user"));
 app.use("/api/admin", require("./routes/admin"));
+app.use("/api/goals", require("./routes/goal"));
 // Utilities for recurring testing (admin-only)
 app.use("/api/recurring-tools", require("./routes/recurring-tools"));
 

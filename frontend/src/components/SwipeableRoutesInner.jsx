@@ -10,7 +10,7 @@ import useOfflineAPI from "../hooks/useOfflineAPI.js";
 const Dashboard = React.lazy(() => import("../pages/Dashboard.jsx"));
 const Transactions = React.lazy(() => import("../pages/Transactions.jsx"));
 const Reports = React.lazy(() => import("../pages/Reports.jsx"));
-const Settings = React.lazy(() => import("../pages/Settings.jsx"));
+const Goals = React.lazy(() => import("../pages/Goals.jsx"));
 const Login = React.lazy(() => import("../pages/Login.jsx"));
 const Register = React.lazy(() => import("../pages/Register.jsx"));
 
@@ -18,7 +18,7 @@ const SWIPEABLE_ROUTES = [
   { path: "/dashboard", component: Dashboard },
   { path: "/transactions", component: Transactions },
   { path: "/reports", component: Reports },
-  { path: "/settings", component: Settings },
+  { path: "/goals", component: Goals },
 ];
 
 export default function SwipeableRoutesInner() {
@@ -118,8 +118,8 @@ export default function SwipeableRoutesInner() {
     const route = SWIPEABLE_ROUTES[newIndex];
     if (!route) return;
 
-  // Maintain previous offline behavior for settings only; allow reports offline (uses cached data)
-  if (!isOnline && route.path === "/settings") {
+  // Maintain previous offline behavior for goals only (requires server sync); allow reports offline (uses cached data)
+  if (!isOnline && route.path === "/goals") {
       // revert to previous slide
       if (typeof swiperInstance.slideTo === "function") {
         swiperInstance.slideTo(currentIndex);
