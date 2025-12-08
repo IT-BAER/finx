@@ -25,18 +25,18 @@ const processFilteredTransactions = (transactions, timeRange, startDate, endDate
   const dailyExpenses = new Map();
   const incomeByDate = new Map();
   const expenseByCategory = new Map();
-  
+
   transactions.forEach((tx) => {
     const date = tx.date;
     const amount = parseFloat(tx.amount) || 0;
-    
+
     if (tx.type === 'expense') {
       // Daily expenses
       if (!dailyExpenses.has(date)) {
         dailyExpenses.set(date, 0);
       }
       dailyExpenses.set(date, dailyExpenses.get(date) + amount);
-      
+
       // Expense by category
       const category = tx.category_name || 'Uncategorized';
       if (!expenseByCategory.has(category)) {
@@ -51,33 +51,33 @@ const processFilteredTransactions = (transactions, timeRange, startDate, endDate
       incomeByDate.set(date, incomeByDate.get(date) + amount);
     }
   });
-  
+
   // Convert to API format
   const dailyExpensesData = Array.from(dailyExpenses.entries()).map(([date, total]) => ({
     date,
     total: total.toString()
   }));
-  
+
   console.log('processFilteredTransactions result:', {
     dailyExpensesCount: dailyExpensesData.length,
     dateRange: dailyExpensesData.map(d => d.date),
     timeRange
   });
-  
+
   const incomeByDateData = Array.from(incomeByDate.entries()).map(([date, total]) => ({
     date,
     total: total.toString()
   }));
-  
+
   const expenseByCategoryData = Array.from(expenseByCategory.entries()).map(([category_name, total]) => ({
     category_name,
     total: total.toString()
   }));
-  
+
   // Calculate summary
   const totalExpenses = Array.from(dailyExpenses.values()).reduce((sum, val) => sum + val, 0);
   const totalIncome = Array.from(incomeByDate.values()).reduce((sum, val) => sum + val, 0);
-  
+
   return {
     dailyExpenses: dailyExpensesData,
     incomeByDate: incomeByDateData,
@@ -122,7 +122,7 @@ const Reports = () => {
         const arr = JSON.parse(raw);
         if (Array.isArray(arr)) setSelectedSources(arr);
       }
-    } catch {}
+    } catch { }
   }, [REPORTS_FILTER_STORAGE_KEY]);
   // Save whenever selection changes
   useEffect(() => {
@@ -131,7 +131,7 @@ const Reports = () => {
         REPORTS_FILTER_STORAGE_KEY,
         JSON.stringify(selectedSources || []),
       );
-    } catch {}
+    } catch { }
   }, [selectedSources, REPORTS_FILTER_STORAGE_KEY]);
 
   useEffect(() => {
@@ -140,7 +140,7 @@ const Reports = () => {
       try {
         const res = await sharingAPI.getUserSources();
         const rawSources = Array.isArray(res?.data?.data) ? res.data.data : [];
-        
+
         // Process sources to add display names for shared sources
         const processedSources = rawSources.map(source => {
           if (source.ownership_type === 'shared') {
@@ -157,7 +157,7 @@ const Reports = () => {
             name: source.name
           };
         });
-        
+
         setSources(processedSources);
       } catch (err) {
         setSources([]);
@@ -369,7 +369,7 @@ const Reports = () => {
         // Fetch real data from the API
         const { startDate, endDate } = getDateRange();
         let res;
-        
+
         // If sources are selected, we need to filter data differently
         if (shouldFilter) {
           // Get individual transactions and filter by sources
@@ -379,14 +379,14 @@ const Reports = () => {
               const start = new Date(startDate);
               const end = new Date(endDate);
               end.setHours(23, 59, 59, 999);
-              
+
               // Filter by date range first
               let filtered = all.filter((tx) => {
                 if (!tx) return false;
                 const d = new Date(tx.date);
                 return d >= start && d <= end;
               });
-              
+
               // Apply source filtering: expenses by source_id; incomes by target_name mapped to selected source names (case-insensitive)
               const selectedIdSet = new Set(selectedSources.map((id) => String(id)));
               const selectedNameSet = new Set(
@@ -396,16 +396,15 @@ const Reports = () => {
               );
               filtered = filtered.filter((tx) => {
                 const typ = String(tx.type || '').toLowerCase();
-                if (typ === 'expense') {
+                if (typ === 'expense' || typ === 'income') {
+                  // For BOTH Income and Expense, the User's Account is in source_id
+                  // (Because AddTransaction swaps them for Income)
                   const sourceId = String(tx.source_id || tx.source || '');
                   return selectedIdSet.has(sourceId);
-                } else if (typ === 'income') {
-                  const tname = String(tx.target_name || '').trim().toLowerCase();
-                  return selectedNameSet.has(tname);
                 }
                 return false;
               });
-              
+
               // Process filtered transactions to create API-like response structure
               res = { data: { data: processFilteredTransactions(filtered, timeRange, startDate, endDate) } };
             } else {
@@ -822,7 +821,7 @@ const Reports = () => {
         );
 
         // Create labels without percentages (percentages are shown in chart segments)
-const processedCategoryData = {
+        const processedCategoryData = {
           labels: categoryLabels,
           datasets: [
             {
@@ -1261,10 +1260,10 @@ const processedCategoryData = {
               while (cur <= end) {
                 const bs = new Date(cur);
                 const be = new Date(cur);
-                be.setHours(23,59,59,999);
+                be.setHours(23, 59, 59, 999);
                 bucketStarts.push(bs);
                 bucketEnds.push(be);
-                bucketLabels.push(`${bs.getFullYear()}-${String(bs.getMonth()+1).padStart(2,'0')}-${String(bs.getDate()).padStart(2,'0')}`);
+                bucketLabels.push(`${bs.getFullYear()}-${String(bs.getMonth() + 1).padStart(2, '0')}-${String(bs.getDate()).padStart(2, '0')}`);
                 cur.setDate(cur.getDate() + 1);
               }
             } else if (timeRange === "monthly") {
@@ -1276,10 +1275,10 @@ const processedCategoryData = {
               while (ws <= end) {
                 const we = new Date(ws);
                 we.setDate(ws.getDate() + 6);
-                we.setHours(23,59,59,999);
+                we.setHours(23, 59, 59, 999);
                 bucketStarts.push(new Date(ws));
                 bucketEnds.push(we);
-                bucketLabels.push(`${ws.getFullYear()}-${String(ws.getMonth()+1).padStart(2,'0')}-${String(ws.getDate()).padStart(2,'0')}`);
+                bucketLabels.push(`${ws.getFullYear()}-${String(ws.getMonth() + 1).padStart(2, '0')}-${String(ws.getDate()).padStart(2, '0')}`);
                 ws.setDate(ws.getDate() + 7);
               }
             } else {
@@ -1287,10 +1286,10 @@ const processedCategoryData = {
               for (let m = 0; m < 12; m++) {
                 const ms = new Date(start.getFullYear(), m, 1);
                 const me = new Date(start.getFullYear(), m + 1, 0);
-                me.setHours(23,59,59,999);
+                me.setHours(23, 59, 59, 999);
                 bucketStarts.push(ms);
                 bucketEnds.push(me);
-                bucketLabels.push(`${ms.getFullYear()}-${String(ms.getMonth()+1).padStart(2,'0')}-01`);
+                bucketLabels.push(`${ms.getFullYear()}-${String(ms.getMonth() + 1).padStart(2, '0')}-01`);
               }
             }
 
@@ -1350,10 +1349,10 @@ const processedCategoryData = {
             allIds.forEach((id) => {
               const e = bySrcExp.get(id) || new Array(bucketCount).fill(0);
               const inc = bySrcInc.get(id) || new Array(bucketCount).fill(0);
-              const total = e.reduce((a,b)=>a+b,0) + inc.reduce((a,b)=>a+b,0);
+              const total = e.reduce((a, b) => a + b, 0) + inc.reduce((a, b) => a + b, 0);
               sourceTotals.push({ id, total });
             });
-            sourceTotals.sort((a,b)=> b.total - a.total);
+            sourceTotals.sort((a, b) => b.total - a.total);
 
             const palette = [
               "rgba(96, 165, 250, 1)",
@@ -1376,7 +1375,7 @@ const processedCategoryData = {
             const datasets = [];
             const idsToShow = shouldFilter
               ? sourceTotals.map((x) => x.id)
-              : sourceTotals.slice(0,5).map((x) => x.id);
+              : sourceTotals.slice(0, 5).map((x) => x.id);
 
             idsToShow.forEach((id, i) => {
               const e = (bySrcExp.get(id) || new Array(bucketCount).fill(0)).slice();
@@ -1402,7 +1401,7 @@ const processedCategoryData = {
             });
 
             if (!shouldFilter && sourceTotals.length > 5) {
-              const restIds = sourceTotals.slice(5).map((x)=>x.id);
+              const restIds = sourceTotals.slice(5).map((x) => x.id);
               const aggE = new Array(bucketCount).fill(0);
               const aggI = new Array(bucketCount).fill(0);
               restIds.forEach((id) => {
@@ -1447,7 +1446,7 @@ const processedCategoryData = {
             }
 
             setTrendPerSourceChartData({ labels: labelsForChart, datasets });
-            const legendItems = datasets.map((ds)=> ({ label: ds.label, color: ds.borderColor, total: Array.isArray(ds.data) && ds.data.length > 0 ? ds.data[ds.data.length-1] : 0 }));
+            const legendItems = datasets.map((ds) => ({ label: ds.label, color: ds.borderColor, total: Array.isArray(ds.data) && ds.data.length > 0 ? ds.data[ds.data.length - 1] : 0 }));
             setTrendPerSourceLegend(legendItems);
           } else {
             setTrendPerSourceChartData(null);
@@ -1494,7 +1493,7 @@ const processedCategoryData = {
               return sObj ? (sObj.displayName || sObj.name || `Source ${id}`) : `Source ${id}`;
             };
 
-            let idsSorted = Array.from(totalsById.entries()).sort((a,b) => b[1] - a[1]).map(([id]) => id);
+            let idsSorted = Array.from(totalsById.entries()).sort((a, b) => b[1] - a[1]).map(([id]) => id);
             let labels = [];
             let data = [];
 
@@ -1587,7 +1586,7 @@ const processedCategoryData = {
 
   if (loading) {
     return (
-  <div className="container mx-auto px-4 pt-4 md:pt-0 pb-4">
+      <div className="container mx-auto px-4 pt-4 md:pt-0 pb-4">
         <div className="flex justify-between items-center mb-8">
           <h1 className="display-2">{t("reports")}</h1>
         </div>
@@ -1723,7 +1722,7 @@ const processedCategoryData = {
         </div>
       </div>
 
-      
+
 
       {/* Charts - Source Category Breakdown and Expenses by Category */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
@@ -1875,7 +1874,7 @@ const processedCategoryData = {
                       <div className="flex justify-between items-start">
                         <div className="flex-1 min-w-0">
                           <div className="font-medium text-gray-900 dark:text-gray-200 truncate">
-{tx.description || tx.category_name || tx.category || (t("uncategorized") || "Uncategorized")}
+                            {tx.description || tx.category_name || tx.category || (t("uncategorized") || "Uncategorized")}
                           </div>
                           <div className="text-sm text-gray-500 dark:text-gray-400">
                             {formatDate(tx.date)}

@@ -12,6 +12,25 @@ class SharingPermission {
     this.updated_at = data.updated_at;
   }
 
+  // Check if a user has permission to view another user's data
+  static async hasPermission(owner_user_id, shared_with_user_id, required_level = 'read') {
+    const query = `
+      SELECT permission_level
+      FROM sharing_permissions
+      WHERE owner_user_id = $1 AND shared_with_user_id = $2
+    `;
+    const result = await db.query(query, [owner_user_id, shared_with_user_id]);
+
+    if (result.rows.length === 0) return false;
+
+    if (required_level === 'all') return true;
+
+    const level = result.rows[0].permission_level;
+    if (level === 'readwrite') return true; // readwrite covers everything
+
+    return level === required_level;
+  }
+
   // Create a new sharing permission
   static async create(
     owner_user_id,
