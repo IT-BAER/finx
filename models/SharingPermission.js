@@ -164,7 +164,7 @@ class SharingPermission {
       WHERE t.user_id = $1
     `;
 
-    const values = [owner_user_id, shared_with_user_id];
+    const values = [owner_user_id];
 
     // Add source filter if it exists
     if (permission.source_filter) {
