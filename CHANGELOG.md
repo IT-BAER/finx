@@ -10,6 +10,9 @@ All notable changes to this project are documented in this file.
 - **Recurring Transactions**: Prevented duplicate rule creation (same title/amount/start date)
 - **Recurring Transactions**: Improved critical error logging for category mismatches
 
+### feat
+- **Services**: Integrated centralized logging system (Winston) + HTTP request logging (Morgan) for better observability
+
 ### security
 - **Frontend Dependencies**: Resolved high-severity vulnerability in `glob` (via `npm audit fix`)
 
