@@ -2,6 +2,27 @@
 
 All notable changes to this project are documented in this file.
 
+## [v0.7.2] - 2025-12-13
+
+### feat
+- **Recurring Transactions**: Implemented `GET /api/recurring-transactions` endpoint
+  - Added `getAllRecurringTransactions` controller logic
+  - Added `findAllByUserId` method to RecurringTransaction model
+  - Enables fetching all recurring rules for the authenticated user (critical for mobile app support)
+
+### chore
+- Updated version numbers to 0.7.2 across package.json files
+
+## [v0.7.1] - 2025-12-08
+
+### fix
+- **Sharing**: Fixed 500 error in shared transactions fetch
+  - Added missing `hasPermission` method to SharingPermission model
+  - Resolved crash when verifying access rights for shared resources
+
+### chore
+- Updated version numbers to 0.7.1 across package.json files
+
 ## [v0.7.0] - 2025-11-26
 
 ### feat
