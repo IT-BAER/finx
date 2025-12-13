@@ -94,6 +94,14 @@ class RecurringTransaction {
     return result.rows[0] || null;
   }
 
+  static async findAllByUserId(user_id) {
+    const result = await db.query(
+      "SELECT * FROM recurring_transactions WHERE user_id = $1 ORDER BY created_at DESC",
+      [user_id],
+    );
+    return result.rows;
+  }
+
   // Update recurring transaction for a specific user (ownership enforced)
   static async updateByUser(id, user_id, updates) {
     const allowed = [

@@ -18,7 +18,7 @@ function normalizeDateInput(v) {
   if (v === undefined || v === null) return null;
   const s = String(v).trim();
   if (!s) return null;
-  
+
   // If already in YYYY-MM-DD format, validate and return as-is to avoid timezone shifts
   if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
     const [year, month, day] = s.split('-').map(Number);
@@ -27,7 +27,7 @@ function normalizeDateInput(v) {
       return s;
     }
   }
-  
+
   // For other formats, parse and convert
   const d = new Date(s);
   if (Number.isNaN(d.getTime())) return null;
@@ -73,7 +73,7 @@ const createRecurringTransaction = async (req, res) => {
         return Number(cleaned);
       }
       // Otherwise strip currency symbols/spaces
-  const cleaned = amountStr.replace(/[^0-9+\-.]/g, "");
+      const cleaned = amountStr.replace(/[^0-9+\-.]/g, "");
       return Number(cleaned);
     })();
 
@@ -106,8 +106,8 @@ const createRecurringTransaction = async (req, res) => {
 
     // Validate and normalize recurrence_type
     const safeRecurrenceType = String(recurrence_type || "monthly").toLowerCase().trim();
-    if (safeRecurrenceType !== "daily" && safeRecurrenceType !== "weekly" && 
-        safeRecurrenceType !== "monthly" && safeRecurrenceType !== "yearly") {
+    if (safeRecurrenceType !== "daily" && safeRecurrenceType !== "weekly" &&
+      safeRecurrenceType !== "monthly" && safeRecurrenceType !== "yearly") {
       return res.status(400).json({ message: "Recurrence type must be 'daily', 'weekly', 'monthly', or 'yearly'" });
     }
 
@@ -149,11 +149,11 @@ const createRecurringTransaction = async (req, res) => {
       const sse = req.app.get("sse");
       if (sse) {
         const sharedWith = await getUsersSharedWithOwner(req.user.id);
-        const payload = { 
-          type: "recurring:create", 
-          recurringTransactionId: recurringTransaction.id, 
-          ownerId: req.user.id, 
-          at: Date.now() 
+        const payload = {
+          type: "recurring:create",
+          recurringTransactionId: recurringTransaction.id,
+          ownerId: req.user.id,
+          at: Date.now()
         };
         sse.broadcastToUser(req.user.id, payload);
         if (sharedWith && sharedWith.length) sse.broadcastToUsers(sharedWith, payload);
@@ -163,6 +163,20 @@ const createRecurringTransaction = async (req, res) => {
     }
   } catch (err) {
     console.error("Create recurring transaction error:", err.message);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// Get all recurring transactions for the current user
+const getAllRecurringTransactions = async (req, res) => {
+  try {
+    const recurringTransactions = await RecurringTransaction.findAllByUserId(req.user.id);
+    res.json({
+      success: true,
+      recurringTransactions,
+    });
+  } catch (err) {
+    console.error("Get all recurring transactions error:", err.message);
     res.status(500).json({ message: "Server error" });
   }
 };
@@ -313,11 +327,11 @@ const updateRecurringTransaction = async (req, res) => {
       const sse = req.app.get("sse");
       if (sse) {
         const sharedWith = await getUsersSharedWithOwner(ownerId);
-        const payload = { 
-          type: "recurring:update", 
-          recurringTransactionId: updatedRecurringTransaction.id, 
-          ownerId, 
-          at: Date.now() 
+        const payload = {
+          type: "recurring:update",
+          recurringTransactionId: updatedRecurringTransaction.id,
+          ownerId,
+          at: Date.now()
         };
         sse.broadcastToUser(ownerId, payload);
         if (sharedWith && sharedWith.length) sse.broadcastToUsers(sharedWith, payload);
@@ -379,11 +393,11 @@ const deleteRecurringTransaction = async (req, res) => {
       const sse = req.app.get("sse");
       if (sse) {
         const sharedWith = await getUsersSharedWithOwner(ownerId);
-        const payload = { 
-          type: "recurring:delete", 
-          recurringTransactionId: id, 
-          ownerId, 
-          at: Date.now() 
+        const payload = {
+          type: "recurring:delete",
+          recurringTransactionId: id,
+          ownerId,
+          at: Date.now()
         };
         sse.broadcastToUser(ownerId, payload);
         if (sharedWith && sharedWith.length) sse.broadcastToUsers(sharedWith, payload);
@@ -399,6 +413,7 @@ const deleteRecurringTransaction = async (req, res) => {
 
 module.exports = {
   createRecurringTransaction,
+  getAllRecurringTransactions,
   getRecurringTransactionById,
   updateRecurringTransaction,
   deleteRecurringTransaction,
