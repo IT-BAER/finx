@@ -1,42 +1,41 @@
 const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
+const logger = require("./utils/logger"); // Import Logger
+const morgan = require("morgan"); // Import Morgan
 
 // Load environment variables
 dotenv.config();
 
 // Initialize app
 const app = express();
-// Remove X-Powered-By header explicitly (helmet also hides it, this is belt-and-suspenders)
+// Remove X-Powered-By header explicitly
 app.disable("x-powered-by");
 
 // Require JWT secret at startup (warn/fail in production)
 if (!process.env.JWT_SECRET) {
   const msg = "JWT_SECRET is not set. Set a strong secret in environment.";
   if (process.env.NODE_ENV === "production") {
-  console.error(msg);
-  // Do not start without a JWT secret in production
-  process.exit(1);
+    logger.error(msg);
+    process.exit(1);
   } else {
-    console.warn(msg);
+    logger.warn(msg);
   }
 }
 
 // Trust proxy for rate limiting
 app.set("trust proxy", 1);
 
-// Configure CORS for development and production
-// Prefer explicit origins via CORS_ORIGIN (comma-separated); allow all only in dev
+// Configure CORS
 const allowedOrigins = (process.env.CORS_ORIGIN || "")
   .split(",")
   .map((s) => s.trim())
   .filter(Boolean);
 const corsOptions = {
   origin: (origin, callback) => {
-    if (!origin) return callback(null, true); // non-browser clients
-  if (process.env.NODE_ENV === "development") return callback(null, true);
-  // In production, require explicit allowlist
-  if (allowedOrigins.length === 0) return callback(new Error("CORS not allowed"));
+    if (!origin) return callback(null, true);
+    if (process.env.NODE_ENV === "development") return callback(null, true);
+    if (allowedOrigins.length === 0) return callback(new Error("CORS not allowed"));
     if (allowedOrigins.includes(origin)) return callback(null, true);
     return callback(new Error("CORS not allowed"));
   },
@@ -46,6 +45,10 @@ const corsOptions = {
 
 // Middleware
 app.use(cors(corsOptions));
+// Use Morgan for HTTP logging, stream to Winston
+const morganFormat = process.env.NODE_ENV === "production" ? "combined" : "dev";
+app.use(morgan(morganFormat, { stream: logger.stream }));
+
 app.use(express.json());
 
 // Security middleware
@@ -55,7 +58,6 @@ const compression = require("compression");
 
 app.use(
   helmet({
-    // Set a conservative CSP; adjust if you add external hosts
     contentSecurityPolicy: {
       useDefaults: true,
       directives: {
@@ -63,25 +65,21 @@ app.use(
         "img-src": ["'self'", "data:", "blob:"],
         "object-src": ["'none'"],
         "base-uri": ["'self'"],
-        // Disallow embedding to prevent clickjacking
         "frame-ancestors": ["'none'"],
       },
     },
-    // Avoid leaking referrer information across origins
     referrerPolicy: { policy: "no-referrer" },
   }),
 );
 
-// Add Vary: Origin for CORS dynamic origins
 app.use((req, res, next) => {
   res.vary("Origin");
   next();
 });
-// Compression: skip SSE and similar streaming endpoints
+
 app.use(
   compression({
     filter: (req, res) => {
-      // Do not compress SSE
       if (req.path === "/api/events") return false;
       const accept = req.headers["accept"] || "";
       if (accept.includes("text/event-stream")) return false;
@@ -90,24 +88,23 @@ app.use(
   }),
 );
 
-// General rate limiting - more appropriate for web applications
+// General rate limiting
 const generalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 1000, // limit each IP to 1000 requests per windowMs
+  windowMs: 15 * 60 * 1000,
+  max: 1000,
   standardHeaders: true,
   legacyHeaders: false,
 });
 
-// Strict rate limiting for auth endpoints
+// Strict rate limiting
 const strictLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 10, // limit each IP to 10 requests per windowMs
+  windowMs: 15 * 60 * 1000,
+  max: 10,
   standardHeaders: true,
   legacyHeaders: false,
-  skipSuccessfulRequests: true, // Don't count successful requests
+  skipSuccessfulRequests: true,
 });
 
-// Apply general rate limiting to all routes
 app.use(generalLimiter);
 
 // Routes
@@ -115,20 +112,17 @@ app.get("/", (req, res) => {
   res.json({ message: "FinX API is running!" });
 });
 
-// Health checks
 app.get("/health", (req, res) => res.status(200).send("OK"));
-// API Health (for frontend connectivity checks)
 app.get("/api/health", (req, res) => {
-  // Lightweight JSON response, avoid DB to stay responsive
   res.status(200).json({ ok: true, time: Date.now() });
 });
 app.get("/ready", async (req, res) => {
   try {
-    // Simple DB connection check
     const db = require("./config/db");
     await db.query("SELECT 1");
     res.status(200).send("OK");
   } catch (err) {
+    logger.error("Readiness check failed: " + err.message);
     res.status(503).send("Service unavailable");
   }
 });
@@ -137,40 +131,30 @@ app.get("/ready", async (req, res) => {
 app.use("/api/auth", strictLimiter, require("./routes/auth"));
 app.use("/api/categories", require("./routes/category"));
 app.use("/api/transactions", require("./routes/transaction"));
-app.use(
-  "/api/recurring-transactions",
-  require("./routes/recurring-transactions"),
-);
-
+app.use("/api/recurring-transactions", require("./routes/recurring-transactions"));
 app.use("/api/sources", require("./routes/source"));
 app.use("/api/targets", require("./routes/target"));
 app.use("/api/sharing", require("./routes/sharing"));
 app.use("/api/users", require("./routes/user"));
 app.use("/api/admin", require("./routes/admin"));
 app.use("/api/goals", require("./routes/goal"));
-// Utilities for recurring testing (admin-only)
 app.use("/api/recurring-tools", require("./routes/recurring-tools"));
 
-// SSE events (authenticated). Implemented here to allow global broadcaster singleton.
+// SSE events
 const authSSE = require("./middleware/authSSE");
 const { createEventBroadcaster } = require("./utils/sse");
 const sse = createEventBroadcaster();
 
 app.get("/api/events", authSSE, (req, res) => {
-  // Set headers for SSE
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
   res.setHeader("Connection", "keep-alive");
-  // Disable proxy buffering where supported
   res.setHeader("X-Accel-Buffering", "no");
   res.setHeader("Cache-Control", "no-cache, no-transform");
-  // Allow CORS for SSE endpoint consistent with app CORS policy
   res.flushHeaders && res.flushHeaders();
 
   const userId = req.user?.id;
   const client = sse.addClient(res, userId);
-
-  // Send an initial ping with server time
   sse.send(client, { type: "hello", time: Date.now() });
 
   req.on("close", () => {
@@ -178,7 +162,7 @@ app.get("/api/events", authSSE, (req, res) => {
   });
 });
 
-// 404 handler for unknown routes
+// 404 handler
 app.use((req, res, next) => {
   if (req.path === "/" || req.path === "/health" || req.path === "/ready")
     return next();
@@ -188,7 +172,7 @@ app.use((req, res, next) => {
 // Error handling middleware
 app.use((err, req, res, next) => {
   const isDev = process.env.NODE_ENV !== "production";
-  console.error(err && err.stack ? err.stack : err);
+  logger.error(err.message, { stack: err.stack, path: req.path, method: req.method });
   res.status(err.status || 500).json({
     message: err.message || "Something went wrong!",
     ...(isDev ? { stack: err.stack } : {}),
@@ -199,11 +183,10 @@ app.use((err, req, res, next) => {
 const scheduler = require("./services/scheduler");
 scheduler.start();
 
-// Register recurring processor job to run once per day (safely scheduled)
+// Recurring Processor
 try {
   const recurringProcessor = require("./services/recurringProcessor");
-  // Schedule to run daily at 02:00 server local time (initial delay computed)
-  const initialDelay = scheduler.getNextRunTime(2, 0); // ms until next 02:00
+  const initialDelay = scheduler.getNextRunTime(2, 0);
   const oneDayMs = 24 * 60 * 60 * 1000;
   scheduler.scheduleJob(
     "recurring-processor",
@@ -211,56 +194,46 @@ try {
     oneDayMs,
     initialDelay,
   );
-  // In development, also run once on boot to make testing easier
   if (process.env.NODE_ENV !== "production") {
     setTimeout(() => {
       recurringProcessor
         .processRecurringJobs(app)
-        .then((s) => console.info("Boot recurring run stats:", s))
-        .catch((e) => console.error("Boot recurring run failed:", e));
+        .then((s) => logger.info("Boot recurring run stats: " + JSON.stringify(s)))
+        .catch((e) => logger.error("Boot recurring run failed", e));
     }, 2000);
   }
 } catch (e) {
-  console.error("Failed to register recurring processor job:", e);
+  logger.error("Failed to register recurring processor job", e);
 }
 
 // Start server
 const PORT = process.env.PORT || 5000;
-// In Docker, bind to 0.0.0.0 to be accessible from other containers
-// In development, this allows the frontend to proxy API calls
-const HOST = process.env.NODE_ENV === "production" ? "0.0.0.0" : "localhost";
-// Run automatic DB migrations on boot, then start server
+const HOST = "0.0.0.0"; // Bind to all interfaces to allow mobile access
 const { runAutoMigrations } = require("./utils/autoMigrate");
 
 (async () => {
   try {
     await runAutoMigrations();
   } catch (e) {
-    console.error("Automatic migrations failed:", e.message || e);
-    // In production we still start to allow health endpoint visibility; schema mismatch may surface in API calls
+    logger.error("Automatic migrations failed: " + e.message);
   }
   const server = app.listen(PORT, HOST, () => {
-    console.info(
-      `Server is running on ${HOST}:${PORT} (${HOST === "0.0.0.0" ? "all interfaces" : "localhost only"})`,
-    );
+    logger.info(`Server is running on ${HOST}:${PORT} (${HOST === "0.0.0.0" ? "all interfaces" : "localhost only"})`);
   });
 
-  // Expose broadcaster globally for controllers to publish events without import cycles
   app.set("sse", sse);
 
-  // Graceful shutdown
   function shutdown(signal) {
-    console.info(`Received ${signal}. Shutting down...`);
+    logger.info(`Received ${signal}. Shutting down...`);
     try {
       scheduler.stop();
     } catch (e) {
-      console.error("Error stopping scheduler", e);
+      logger.error("Error stopping scheduler", e);
     }
     server.close(() => {
-      console.info("HTTP server closed");
+      logger.info("HTTP server closed");
       process.exit(0);
     });
-    // Force exit if not closed in time
     setTimeout(() => process.exit(1), 10000).unref();
   }
 
