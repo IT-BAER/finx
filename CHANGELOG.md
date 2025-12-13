@@ -2,6 +2,20 @@
 
 All notable changes to this project are documented in this file.
 
+## [v0.7.3] - 2025-12-13
+
+### fix
+- **Recurring Transactions**: Fixed end-of-month scheduling bug (e.g., Jan 31 -> Feb 28) using UTC-safe date logic
+- **Recurring Transactions**: Enforced data integrity by verifying category ownership on creation/update
+- **Recurring Transactions**: Prevented duplicate rule creation (same title/amount/start date)
+- **Recurring Transactions**: Improved critical error logging for category mismatches
+
+### security
+- **Frontend Dependencies**: Resolved high-severity vulnerability in `glob` (via `npm audit fix`)
+
+### chore
+- Updated backend version to 0.7.3 and frontend to 0.7.2
+
 ## [v0.7.2] - 2025-12-13
 
 ### feat

@@ -18,24 +18,32 @@ function computeNextDate(
   const step = Number(interval) || 1;
   switch ((recurrenceType || "").toLowerCase()) {
     case "daily":
-      next.setDate(base.getDate() + occurrencesCreated * step + step);
+      next.setUTCDate(base.getUTCDate() + occurrencesCreated * step + step);
       break;
     case "weekly":
-      next.setDate(base.getDate() + (occurrencesCreated * step + step) * 7);
+      next.setUTCDate(base.getUTCDate() + (occurrencesCreated * step + step) * 7);
       break;
     case "monthly":
-      next.setMonth(base.getMonth() + occurrencesCreated * step + step);
+      // Add months
+      next.setUTCMonth(base.getUTCMonth() + occurrencesCreated * step + step);
+      // Check for overflow (e.g., Oct 31 -> Dec 1)
+      if (next.getUTCDate() !== base.getUTCDate()) {
+        next.setUTCDate(0);
+      }
       break;
     case "yearly":
-      next.setFullYear(base.getFullYear() + occurrencesCreated * step + step);
+      next.setUTCFullYear(base.getUTCFullYear() + occurrencesCreated * step + step);
       break;
     default:
       // default to monthly
-      next.setMonth(base.getMonth() + occurrencesCreated * step + step);
+      next.setUTCMonth(base.getUTCMonth() + occurrencesCreated * step + step);
+      if (next.getUTCDate() !== base.getUTCDate()) {
+        next.setUTCDate(0);
+      }
       break;
   }
   // Normalize time to start of day
-  next.setHours(0, 0, 0, 0);
+  next.setUTCHours(0, 0, 0, 0);
   return next;
 }
 
@@ -99,7 +107,7 @@ async function processRecurringJobs(app = null) {
           "SELECT 1 FROM transactions WHERE user_id = $1 AND amount = $2 AND date = $3 LIMIT 1",
           [r.user_id, r.amount, nextDate],
         );
-  if (existsQ.rows.length > 0) {
+        if (existsQ.rows.length > 0) {
           // Avoid duplicate creation; increment occurrences and set last_run
           await RecurringTransaction.markRun(r.id, now);
           continue;
@@ -117,8 +125,8 @@ async function processRecurringJobs(app = null) {
             category_id = categoryResult.rows[0].id;
           } else {
             // Category was deleted or invalid; log warning and skip category
-            console.warn(
-              `Recurring processor: category_id ${r.category_id} not found for user ${r.user_id}, creating transaction without category`,
+            console.error(
+              `CRITICAL: Category ${r.category_id} mismatch for User ${r.user_id}, creating transaction without category`,
             );
           }
         }
@@ -159,7 +167,7 @@ async function processRecurringJobs(app = null) {
           }
         }
 
-  const created = await Transaction.create(
+        const created = await Transaction.create(
           r.user_id,
           category_id,
           source_id,
@@ -180,9 +188,9 @@ async function processRecurringJobs(app = null) {
           );
         }
 
-  // Mark the run (increment occurrences_created and set last_run)
+        // Mark the run (increment occurrences_created and set last_run)
         await RecurringTransaction.markRun(r.id, now);
-  createdCount++;
+        createdCount++;
 
         console.log(
           `Recurring processor: created transaction ${created.id} for recurring ${r.id} on ${nextDate.toISOString().substring(0, 10)} (category: ${category_id || "none"}, source: ${source_id || "none"}, target: ${target_id || "none"})`,
@@ -194,7 +202,7 @@ async function processRecurringJobs(app = null) {
             sse.broadcastToUser(r.user_id, { type: "transaction:create", transactionId: created.id, ownerId: r.user_id, at: Date.now(), source: "recurring" });
             sse.broadcast({ type: "dashboard:summaryHint", ownerId: r.user_id, at: Date.now() });
           }
-        } catch (e) {}
+        } catch (e) { }
       } catch (e) {
         console.error("Error processing recurring entry", r.id, e);
         errors++;

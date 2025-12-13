@@ -111,6 +111,44 @@ const createRecurringTransaction = async (req, res) => {
       return res.status(400).json({ message: "Recurrence type must be 'daily', 'weekly', 'monthly', or 'yearly'" });
     }
 
+    const db = require("../config/db");
+
+    // VALIDATION: Ensure category_id belongs to the user
+    if (catId) {
+      const catCheck = await db.query(
+        "SELECT id FROM categories WHERE id = $1 AND user_id = $2",
+        [catId, req.user.id]
+      );
+      if (catCheck.rows.length === 0) {
+        return res.status(400).json({ message: "Invalid category_id for this user" });
+      }
+    }
+
+    // DUPLICATE CHECK: Prevent double-submission of identical rules
+    // Matches: user_id, title, amount, start_date, recurrence_interval
+    // Only checks active rules (end_date IS NULL) or generally identical ones
+    const dupCheck = await db.query(
+      `SELECT id FROM recurring_transactions 
+       WHERE user_id = $1 
+         AND title = $2 
+         AND amount = $3 
+         AND start_date = $4
+         AND recurrence_interval = $5
+         AND (end_date IS NULL OR end_date >= $6)`,
+      [
+        req.user.id,
+        titleFinal,
+        normalizedAmountNum,
+        startDateYMD,
+        safeInterval,
+        nowYMD
+      ]
+    );
+
+    if (dupCheck.rows.length > 0) {
+      return res.status(409).json({ message: "A similar recurring transaction already exists." });
+    }
+
     const recurringTransaction = await RecurringTransaction.create(
       req.user.id,
       titleFinal,
@@ -132,8 +170,7 @@ const createRecurringTransaction = async (req, res) => {
     // update that transaction to set its recurring_transaction_id
     // This ensures the recurring icon appears on the initial transaction
     if (txnId && recurringTransaction && recurringTransaction.id) {
-      const db = require("../config/db");
-      await db.query(
+      await db.query( // Using the db instance required above
         "UPDATE transactions SET recurring_transaction_id = $1 WHERE id = $2 AND user_id = $3",
         [recurringTransaction.id, txnId, req.user.id],
       );
@@ -308,6 +345,24 @@ const updateRecurringTransaction = async (req, res) => {
         normalized.recurrence_type = rt;
       } else {
         delete normalized.recurrence_type;
+      }
+    }
+
+    // VALIDATION: If category_id is being updated, check ownership
+    if (Object.prototype.hasOwnProperty.call(updatesRaw, "category_id")) {
+      const newCatId = updatesRaw.category_id ? parseInt(updatesRaw.category_id, 10) : null;
+      if (newCatId) {
+        const db = require("../config/db");
+        const catCheck = await db.query(
+          "SELECT id FROM categories WHERE id = $1 AND user_id = $2",
+          [newCatId, req.user.id]
+        );
+        if (catCheck.rows.length === 0) {
+          return res.status(400).json({ message: "Invalid category_id for this user" });
+        }
+        normalized.category_id = newCatId;
+      } else {
+        normalized.category_id = null;
       }
     }
 
