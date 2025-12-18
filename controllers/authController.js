@@ -128,8 +128,8 @@ const updateUser = async (req, res) => {
       first_name,
       last_name,
       theme,
-  dark_mode,
-  email,
+      dark_mode,
+      email,
     } = req.body;
 
     // Build dynamic query based on provided fields
@@ -219,7 +219,7 @@ const updateUser = async (req, res) => {
       RETURNING *
     `;
 
-  const result = await db.query(query, values);
+    const result = await db.query(query, values);
 
     if (result.rows.length === 0) {
       return res.status(404).json({ message: "User not found" });
