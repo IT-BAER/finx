@@ -85,6 +85,7 @@ TODO.md
 frontend/dev-dist/
 .clinerules/
 .kiro/
+.agent
 .tests/
 tmp/
 temp/
