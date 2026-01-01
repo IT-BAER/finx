@@ -1,21 +1,84 @@
 import axios from "axios";
-import { getAuthToken } from "../utils/auth";
+import {
+  getAuthToken,
+  getRefreshToken,
+  getRefreshTokenFamily,
+  getStoredUserId,
+  storeAuthData,
+  clearAuthData,
+  isTokenExpiringSoon
+} from "../utils/auth";
 import cache, { getCachedData, setCachedData, cacheKeys } from "../utils/cache";
 import offlineStorage from "../utils/offlineStorage.js";
 import { getIsOnline } from "./connectivity.js";
-// Removed prefetchData import to avoid circular dependency
-// Rate limiting removed temporarily
-// Removed prefetchData import to avoid circular dependency
 
 // Create axios instance with relative URL for proxy support
 const api = axios.create({
   baseURL: "/api",
 });
 
-// Add auth token to requests
+// Refresh state management
+let isRefreshing = false;
+let refreshSubscribers = [];
+
+// Subscribe to token refresh
+const subscribeTokenRefresh = (callback) => {
+  refreshSubscribers.push(callback);
+};
+
+// Notify all subscribers when token is refreshed
+const onTokenRefreshed = (newToken) => {
+  refreshSubscribers.forEach((callback) => callback(newToken));
+  refreshSubscribers = [];
+};
+
+// Notify all subscribers of refresh failure
+const onRefreshFailed = () => {
+  refreshSubscribers.forEach((callback) => callback(null));
+  refreshSubscribers = [];
+};
+
+// Attempt to refresh the access token
+const refreshAccessToken = async () => {
+  const refreshToken = getRefreshToken();
+  const refreshTokenFamily = getRefreshTokenFamily();
+  const userId = getStoredUserId();
+
+  if (!refreshToken || !refreshTokenFamily || !userId) {
+    throw new Error("No refresh token available");
+  }
+
+  // Use a direct axios call to avoid interceptor loop
+  const response = await axios.post("/api/auth/refresh", {
+    refreshToken,
+    refreshTokenFamily,
+    userId,
+  });
+
+  // Store the new tokens
+  storeAuthData(response.data);
+
+  return response.data.token;
+};
+
+// Add auth token to requests (and proactively refresh if expiring soon)
 api.interceptors.request.use(
-  (config) => {
-    const token = getAuthToken();
+  async (config) => {
+    let token = getAuthToken();
+
+    // Proactively refresh if token is expiring soon (within 30 seconds)
+    if (token && isTokenExpiringSoon(token, 30) && !isRefreshing) {
+      try {
+        isRefreshing = true;
+        token = await refreshAccessToken();
+        isRefreshing = false;
+      } catch (error) {
+        isRefreshing = false;
+        // Don't fail the request yet, let the response interceptor handle it
+        console.warn("Proactive token refresh failed:", error.message);
+      }
+    }
+
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -26,15 +89,59 @@ api.interceptors.request.use(
   },
 );
 
-// Handle 401 errors (unauthorized) by logging out the user
+// Handle 401 errors by attempting token refresh first
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
-    if (error.response && error.response.status === 401) {
-      // Remove token and redirect to login
-      localStorage.removeItem("token");
-      window.location.href = "/login";
+  async (error) => {
+    const originalRequest = error.config;
+
+    // Check if this is a 401 error and we haven't already tried to refresh
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      // Don't try to refresh the refresh endpoint itself
+      if (originalRequest.url === "/auth/refresh") {
+        clearAuthData();
+        window.location.href = "/login";
+        return Promise.reject(error);
+      }
+
+      originalRequest._retry = true;
+
+      // If already refreshing, wait for refresh to complete
+      if (isRefreshing) {
+        return new Promise((resolve, reject) => {
+          subscribeTokenRefresh((newToken) => {
+            if (newToken) {
+              originalRequest.headers.Authorization = `Bearer ${newToken}`;
+              resolve(api(originalRequest));
+            } else {
+              reject(error);
+            }
+          });
+        });
+      }
+
+      isRefreshing = true;
+
+      try {
+        const newToken = await refreshAccessToken();
+        isRefreshing = false;
+        onTokenRefreshed(newToken);
+
+        // Retry the original request with new token
+        originalRequest.headers.Authorization = `Bearer ${newToken}`;
+        return api(originalRequest);
+      } catch (refreshError) {
+        isRefreshing = false;
+        onRefreshFailed();
+
+        // Refresh failed - clear auth and redirect to login
+        console.error("Token refresh failed:", refreshError.message);
+        clearAuthData();
+        window.location.href = "/login";
+        return Promise.reject(error);
+      }
     }
+
     return Promise.reject(error);
   },
 );
@@ -43,6 +150,8 @@ api.interceptors.response.use(
 export const authAPI = {
   register: (data) => api.post("/auth/register", data),
   login: (data) => api.post("/auth/login", data),
+  logout: () => api.post("/auth/logout"),
+  refresh: (data) => api.post("/auth/refresh", data),
   getCurrentUser: () => api.get("/auth/me"),
   updateUser: (data) => api.put("/auth/me", data),
   changePassword: (data) => api.post("/auth/change-password", data),
@@ -178,16 +287,16 @@ export const transactionAPI = {
       return Promise.resolve({ data: { data: cached } });
     }
 
-  // Persistent cache key used by offlineStorage (normalize param order)
-  const usp = new URLSearchParams(params || {});
-  const persistentKey = `/api/transactions/dashboard${usp.toString() ? `?${usp.toString()}` : ""}`;
+    // Persistent cache key used by offlineStorage (normalize param order)
+    const usp = new URLSearchParams(params || {});
+    const persistentKey = `/api/transactions/dashboard${usp.toString() ? `?${usp.toString()}` : ""}`;
 
     // If offline (including offline startup), try persistent cache in IndexedDB first
     if (typeof window !== "undefined" && !getIsOnline()) {
       const persisted = await offlineStorage.getCachedAPIResponse(persistentKey);
       if (persisted) {
         // Seed in-memory for this session too
-        try { setCachedData(cacheKey, persisted.data, 2 * 60 * 1000); } catch {}
+        try { setCachedData(cacheKey, persisted.data, 2 * 60 * 1000); } catch { }
         return { data: persisted };
       }
     }
@@ -200,17 +309,17 @@ export const transactionAPI = {
       // Persist entire response payload for robust offline fallback
       try {
         await offlineStorage.cacheAPIResponse(persistentKey, response.data);
-      } catch {}
+      } catch { }
       return response;
     } catch (err) {
       // Network failed or 401 redirected. Fall back to persisted cache if available.
       try {
         const persisted = await offlineStorage.getCachedAPIResponse(persistentKey);
         if (persisted) {
-          try { setCachedData(cacheKey, persisted.data, 2 * 60 * 1000); } catch {}
+          try { setCachedData(cacheKey, persisted.data, 2 * 60 * 1000); } catch { }
           return { data: persisted };
         }
-      } catch {}
+      } catch { }
       throw err;
     }
   },
@@ -223,37 +332,37 @@ export const transactionAPI = {
       return Promise.resolve({ data: { data: cached } });
     }
 
-  // Persistent cache key used by offlineStorage (normalize param order)
-  const usp = new URLSearchParams(params || {});
-  const persistentKey = `/api/transactions/report${usp.toString() ? `?${usp.toString()}` : ""}`;
+    // Persistent cache key used by offlineStorage (normalize param order)
+    const usp = new URLSearchParams(params || {});
+    const persistentKey = `/api/transactions/report${usp.toString() ? `?${usp.toString()}` : ""}`;
 
     // If offline (including offline startup), try persistent cache first
     if (typeof window !== "undefined" && !getIsOnline()) {
       const persisted = await offlineStorage.getCachedAPIResponse(persistentKey);
       if (persisted) {
-        try { setCachedData(cacheKey, persisted.data, 2 * 60 * 1000); } catch {}
+        try { setCachedData(cacheKey, persisted.data, 2 * 60 * 1000); } catch { }
         return { data: persisted };
       }
     }
 
     // Try network with graceful fallback to cache
     try {
-  const response = await api.get("/transactions/dashboard", { params });
+      const response = await api.get("/transactions/dashboard", { params });
       // Cache the result for 2 minutes (report data can change frequently)
       setCachedData(cacheKey, response.data.data, 2 * 60 * 1000);
       // Persist entire response payload for robust offline fallback
       try {
         await offlineStorage.cacheAPIResponse(persistentKey, response.data);
-      } catch {}
+      } catch { }
       return response;
     } catch (err) {
       try {
         const persisted = await offlineStorage.getCachedAPIResponse(persistentKey);
         if (persisted) {
-          try { setCachedData(cacheKey, persisted.data, 2 * 60 * 1000); } catch {}
+          try { setCachedData(cacheKey, persisted.data, 2 * 60 * 1000); } catch { }
           return { data: persisted };
         }
-      } catch {}
+      } catch { }
       throw err;
     }
   },

@@ -2,13 +2,15 @@ const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const db = require("../config/db");
 const bcrypt = require("bcryptjs");
+const refreshTokenUtil = require("../utils/refreshToken");
+const logger = require("../utils/logger");
 
-// Generate JWT token
-const generateToken = (id, rememberMe = false) => {
-  // "Remember me" = long-lived but finite token; otherwise short-lived
-  // 90 days vs 1 day
-  const expiresInSeconds = rememberMe ? 90 * 24 * 60 * 60 : 24 * 60 * 60;
-  return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: expiresInSeconds });
+// Access token lifetime: 15 minutes (short-lived for security)
+const ACCESS_TOKEN_EXPIRY_SECONDS = 15 * 60;
+
+// Generate JWT access token (short-lived)
+const generateToken = (id) => {
+  return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: ACCESS_TOKEN_EXPIRY_SECONDS });
 };
 
 // Register user
@@ -25,12 +27,18 @@ const register = async (req, res) => {
     // Create user
     const user = await User.create(email, password);
 
-    // Generate token with default expiration (1 day)
-    const token = generateToken(user.id, false);
+    // Generate access token (short-lived)
+    const accessToken = generateToken(user.id);
+
+    // Generate refresh token (long-lived)
+    const refreshData = await refreshTokenUtil.createRefreshToken(user.id);
 
     res.status(201).json({
       success: true,
-      token,
+      token: accessToken,
+      refreshToken: refreshData.token,
+      refreshTokenFamily: refreshData.family,
+      expiresIn: ACCESS_TOKEN_EXPIRY_SECONDS,
       user: {
         id: user.id,
         email: user.email,
@@ -52,7 +60,7 @@ const register = async (req, res) => {
 // Login user
 const login = async (req, res) => {
   try {
-    const { email, password, rememberMe } = req.body;
+    const { email, password } = req.body;
 
     // Check if user exists
     const user = await User.findByEmail(email);
@@ -72,12 +80,18 @@ const login = async (req, res) => {
       [user.id],
     );
 
-    // Generate token
-    const token = generateToken(user.id, rememberMe);
+    // Generate access token (short-lived)
+    const accessToken = generateToken(user.id);
+
+    // Generate refresh token (long-lived)
+    const refreshData = await refreshTokenUtil.createRefreshToken(user.id);
 
     res.json({
       success: true,
-      token,
+      token: accessToken,
+      refreshToken: refreshData.token,
+      refreshTokenFamily: refreshData.family,
+      expiresIn: ACCESS_TOKEN_EXPIRY_SECONDS,
       user: {
         id: user.id,
         email: user.email,
@@ -91,7 +105,7 @@ const login = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error("Login error:", err.message);
+    logger.error("Login error:", err.message);
     res.status(500).json({ message: "Server error" });
   }
 };
@@ -308,7 +322,86 @@ const deleteAccount = async (req, res) => {
 
     res.json({ success: true, message: "Account deleted successfully" });
   } catch (err) {
-    console.error("Delete account error:", err.message);
+    logger.error("Delete account error:", err.message);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// Refresh access token using refresh token
+const refreshToken = async (req, res) => {
+  try {
+    const { refreshToken: token, refreshTokenFamily: family, userId } = req.body;
+
+    // Validate required fields
+    if (!token || !family || !userId) {
+      return res.status(400).json({
+        message: "Refresh token, token family, and user ID are required"
+      });
+    }
+
+    // Validate user ID is a number
+    const parsedUserId = parseInt(userId, 10);
+    if (isNaN(parsedUserId)) {
+      return res.status(400).json({ message: "Invalid user ID" });
+    }
+
+    // Validate and rotate the refresh token
+    const result = await refreshTokenUtil.validateAndRotateToken(
+      parsedUserId,
+      token,
+      family
+    );
+
+    if (!result.valid) {
+      // Log the security event
+      logger.warn(`Refresh token validation failed for user ${parsedUserId}: ${result.error}`);
+      return res.status(401).json({ message: result.error });
+    }
+
+    // Get user to verify they still exist
+    const user = await User.findById(parsedUserId);
+    if (!user) {
+      await refreshTokenUtil.revokeRefreshToken(parsedUserId);
+      return res.status(401).json({ message: "User not found" });
+    }
+
+    // Generate new access token
+    const accessToken = generateToken(user.id);
+
+    res.json({
+      success: true,
+      token: accessToken,
+      refreshToken: result.newToken,
+      refreshTokenFamily: result.newFamily,
+      expiresIn: ACCESS_TOKEN_EXPIRY_SECONDS,
+      user: {
+        id: user.id,
+        email: user.email,
+        first_name: user.first_name,
+        last_name: user.last_name,
+        income_tracking_disabled: user.income_tracking_disabled,
+        theme: user.theme,
+        dark_mode: user.dark_mode,
+        is_admin: user.isAdmin(),
+        last_login: user.last_login,
+      },
+    });
+  } catch (err) {
+    logger.error("Refresh token error:", err.message);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// Logout - revoke refresh token
+const logout = async (req, res) => {
+  try {
+    // Revoke the user's refresh token
+    await refreshTokenUtil.revokeRefreshToken(req.user.id);
+
+    logger.info(`User ${req.user.id} logged out successfully`);
+    res.json({ success: true, message: "Logged out successfully" });
+  } catch (err) {
+    logger.error("Logout error:", err.message);
     res.status(500).json({ message: "Server error" });
   }
 };
@@ -320,4 +413,6 @@ module.exports = {
   updateUser,
   changePassword,
   deleteAccount,
+  refreshToken,
+  logout,
 };

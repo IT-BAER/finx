@@ -3,6 +3,7 @@ const RecurringTransaction = require("../models/RecurringTransaction");
 const Category = require("../models/Category");
 const User = require("../models/User");
 const db = require("../config/db");
+const cache = require("../services/cache");
 const { getAccessibleUserIds, validateAsUserId, getSharingPermissionMeta, getUsersSharedWithOwner } = require("../utils/access");
 
 // Create transaction
@@ -125,10 +126,10 @@ const createTransaction = async (req, res) => {
       date || new Date(),
       amount,
       transactionType,
-  description || "",
-  inCategory || null,
-  inSource || null,
-  inTarget || null,
+      description || "",
+      inCategory || null,
+      inSource || null,
+      inTarget || null,
     ]);
 
     if (dupRes.rows.length > 0) {
@@ -156,14 +157,21 @@ const createTransaction = async (req, res) => {
       transaction,
     });
 
-  // Emit SSE event to owner and any viewers
+    // Invalidate dashboard cache for affected users
+    try {
+      await cache.invalidateDashboard(req.user.id);
+    } catch (cacheErr) {
+      console.warn("Cache invalidation failed:", cacheErr?.message);
+    }
+
+    // Emit SSE event to owner and any viewers
     try {
       const sse = req.app.get("sse");
       if (sse) {
-    const sharedWith = await getUsersSharedWithOwner(req.user.id);
-    const payload = { type: "transaction:create", transactionId: transaction.id, ownerId: req.user.id, at: Date.now() };
-    sse.broadcastToUser(req.user.id, payload);
-    if (sharedWith && sharedWith.length) sse.broadcastToUsers(sharedWith, payload);
+        const sharedWith = await getUsersSharedWithOwner(req.user.id);
+        const payload = { type: "transaction:create", transactionId: transaction.id, ownerId: req.user.id, at: Date.now() };
+        sse.broadcastToUser(req.user.id, payload);
+        if (sharedWith && sharedWith.length) sse.broadcastToUsers(sharedWith, payload);
       }
     } catch (e) {
       // Log SSE broadcast errors but don't fail the request
@@ -227,12 +235,12 @@ const getTransactions = async (req, res) => {
     const rows = result.rows;
 
     // Compute per-owner edit capability for requester based on sharing_permissions
-  const distinctOwnerIds = [...new Set(rows.map((r) => r.user_id))];
+    const distinctOwnerIds = [...new Set(rows.map((r) => r.user_id))];
     const otherOwners = distinctOwnerIds.filter(
       (uid) => Number(uid) !== Number(req.user.id),
     );
 
-  let permsByOwner = {};
+    let permsByOwner = {};
     if (otherOwners.length > 0) {
       // Parameter $1 is the requester (shared_with_user_id), owners start at $2..$N
       const ownersPlaceholders = otherOwners
@@ -396,7 +404,7 @@ const getTransactionById = async (req, res) => {
     // 1. This transaction belongs to a recurring rule (has recurring_transaction_id set)
     // 2. This is the initial transaction that created a recurring rule (recurring_transactions.transaction_id = this transaction)
     let recurringTransaction = null;
-    
+
     if (transaction.recurring_transaction_id) {
       // Priority: If this transaction has recurring_transaction_id, use that specific rule
       recurringTransaction = await RecurringTransaction.findById(
@@ -420,30 +428,30 @@ const getTransactionById = async (req, res) => {
   }
 };
 
- // Update transaction
- const updateTransaction = async (req, res) => {
-   try {
-     const { id } = req.params;
-     const {
-       category,
-       category_id,
-       source,
-       target,
-       amount,
-       type,
-       description,
-       date,
-     } = req.body;
+// Update transaction
+const updateTransaction = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      category,
+      category_id,
+      source,
+      target,
+      amount,
+      type,
+      description,
+      date,
+    } = req.body;
 
-     // Normalize incoming strings
-     const norm = (s) => (s == null ? null : String(s).trim());
-     const normLower = (s) => (s == null ? null : String(s).trim().toLowerCase());
+    // Normalize incoming strings
+    const norm = (s) => (s == null ? null : String(s).trim());
+    const normLower = (s) => (s == null ? null : String(s).trim().toLowerCase());
 
-     const inCategory = norm(category);
-     const inSource = norm(source);
-     const inTarget = norm(target);
+    const inCategory = norm(category);
+    const inSource = norm(source);
+    const inTarget = norm(target);
 
-     // Debug logs to help diagnose 404s when updating income transactions
+    // Debug logs to help diagnose 404s when updating income transactions
     if (process.env.DEBUG === "true") {
       console.log(
         `updateTransaction called for id=${id} by user=${req.user?.id}. Body keys: ${Object.keys(req.body).join(",")}`,
@@ -512,7 +520,7 @@ const getTransactionById = async (req, res) => {
     // Check if category belongs to user (if provided and not newly created)
     if (categoryId && !category) {
       // Use findByIdForUser to enforce ownership check at the model level
-  const categoryRecord = await Category.findByIdForUser(categoryId, ownerId);
+      const categoryRecord = await Category.findByIdForUser(categoryId, ownerId);
       if (process.env.DEBUG === "true") {
         console.log(
           "Checking category ownership via findByIdForUser: categoryId=%s, categoryRecord=",
@@ -531,13 +539,13 @@ const getTransactionById = async (req, res) => {
     }
 
     // Handle source
-  let source_id = transaction.source_id;
+    let source_id = transaction.source_id;
     if (source !== undefined) {
       if (inSource) {
         // Try to find existing source
         const sourceResult = await db.query(
-      "SELECT id FROM sources WHERE user_id = $1 AND LOWER(TRIM(name)) = LOWER(TRIM($2)) LIMIT 1",
-      [ownerId, inSource],
+          "SELECT id FROM sources WHERE user_id = $1 AND LOWER(TRIM(name)) = LOWER(TRIM($2)) LIMIT 1",
+          [ownerId, inSource],
         );
 
         if (sourceResult.rows.length > 0) {
@@ -556,13 +564,13 @@ const getTransactionById = async (req, res) => {
     }
 
     // Handle target
-  let target_id = transaction.target_id;
+    let target_id = transaction.target_id;
     if (target !== undefined) {
       if (inTarget) {
         // Try to find existing target
         const targetResult = await db.query(
-      "SELECT id FROM targets WHERE user_id = $1 AND LOWER(TRIM(name)) = LOWER(TRIM($2)) LIMIT 1",
-      [ownerId, inTarget],
+          "SELECT id FROM targets WHERE user_id = $1 AND LOWER(TRIM(name)) = LOWER(TRIM($2)) LIMIT 1",
+          [ownerId, inTarget],
         );
 
         if (targetResult.rows.length > 0) {
@@ -617,7 +625,7 @@ const getTransactionById = async (req, res) => {
       description || transaction.description,
       date || transaction.date,
     );
- 
+
     if (process.env.DEBUG === "true") {
       console.log("updateByUser result:", updatedTransaction);
     }
@@ -625,24 +633,33 @@ const getTransactionById = async (req, res) => {
       if (process.env.DEBUG === "true") {
         console.log(`updateByUser returned no rows for id=${id} user=${req.user?.id}`);
       }
-  return res.status(404).json({ message: "Transaction not found" });
+      return res.status(404).json({ message: "Transaction not found" });
     }
- 
+
     res.json({
       success: true,
       transaction: updatedTransaction,
     });
-  // Emit update event
+
+    // Invalidate dashboard cache for affected users
+    try {
+      const ownerId = Number(updatedTransaction.user_id);
+      await cache.invalidateDashboard(ownerId);
+    } catch (cacheErr) {
+      console.warn("Cache invalidation failed:", cacheErr?.message);
+    }
+
+    // Emit update event
     try {
       const sse = req.app.get("sse");
       if (sse) {
         const ownerId = Number(updatedTransaction.user_id);
-    const sharedWith = await getUsersSharedWithOwner(ownerId);
-    const payload = { type: "transaction:update", transactionId: updatedTransaction.id, ownerId, at: Date.now() };
-    sse.broadcastToUser(ownerId, payload);
-    if (sharedWith && sharedWith.length) sse.broadcastToUsers(sharedWith, payload);
+        const sharedWith = await getUsersSharedWithOwner(ownerId);
+        const payload = { type: "transaction:update", transactionId: updatedTransaction.id, ownerId, at: Date.now() };
+        sse.broadcastToUser(ownerId, payload);
+        if (sharedWith && sharedWith.length) sse.broadcastToUsers(sharedWith, payload);
       }
-    } catch (e) {}
+    } catch (e) { }
   } catch (err) {
     console.error("Update transaction error:", err.message);
     res.status(500).json({ message: "Server error" });
@@ -696,17 +713,28 @@ const deleteTransaction = async (req, res) => {
       success: true,
       transaction: deletedTransaction,
     });
-  // Emit delete event
+
+    // Invalidate dashboard cache for affected users
+    if (deletedTransaction) {
+      try {
+        const ownerId = Number(deletedTransaction.user_id);
+        await cache.invalidateDashboard(ownerId);
+      } catch (cacheErr) {
+        console.warn("Cache invalidation failed:", cacheErr?.message);
+      }
+    }
+
+    // Emit delete event
     try {
       const sse = req.app.get("sse");
       if (sse && deletedTransaction) {
         const ownerId = Number(deletedTransaction.user_id);
-    const sharedWith = await getUsersSharedWithOwner(ownerId);
-    const payload = { type: "transaction:delete", transactionId: Number(id), ownerId, at: Date.now() };
-    sse.broadcastToUser(ownerId, payload);
-    if (sharedWith && sharedWith.length) sse.broadcastToUsers(sharedWith, payload);
+        const sharedWith = await getUsersSharedWithOwner(ownerId);
+        const payload = { type: "transaction:delete", transactionId: Number(id), ownerId, at: Date.now() };
+        sse.broadcastToUser(ownerId, payload);
+        if (sharedWith && sharedWith.length) sse.broadcastToUsers(sharedWith, payload);
       }
-    } catch (e) {}
+    } catch (e) { }
   } catch (err) {
     console.error("Delete transaction error:", err.message);
     res.status(500).json({ message: "Server error" });
@@ -723,10 +751,6 @@ const getDashboardData = async (req, res) => {
     const userIds = singleUserId
       ? [singleUserId]
       : await getAccessibleUserIds(req.user.id, "all");
-
-  // For income tracking disabled we need per-user flags. In aggregated (multi-user) view,
-  // always include income to avoid hiding items inconsistently vs the transactions list.
-  // Only honor the flag when explicitly viewing a single user (asUserId).
 
     // Calculate date ranges
     let start, end;
@@ -751,6 +775,24 @@ const getDashboardData = async (req, res) => {
     }
     const startDateStr = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, "0")}-${String(start.getDate()).padStart(2, "0")}`;
     const endDateStr = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, "0")}-${String(end.getDate()).padStart(2, "0")}`;
+
+    // Cache key based on user, date range, and view mode
+    const viewMode = timeRange || "monthly";
+    const cacheKey = cache.dashboardKey(req.user.id, startDateStr, endDateStr, viewMode);
+
+    // Try cache first
+    const cachedData = await cache.get(cacheKey);
+    if (cachedData) {
+      return res.json({
+        success: true,
+        data: cachedData,
+        cached: true,
+      });
+    }
+
+    // For income tracking disabled we need per-user flags. In aggregated (multi-user) view,
+    // always include income to avoid hiding items inconsistently vs the transactions list.
+    // Only honor the flag when explicitly viewing a single user (asUserId).
 
     // Helper to get per-user income tracking flag
     async function isIncomeDisabled(uid) {
@@ -824,7 +866,7 @@ const getDashboardData = async (req, res) => {
         dailyExpensesMap.set(key, prev + Number(row.total || 0));
       }
 
-  if (!incomeDisabled) {
+      if (!incomeDisabled) {
         const ibd = await Transaction.getIncomeByDate(
           uid,
           startDateStr,
@@ -870,17 +912,27 @@ const getDashboardData = async (req, res) => {
       .map(([date, average_amount]) => ({ date, average_amount }))
       .sort((a, b) => new Date(a.date) - new Date(b.date));
 
+    // Build response data
+    const dashboardData = {
+      summary,
+      recentTransactions,
+      expenseByCategory,
+      dailyAverageExpenses,
+      weeklyExpenses: weeklyExpensesTotals,
+      dailyExpenses,
+      incomeByDate,
+    };
+
+    // Cache the computed data (60 second TTL)
+    try {
+      await cache.set(cacheKey, dashboardData, 60);
+    } catch (cacheErr) {
+      console.warn("Cache set failed:", cacheErr?.message);
+    }
+
     res.json({
       success: true,
-      data: {
-        summary,
-        recentTransactions,
-        expenseByCategory,
-        dailyAverageExpenses,
-        weeklyExpenses: weeklyExpensesTotals,
-        dailyExpenses,
-        incomeByDate,
-      },
+      data: dashboardData,
     });
   } catch (err) {
     console.error("Get dashboard data error:", err.message);

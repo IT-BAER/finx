@@ -6,6 +6,8 @@ const {
   updateUser,
   changePassword,
   deleteAccount,
+  refreshToken,
+  logout,
 } = require("../controllers/authController");
 const auth = require("../middleware/auth");
 
@@ -23,6 +25,12 @@ if (process.env.DISABLE_REGISTRATION !== "true") {
 // Login route
 router.post("/login", login);
 
+// Refresh token route (no auth middleware - uses refresh token for authentication)
+router.post("/refresh", refreshToken);
+
+// Logout route (protected - needs valid access token or refresh token)
+router.post("/logout", auth, logout);
+
 // Get current user (protected route)
 router.get("/me", auth, getCurrentUser);
 
@@ -36,3 +44,4 @@ router.post("/change-password", auth, changePassword);
 router.delete("/me", auth, deleteAccount);
 
 module.exports = router;
+

@@ -2,6 +2,19 @@
 
 All notable changes to this project are documented in this file.
 
+## [v0.7.4] - 2026-01-01
+
+### feat
+- **Caching**: Redis caching integration with in-memory LRU fallback
+- **Caching**: Dashboard data caching with automatic invalidation on transaction changes
+- **Authentication**: Refresh token flow with secure token rotation
+- **Authentication**: Token family tracking for reuse attack detection
+- **Real-time**: SSE endpoint improvements for mobile app support
+
+### chore
+- Added `ioredis` dependency for Redis support
+- Added Redis installation option to setup.sh
+
 ## [v0.7.3] - 2025-12-13
 
 ### fix

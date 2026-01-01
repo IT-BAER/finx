@@ -291,6 +291,21 @@ install_postgres() {
     $SUDO systemctl start postgresql
 }
 
+install_redis() {
+    # Only install if user opted in
+    [ "${INSTALL_REDIS:-n}" = "y" ] || return 0
+    
+    if ! command -v redis-server >/dev/null 2>&1; then
+        say "Installing Redis"
+        ensure_pkg redis-server
+    else
+        ok "Redis already installed"
+    fi
+    $SUDO systemctl enable redis-server
+    $SUDO systemctl start redis-server
+    ok "Redis is running on localhost:6379"
+}
+
 # Run apt-get update once per session to speed up repeated installs
 APT_UPDATED_FLAG="/tmp/.finx-apt-updated.flag"
 apt_update_once() {
@@ -641,6 +656,12 @@ prompt_inputs() {
     fi
     read -rp "Database name [finx_db]: " DB_NAME || true; DB_NAME=${DB_NAME:-finx_db}
     read -rp "Database user [finx_user]: " DB_USER || true; DB_USER=${DB_USER:-finx_user}
+    
+    # Redis caching (optional - improves dashboard performance)
+    echo ""
+    say "Redis Cache (Optional - improves dashboard performance)"
+    read -rp "Install Redis for caching? [y/N]: " INSTALL_REDIS || true
+    INSTALL_REDIS=$(echo "${INSTALL_REDIS:-N}" | tr '[:upper:]' '[:lower:]')
 }
 
 create_user_if_needed() {
@@ -748,6 +769,14 @@ CORS_ORIGIN=${ORIGINS}
 # Feature flags
 DISABLE_REGISTRATION=true
 EOF
+
+    # Add Redis URL if Redis was installed
+    if [ "${INSTALL_REDIS:-n}" = "y" ]; then
+        $SUDO bash -c "echo '' >> '${ENV_FILE}'"
+        $SUDO bash -c "echo '# Redis Cache (optional - falls back to in-memory if unavailable)' >> '${ENV_FILE}'"
+        $SUDO bash -c "echo 'REDIS_URL=redis://127.0.0.1:6379' >> '${ENV_FILE}'"
+    fi
+
     $SUDO chmod 640 "$ENV_FILE"
     if [ "${CREATE_USER}" = "y" ]; then
         $SUDO chown ${APP_USER}:root "$ENV_FILE"
@@ -1215,6 +1244,7 @@ main() {
     ensure_repo
     install_node
     install_postgres
+    install_redis
     install_web_server
     # Pick a frontend port before creating vhosts
     choose_frontend_port 3000
