@@ -1,22 +1,36 @@
 <div align="center">
 
-# FinX — Personal Finance Tracker (PWA)
+# FinX — Personal Finance Tracker
 
 [![Node.js](https://img.shields.io/badge/Node.js-20.x-green.svg)](https://nodejs.org/)
 [![Express](https://img.shields.io/badge/Backend-Express-informational.svg)](https://expressjs.com/)
 [![React](https://img.shields.io/badge/Frontend-React%20%2B%20Vite-61DAFB.svg)](https://react.dev/)
 [![PostgreSQL](https://img.shields.io/badge/DB-PostgreSQL-336791.svg)](https://www.postgresql.org/)
-![PWA](https://img.shields.io/badge/PWA-Ready-blueviolet.svg)
+![Android](https://img.shields.io/badge/Android-App%20Available-3DDC84.svg)
+![Open Source](https://img.shields.io/badge/Open%20Source-Free-brightgreen.svg)
 
 <img src="./finx%20-%20banner.jpg" alt="FinX — Self‑Hosted Personal Finance" style="max-width: 100%; height: auto;" />
 
-Modern, offline-capable personal finance app with sharing, recurring transactions, and fast mobile UX.
+Modern, self-hosted, open-source personal finance app with sharing, recurring transactions, and fast UX.
+
+**Free forever. Self-hosted. Your data stays yours.**
 
 </div>
+
+## 📱 Native Android App
+
+Looking for a native Android experience? Check out **FinX Mobile** — a standalone Android app that works:
+- **Local Mode**: Fully offline, all data stored on your device. No server required.
+- **Server Mode**: Connect to your self-hosted FinX backend for sync and sharing features.
+
+> 📦 *Available on Google Play (coming soon).*
+
+<br>
 
 ## 📚 Table of Contents
 
 <p align="center">
+   <a href="#-native-android-app">📱 Android App</a> •
    <a href="#-key-features">✨ Features</a> •
 
    <a href="#-requirements">🧰 Requirements</a> •
@@ -39,10 +53,8 @@ Modern, offline-capable personal finance app with sharing, recurring transaction
 
 ## ✨ Key Features
 
-- Offline-first PWA: read endpoints cached, queued mutations when offline; server reachability-based connectivity (polls `/api/health`)
 - Realtime updates: transaction changes propagate instantly across devices via SSE; Dashboard and Reports auto-refresh without manual reload
-- Secure offline capture: server does not need public exposure—users can add transactions entirely offline; changes queue locally and sync when the server becomes reachable again
-- Fast mobile UX: early CSS delivery, passive listeners, tuned SW auto-update
+- Fast UX: early CSS delivery, passive listeners, lazy loading for optimal performance
 - Transactions with categories, sources, targets; imports with duplicate detection
 - Recurring rules and background processor (systemd scheduler supported)
 - Sharing with fine-grained can_edit access; visibility honored server-side

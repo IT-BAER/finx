@@ -2,6 +2,131 @@
 
 All notable changes to this project are documented in this file.
 
+## [v0.8.0] - 2026-01-03
+
+### feat
+
+#### TypeScript & React Query Integration
+- **TypeScript**: Added TypeScript support to frontend with strict type checking
+  - Created `tsconfig.json` with modern TypeScript 5.x configuration
+  - Added comprehensive type definitions in `frontend/src/types/index.ts`
+  - Type definitions for Transaction, Category, Source, Target, Goal, User, and more
+  - Added `vite-env.d.ts` for Vite environment types
+- **React Query**: Integrated TanStack React Query v5 for server state management
+  - Created `frontend/src/lib/queryClient.ts` with optimized configuration (5min staleTime, 30min gcTime)
+  - Created comprehensive `frontend/src/hooks/useQueries.ts` with 25+ custom hooks
+  - Query hooks: `useCategories`, `useSources`, `useTargets`, `useTransaction`, `useGoals`, `useInfiniteTransactions`
+  - Mutation hooks: `useCreateTransaction`, `useUpdateTransaction`, `useDeleteTransaction`
+  - Goal hooks: `useCreateGoal`, `useUpdateGoal`, `useDeleteGoal`, `useAddGoalContribution`
+  - Admin hooks: `useAdminUsers`, `useCreateAdminUser`, `useUpdateAdminUser`, `useDeleteAdminUser`
+  - Sharing hooks: `useSharingPermissions`, `useSharedWithMe`, `useSharingUsers`, `useSharingSources`, `useCreateSharingPermission`, `useUpdateSharingPermission`, `useDeleteSharingPermission`
+  - Dashboard and profile hooks: `useDashboardSummary`, `useUserProfile`, `useUpdateUserProfile`
+  - Automatic cache invalidation on mutations with cross-query coordination
+
+#### Backend Validation with Zod
+- **Validation**: Added Zod schema validation middleware
+  - Created `middleware/validation/schemas.js` with comprehensive validation schemas
+  - Created `middleware/validation/index.js` with reusable validation middleware
+  - Validation for transactions (create/update), goals, sharing permissions
+  - Type coercion for numeric fields, date validation, enum constraints
+  - Human-readable error messages for validation failures
+- **API Routes**: Applied Zod validation to all major API endpoints
+  - Transaction routes: create, update validated with body schemas
+  - Goal routes: create, update, contribution endpoints validated
+  - Sharing routes: create, update permission validated
+  - Auth routes: login validated
+
+#### Database Performance Optimization
+- **Indexes**: Added database migration for performance indexes
+  - Created `database/migrations/011-add-performance-indexes.sql`
+  - Composite index on `transactions(user_id, date)` for faster date-range queries
+  - Index on `transactions(category_id)` for category filtering
+  - Index on `transactions(source_id)` for source filtering
+  - Index on `transactions(target_id)` for target filtering
+  - Index on `transactions(recurring_transaction_id)` for recurring lookups
+  - Index on `goals(user_id)` for user goal queries
+
+#### Internationalization Expansion
+- **Languages**: Added 8 new translation files for broader international support
+  - Spanish (`es.js`), French (`fr.js`), Italian (`it.js`)
+  - Dutch (`nl.js`), Polish (`pl.js`), Portuguese (`pt.js`)
+  - Russian (`ru.js`), Chinese (`zh.js`)
+  - Complete translations for all UI strings (350+ keys per language)
+- **Translation Updates**: Enhanced English and German translations
+  - Added new keys for About page, settings, goals, validation errors
+  - Improved translation coverage for edge cases
+
+#### New About Page
+- **About**: Created new About page (`frontend/src/pages/About.jsx`)
+  - Displays app version and build information
+  - Shows changelog highlights
+  - Links to documentation and support
+  - Accessible from Settings page
+
+#### Page Animations
+- **Animations**: Created `frontend/src/components/AnimatedPage.jsx`
+  - Reusable animation wrapper components
+  - Smooth page transitions using Framer Motion
+  - `AnimatedPage`, `AnimatedSection`, `AnimatedStagger`, `AnimatedItem` components
+  - Consistent animation patterns across the application
+- **Motion Theme**: Enhanced `frontend/src/utils/motionTheme.js`
+  - Centralized animation configuration
+  - Consistent timing and easing functions
+
+#### UI/UX Improvements
+- **Settings Page**: Complete redesign with improved layout
+  - Reorganized into logical sections (Profile, Appearance, Privacy, etc.)
+  - Better mobile responsiveness
+  - Improved accessibility
+- **Settings Page**: Income Tracking Toggle
+  - Added user preference to disable income tracking (expense-only mode)
+  - Backend support in User model for `income_tracking_disabled` field
+  - Conditional UI rendering based on preference
+- **Dashboard**: Source filtering improvements
+  - Better handling of shared sources in filter dropdown
+  - Display owner name for shared sources
+- **Goals Page**: Enhanced with React Query
+  - Faster data loading with caching
+  - Automatic refresh on goal updates
+
+### Pages Migrated to React Query
+- `AddTransaction.jsx` - Uses `useCategories`, `useSources`, `useTargets`
+- `EditTransaction.jsx` - Uses `useCategories`, `useSources`, `useTargets`, `useTransaction`
+- `Goals.jsx` - Uses `useGoals` and goal mutation hooks
+- `UserManagement.jsx` - Uses admin user hooks
+- `ShareData.jsx` - Uses sharing permission hooks
+- `EditSharing.jsx` - Uses sharing hooks
+- `Transactions.jsx` - Uses `useDeleteTransaction` with event-based refresh
+- `Dashboard.jsx` - Event-based refresh integration
+- `Reports.jsx` - Event-based refresh integration
+
+### fix
+- **Infinite Scroll**: Updated `useInfiniteTransactions` hook to use `getAllTransactions` with proper offline merge
+- **Mutation Sync**: All transaction mutations now dispatch custom events (`transactionAdded`, `transactionUpdated`, `transactionDeleted`, `dataRefreshNeeded`) for backward compatibility with event-based refresh patterns
+
+### chore
+- Added `@tanstack/react-query` v5.x dependency
+- Added `@tanstack/react-query-devtools` for development debugging
+- Added `zod` v3.x dependency for schema validation
+- Added TypeScript dependencies (`typescript`, type definitions)
+- Updated ESLint configuration for TypeScript support
+- Created hooks barrel export (`frontend/src/hooks/index.ts`)
+- Created lib barrel export (`frontend/src/lib/index.ts`)
+- Added sample data insertion script (`scripts/insert-sample-data.sql`)
+- Added new logo assets in `frontend/public/logos/`
+- Added info icon in `frontend/public/icons/`
+- Removed PWA-related files (InstallButton, InstallPrompt, PWAStatus, PWAUpdatePrompt, pwa.js)
+- Updated package versions to 0.8.0
+
+### removed
+- **PWA**: Removed Progressive Web App functionality
+  - Removed `InstallButton.jsx`, `InstallPrompt.jsx` components
+  - Removed `PWAStatus.jsx`, `PWAUpdatePrompt.jsx` components
+  - Removed `frontend/src/utils/pwa.js` utility
+  - Removed `frontend/manifest.webmanifest`
+  - Removed PWA-related Vite configuration
+  - Removed PWA documentation (`docs/PWA-README.md`)
+
 ## [v0.7.4] - 2026-01-01
 
 ### feat

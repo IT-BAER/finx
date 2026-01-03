@@ -1,6 +1,11 @@
 const express = require("express");
 const router = express.Router();
 const auth = require("../middleware/auth");
+const { validateBody } = require("../middleware/validation");
+const {
+  createSharingSchema,
+  updateSharingSchema,
+} = require("../middleware/validation/schemas");
 const {
   createSharingPermission,
   getMySharingPermissions,
@@ -16,10 +21,10 @@ const {
 router.use(auth);
 
 // Sharing management routes
-router.post("/", createSharingPermission);
+router.post("/", validateBody(createSharingSchema), createSharingPermission);
 router.get("/my-permissions", getMySharingPermissions);
 router.get("/shared-with-me", getSharedWithMe);
-router.put("/:id", updateSharingPermission);
+router.put("/:id", validateBody(updateSharingSchema), updateSharingPermission);
 router.delete("/:id", deleteSharingPermission);
 
 // Shared data access routes

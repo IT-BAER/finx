@@ -15,6 +15,7 @@ import Import from "../components/Import.jsx";
 import Export from "../components/Export.jsx";
 import Modal from "../components/Modal.jsx";
 import Icon from "../components/Icon.jsx";
+import { AnimatedPage, AnimatedSection } from "../components/AnimatedPage";
 
 const Settings = () => {
   const { isIncomeTrackingDisabled, toggleIncomeTracking, user, refreshUser } =
@@ -48,8 +49,6 @@ const Settings = () => {
         last_name: user.last_name || "",
       });
     }
-    // fetchMyPermissions();
-    // fetchSharedWithMe();
 
     // Set up visibility change listener for background data refresh
     const handleVisibilityChange = () => {
@@ -110,7 +109,7 @@ const Settings = () => {
       const payload = {
         first_name: profileData.first_name,
         last_name: profileData.last_name,
-  email: profileData.email,
+        email: profileData.email,
       };
       await (await import("../services/api.jsx")).authAPI.updateUser(payload);
 
@@ -128,8 +127,8 @@ const Settings = () => {
       console.error("Failed to update profile:", err);
       window.toastWithHaptic.error(
         err.response?.data?.message ||
-          t("failedToUpdateProfile") ||
-          "Failed to update profile",
+        t("failedToUpdateProfile") ||
+        "Failed to update profile",
       );
     }
   };
@@ -164,8 +163,8 @@ const Settings = () => {
       console.error("Failed to update password:", err);
       window.toastWithHaptic.error(
         err.response?.data?.message ||
-          t("failedToUpdatePassword") ||
-          "Failed to update password",
+        t("failedToUpdatePassword") ||
+        "Failed to update password",
       );
     }
   };
@@ -215,526 +214,529 @@ const Settings = () => {
   };
 
   return (
-  <div className="container mx-auto px-4 pt-4 md:pt-0 pb-4 min-h-0">
-      <h1 className="display-2 leading-none mb-8">{t("settingsTitle")}</h1>
+    <AnimatedPage>
+      <div className="container mx-auto px-4 pt-4 md:pt-0 pb-4 min-h-0">
+        <motion.h1
+          className="display-2 leading-none mb-8"
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.1 }}
+        >
+          {t("settingsTitle")}
+        </motion.h1>
 
-      <Modal
-        show={showImport}
-        onClose={() => setShowImport(false)}
-        title={t("importData")}
-      >
-        <Import onClose={() => setShowImport(false)} />
-      </Modal>
+        <Modal
+          show={showImport}
+          onClose={() => setShowImport(false)}
+          title={t("importData")}
+        >
+          <Import onClose={() => setShowImport(false)} />
+        </Modal>
 
-      {showExport && <Export />}
+        {showExport && <Export />}
 
-      <Modal
-        show={showDeleteAccountModal}
-        onClose={() => setShowDeleteAccountModal(false)}
-        title={t("pleaseConfirm")}
-        onConfirm={handleDeleteAccount}
-        confirmText={t("deleteAccount")}
-      >
-        <p>{t("areYouSureYouWantToDeleteYourAccount")}</p>
-      </Modal>
+        <Modal
+          show={showDeleteAccountModal}
+          onClose={() => setShowDeleteAccountModal(false)}
+          title={t("pleaseConfirm")}
+          onConfirm={handleDeleteAccount}
+          confirmText={t("deleteAccount")}
+        >
+          <p>{t("areYouSureYouWantToDeleteYourAccount")}</p>
+        </Modal>
 
-      <Modal
-        show={showRemoveSampleDataModal}
-        onClose={() => setShowRemoveSampleDataModal(false)}
-        title={t("pleaseConfirm")}
-        onConfirm={handleRemoveSampleData}
-        confirmText={t("removeSampleData")}
-      >
-        <p>{t("areYouSureYouWantToRemoveSampleData")}</p>
-      </Modal>
+        <Modal
+          show={showRemoveSampleDataModal}
+          onClose={() => setShowRemoveSampleDataModal(false)}
+          title={t("pleaseConfirm")}
+          onConfirm={handleRemoveSampleData}
+          confirmText={t("removeSampleData")}
+        >
+          <p>{t("areYouSureYouWantToRemoveSampleData")}</p>
+        </Modal>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div className="card lg:col-span-1">
-          <div className="card-body">
-            <h2 className="text-xl font-semibold mb-6">{t("general")}</h2>
+        <AnimatedSection delay={0.2}>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="card lg:col-span-1">
+              <div className="card-body">
+                <h2 className="text-xl font-semibold mb-6">{t("general")}</h2>
 
-            <div
-              className={`flex items-center justify-between p-4 rounded-lg mb-4 ${
-                dark ? "bg-gray-700/30" : "bg-gray-50"
-              }`}
-            >
-              <div className="flex items-center flex-1">
-                <div className="mr-3">
-                  <span className="icon-wrap icon-wrap-md icon-wrap-circle">
-                    <Icon
-                      src={
-                        dark ? "/icons/dark-mode.svg" : "/icons/light-mode.svg"
-                      }
-                      size="md"
-                      variant="accent"
-                    />
-                  </span>
-                </div>
-                <div className="flex flex-col flex-1 min-w-0">
-                  <span className="font-medium">{t("design") || "Design"}</span>
-                </div>
-              </div>
-              <div style={{ width: "10rem" }}>
-                <Dropdown
-                  value={theme}
-                  onChange={(e) => setTheme(e.target.value)}
-                  options={themes.map((th) => ({
-                    value: th.key,
-                    label: th.label,
-                  }))}
-                  placeholder="Select theme"
-                />
-              </div>
-            </div>
-
-            <div
-              className={`flex items-center justify-between p-4 rounded-lg ${
-                dark ? "bg-gray-700/30" : "bg-gray-50"
-              }`}
-            >
-              <div className="flex items-center">
-                <div className="mr-3">
-                  <span className="icon-wrap icon-wrap-md icon-wrap-circle">
-                    <Icon
-                      src="/icons/language.svg"
-                      size="md"
-                      variant="accent"
-                    />
-                  </span>
-                </div>
-                <span className="font-medium">{t("language")}</span>
-              </div>
-              <div style={{ width: "10rem" }}>
-                <Dropdown
-                  value={language}
-                  onChange={handleLanguageChange}
-                  options={[
-                    { value: "en", label: t("english") },
-                    { value: "de", label: t("german") },
-                  ]}
-                  placeholder="Select language"
-                />
-              </div>
-            </div>
-
-            <div
-              className={`flex items-start justify-between p-4 rounded-lg mt-4 ${
-                dark ? "bg-gray-700/30" : "bg-gray-50"
-              }`}
-            >
-              <div className="flex items-start flex-1 min-w-0">
-                <div className="mr-3 mt-0.5 flex-shrink-0">
-                  <span className="icon-wrap icon-wrap-md icon-wrap-circle">
-                    <Icon
-                      src="/icons/currency-euro.svg"
-                      size="md"
-                      variant="strong"
-                    />
-                  </span>
-                </div>
-                <div className="min-w-0">
-                  <div className="font-medium">{t("incomeTracking")}</div>
-                  <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-tight">
-                    {t("incomeTrackingDescription")}
-                  </div>
-                </div>
-              </div>
-              <motion.button
-                onClick={toggleIncomeTracking}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none flex-shrink-0 ${
-                  isIncomeTrackingDisabled ? "bg-gray-300" : "bg-blue-600"
-                }`}
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.95 }}
-                transition={motionTheme.springs.press}
-              >
-                <motion.span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
-                    isIncomeTrackingDisabled ? "translate-x-1" : "translate-x-6"
-                  }`}
-                  animate={{
-                    x: isIncomeTrackingDisabled ? 4 : 24,
-                  }}
-                  transition={motionTheme.springs.press}
-                />
-              </motion.button>
-            </div>
-
-            <div
-              className={`p-4 rounded-lg mt-4 ${
-                dark ? "bg-gray-700/30" : "bg-gray-50"
-              }`}
-            >
-              <div className="flex items-center mb-4">
-                <div className="mr-3">
-                  <span className="icon-wrap icon-wrap-md icon-wrap-circle">
-                    <Icon src="/icons/share.svg" size="md" variant="strong" />
-                  </span>
-                </div>
-                <span className="font-medium">{t("dataSharing")}</span>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <div className="rounded-lg bg-white/80 dark:bg-gray-800/70 shadow-soft p-3 text-center">
-                  <div className="text-[10px] uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1">
-                    {t("sharedWithOthers")}
-                  </div>
-                  <div className="text-xl font-bold text-gray-900 dark:text-gray-100">
-                    {myPermissions.length}
-                  </div>
-                </div>
-                <div className="rounded-lg bg-white/80 dark:bg-gray-800/70 shadow-soft p-3 text-center">
-                  <div className="text-[10px] uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1">
-                    {t("sharedWithMe")}
-                  </div>
-                  <div className="text-xl font-bold text-gray-900 dark:text-gray-100">
-                    {sharedWithMe.length}
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-2 flex justify-center md:justify-end">
-                <Button
-                  type="button"
-                  onClick={() => navigate("/share-data")}
-                  variant="primary"
-                  size="sm"
+                <div
+                  className={`flex items-center justify-between p-4 rounded-lg mb-4 ${dark ? "bg-gray-700/30" : "bg-gray-50"
+                    }`}
                 >
-                  {t("editShares")}
-                </Button>
+                  <div className="flex items-center flex-1">
+                    <div className="mr-3">
+                      <span className="icon-wrap icon-wrap-md icon-wrap-circle">
+                        <Icon
+                          src={
+                            dark ? "/icons/dark-mode.svg" : "/icons/light-mode.svg"
+                          }
+                          size="md"
+                          variant="accent"
+                        />
+                      </span>
+                    </div>
+                    <div className="flex flex-col flex-1 min-w-0">
+                      <span className="font-medium">{t("design") || "Design"}</span>
+                    </div>
+                  </div>
+                  <div style={{ width: "10rem" }}>
+                    <Dropdown
+                      value={theme}
+                      onChange={(e) => setTheme(e.target.value)}
+                      options={themes.map((th) => ({
+                        value: th.key,
+                        label: th.label,
+                      }))}
+                      placeholder="Select theme"
+                    />
+                  </div>
+                </div>
+
+                <div
+                  className={`flex items-center justify-between p-4 rounded-lg ${dark ? "bg-gray-700/30" : "bg-gray-50"
+                    }`}
+                >
+                  <div className="flex items-center">
+                    <div className="mr-3">
+                      <span className="icon-wrap icon-wrap-md icon-wrap-circle">
+                        <Icon
+                          src="/icons/language.svg"
+                          size="md"
+                          variant="accent"
+                        />
+                      </span>
+                    </div>
+                    <span className="font-medium">{t("language")}</span>
+                  </div>
+                  <div style={{ width: "10rem" }}>
+                    <Dropdown
+                      value={language}
+                      onChange={handleLanguageChange}
+                      options={[
+                        { value: "en", label: "English" },
+                        { value: "de", label: "Deutsch" },
+                        { value: "es", label: "Español" },
+                        { value: "fr", label: "Français" },
+                        { value: "it", label: "Italiano" },
+                        { value: "nl", label: "Nederlands" },
+                        { value: "pl", label: "Polski" },
+                        { value: "pt", label: "Português" },
+                        { value: "ru", label: "Русский" },
+                        { value: "zh", label: "中文" },
+                      ]}
+                      placeholder="Select language"
+                    />
+                  </div>
+                </div>
+
+                <div
+                  className={`flex items-start justify-between p-4 rounded-lg mt-4 ${dark ? "bg-gray-700/30" : "bg-gray-50"
+                    }`}
+                >
+                  <div className="flex items-start flex-1 min-w-0">
+                    <div className="mr-3 mt-0.5 flex-shrink-0">
+                      <span className="icon-wrap icon-wrap-md icon-wrap-circle">
+                        <Icon
+                          src="/icons/currency-euro.svg"
+                          size="md"
+                          variant="strong"
+                        />
+                      </span>
+                    </div>
+                    <div className="min-w-0">
+                      <div className="font-medium">{t("incomeTracking")}</div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-tight">
+                        {t("incomeTrackingDescription")}
+                      </div>
+                    </div>
+                  </div>
+                  <motion.button
+                    onClick={toggleIncomeTracking}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none flex-shrink-0 ${isIncomeTrackingDisabled ? "bg-gray-300" : "bg-blue-600"
+                      }`}
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.95 }}
+                    transition={motionTheme.springs.press}
+                  >
+                    <motion.span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${isIncomeTrackingDisabled ? "translate-x-1" : "translate-x-6"
+                        }`}
+                      animate={{
+                        x: isIncomeTrackingDisabled ? 4 : 24,
+                      }}
+                      transition={motionTheme.springs.press}
+                    />
+                  </motion.button>
+                </div>
+
+                <div
+                  className={`p-4 rounded-lg mt-4 ${dark ? "bg-gray-700/30" : "bg-gray-50"
+                    }`}
+                >
+                  <div className="flex items-center mb-4">
+                    <div className="mr-3">
+                      <span className="icon-wrap icon-wrap-md icon-wrap-circle">
+                        <Icon src="/icons/share.svg" size="md" variant="strong" />
+                      </span>
+                    </div>
+                    <span className="font-medium">{t("dataSharing")}</span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 mb-4">
+                    <div className="rounded-lg bg-white/80 dark:bg-gray-800/70 shadow-soft p-3 text-center">
+                      <div className="text-[10px] uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1">
+                        {t("sharedWithOthers")}
+                      </div>
+                      <div className="text-xl font-bold text-gray-900 dark:text-gray-100">
+                        {myPermissions.length}
+                      </div>
+                    </div>
+                    <div className="rounded-lg bg-white/80 dark:bg-gray-800/70 shadow-soft p-3 text-center">
+                      <div className="text-[10px] uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1">
+                        {t("sharedWithMe")}
+                      </div>
+                      <div className="text-xl font-bold text-gray-900 dark:text-gray-100">
+                        {sharedWithMe.length}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-2 flex justify-center md:justify-end">
+                    <Button
+                      type="button"
+                      onClick={() => navigate("/share-data")}
+                      variant="primary"
+                      size="sm"
+                    >
+                      {t("editShares")}
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Account Actions Section */}
+                <div
+                  className={`p-4 rounded-lg mt-4 ${dark ? "bg-gray-700/30" : "bg-gray-50"
+                    }`}
+                >
+                  <div className="flex flex-col space-y-4">
+                    {/* Title Row */}
+                    <div className="flex items-center">
+                      <div className="mr-3">
+                        <span className="icon-wrap icon-wrap-md icon-wrap-circle">
+                          <Icon
+                            src="/icons/settings.svg"
+                            size="md"
+                            variant="strong"
+                          />
+                        </span>
+                      </div>
+                      <span className="font-medium">{t("accountActions")}</span>
+                    </div>
+
+                    {/* Buttons Row */}
+                    <div className="flex flex-col items-center sm:flex-row sm:justify-end gap-3">
+                      <Button
+                        variant="secondary"
+                        onClick={handleImportData}
+                        icon={
+                          <Icon
+                            src="/icons/import.svg"
+                            size="md"
+                            variant="accent"
+                          />
+                        }
+                        className="w-full sm:w-auto text-sm"
+                        haptic="tap"
+                      >
+                        {t("importData")}
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        onClick={handleExportData}
+                        icon={
+                          <Icon
+                            src="/icons/export.svg"
+                            size="md"
+                            variant="accent"
+                          />
+                        }
+                        className="w-full sm:w-auto text-sm"
+                        haptic="tap"
+                      >
+                        {t("exportData")}
+                      </Button>
+                      <Button
+                        variant="danger"
+                        onClick={() => setShowDeleteAccountModal(true)}
+                        icon={
+                          <Icon
+                            src="/icons/trash.svg"
+                            size="md"
+                            variant="danger"
+                            className="icon-md"
+                            alt={t("deleteAccount")}
+                          />
+                        }
+                        className="w-full sm:w-auto text-sm"
+                        haptic="heavy"
+                      >
+                        {t("deleteAccount")}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 
-            {/* Account Actions Section */}
-            <div
-              className={`p-4 rounded-lg mt-4 ${
-                dark ? "bg-gray-700/30" : "bg-gray-50"
-              }`}
-            >
-              <div className="flex flex-col space-y-4">
-                {/* Title Row */}
-                <div className="flex items-center">
-                  <div className="mr-3">
-                    <span className="icon-wrap icon-wrap-md icon-wrap-circle">
-                      <Icon
-                        src="/icons/settings.svg"
-                        size="md"
-                        variant="strong"
-                      />
-                    </span>
-                  </div>
-                  <span className="font-medium">{t("accountActions")}</span>
-                </div>
+            <div className="card lg:col-span-1">
+              <div className="card-body">
+                <h2 className="text-xl font-semibold mb-6">
+                  {t("profileSettings")}
+                </h2>
 
-                {/* Buttons Row */}
-                <div className="flex flex-col items-center sm:flex-row sm:justify-end gap-3">
-                  <Button
-                    variant="secondary"
-                    onClick={handleImportData}
-                    icon={
-                      <Icon
-                        src="/icons/import.svg"
-                        size="md"
-                        variant="accent"
+                <form onSubmit={handleProfileSubmit} className="mb-8">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <div className="form-group">
+                      <Input
+                        type="text"
+                        id="first_name"
+                        name="first_name"
+                        label={t("firstName")}
+                        value={profileData.first_name}
+                        onChange={handleProfileChange}
                       />
-                    }
-                    className="w-full sm:w-auto text-sm"
-                    haptic="tap"
-                  >
-                    {t("importData")}
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    onClick={handleExportData}
-                    icon={
-                      <Icon
-                        src="/icons/export.svg"
-                        size="md"
-                        variant="accent"
+                    </div>
+
+                    <div className="form-group">
+                      <Input
+                        type="text"
+                        id="last_name"
+                        name="last_name"
+                        label={t("lastName")}
+                        value={profileData.last_name}
+                        onChange={handleProfileChange}
                       />
-                    }
-                    className="w-full sm:w-auto text-sm"
-                    haptic="tap"
+                    </div>
+                  </div>
+
+                  <div className="form-group mb-6">
+                    <Input
+                      type="email"
+                      id="email"
+                      name="email"
+                      label={t("email")}
+                      value={profileData.email}
+                      onChange={handleProfileChange}
+                      required
+                    />
+                  </div>
+
+                  <div className="flex justify-center md:justify-end">
+                    <Button variant="primary" type="submit" haptic="impact">
+                      {t("updateProfile")}
+                    </Button>
+                  </div>
+                </form>
+
+                <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
+                  <h3 className="text-lg font-semibold mb-6">
+                    {t("changePassword")}
+                  </h3>
+                  <form onSubmit={handlePasswordSubmit}>
+                    <input
+                      type="email"
+                      value={profileData.email}
+                      readOnly
+                      style={{
+                        position: "absolute",
+                        left: "-9999px",
+                        width: "1px",
+                        height: "1px",
+                      }}
+                      tabIndex={-1}
+                      aria-hidden="true"
+                      autoComplete="username"
+                    />
+                    <div className="form-group">
+                      <Input
+                        type="password"
+                        id="currentPassword"
+                        name="currentPassword"
+                        label={t("currentPassword")}
+                        value={passwordData.currentPassword}
+                        onChange={handlePasswordChange}
+                        required
+                        autoComplete="current-password"
+                      />
+                    </div>
+
+                    <div className="form-group">
+                      <Input
+                        type="password"
+                        id="newPassword"
+                        name="newPassword"
+                        label={t("newPassword")}
+                        value={passwordData.newPassword}
+                        onChange={handlePasswordChange}
+                        required
+                        autoComplete="new-password"
+                      />
+                    </div>
+
+                    <div className="form-group">
+                      <Input
+                        type="password"
+                        id="confirmPassword"
+                        name="confirmPassword"
+                        label={t("confirmNewPassword")}
+                        value={passwordData.confirmPassword}
+                        onChange={handlePasswordChange}
+                        required
+                        autoComplete="new-password"
+                      />
+                    </div>
+
+                    <div className="flex justify-center md:justify-end">
+                      <Button variant="primary" type="submit" haptic="impact">
+                        {t("changePassword")}
+                      </Button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Removed Account Actions card - now integrated into main settings card */}
+
+          {user && user.is_admin && (
+            <div className="card mt-8">
+              <div className="card-body">
+                <h2 className="text-xl font-semibold mb-6">
+                  {t("adminSettings") || "Admin Settings"}
+                </h2>
+
+                <div className="grid grid-cols-3 w-full gap-4 max-[800px]:grid-cols-2 max-[500px]:grid-cols-1">
+                  <motion.div
+                    className={`group w-full rounded-lg p-5 transition relative duration-300 cursor-pointer 
+                  hover:translate-y-[3px] opacity-80 hover:opacity-100 ${dark
+                        ? "bg-gray-800 hover:shadow-[0_-8px_0px_0px_#546e7a]"
+                        : "bg-gray-100 hover:shadow-[0_-8px_0px_0px_#d1d5db]"
+                      }`}
+                    onClick={() => {
+                      // Remove haptic feedback - only notifications and "+" button should have haptic
+                      navigate("/user-management");
+                    }}
+                    whileTap={{ scale: 0.95 }}
+                    transition={motionTheme.springs.press}
                   >
-                    {t("exportData")}
-                  </Button>
-                  <Button
-                    variant="danger"
-                    onClick={() => setShowDeleteAccountModal(true)}
-                    icon={
+                    <p
+                      className={`text-lg font-bold ${dark ? "text-gray-100" : "text-gray-800"
+                        }`}
+                    >
+                      {t("userManagement")}
+                    </p>
+                    <p
+                      className={`text-sm mt-1.5 max-w-[75%] ${dark ? "text-gray-300" : "text-gray-600"
+                        }`}
+                    >
+                      {t("manageUsersDescription")}
+                    </p>
+                    <motion.span
+                      className="group-hover:opacity-100 absolute right-[10%] top-[50%] translate-y-[-50%] opacity-80 transition group-hover:scale-110 duration-300 h-10 w-10 shadow-soft"
+                      transition={motionTheme.springs.hover}
+                    >
+                      <Icon
+                        src="/icons/admin-user.svg"
+                        size="lg"
+                        variant="accent"
+                        className="h-10 w-10 shadow-soft"
+                      />
+                    </motion.span>
+                  </motion.div>
+
+                  <motion.div
+                    className={`group w-full rounded-lg p-5 transition relative duration-300 cursor-pointer 
+                  hover:translate-y-[3px] opacity-80 hover:opacity-100 ${dark
+                        ? "bg-gray-800 hover:shadow-[0_-8px_0px_0px_#546e7a]"
+                        : "bg-gray-100 hover:shadow-[0_-8px_0px_0px_#d1d5db]"
+                      }`}
+                    onClick={() => {
+                      // Remove haptic feedback - only notifications and "+" button should have haptic
+                      navigate("/admin-taxonomy");
+                    }}
+                    whileTap={{ scale: 0.95 }}
+                    transition={motionTheme.springs.press}
+                  >
+                    <p
+                      className={`text-lg font-bold ${dark ? "text-gray-100" : "text-gray-800"
+                        }`}
+                    >
+                      {t("adminTaxonomy")}
+                    </p>
+                    <p
+                      className={`text-xs mt-1.5 max-w-[75%] ${dark ? "text-gray-300" : "text-gray-600"
+                        }`}
+                    >
+                      {t("adminTaxonomyDescription")}
+                    </p>
+                    <motion.span
+                      className="group-hover:opacity-100 absolute right-[10%] top-[50%] translate-y-[-50%] opacity-80 transition group-hover:scale-110 duration-300 h-10 w-10 shadow-soft"
+                      transition={motionTheme.springs.hover}
+                    >
+                      <Icon
+                        src="/icons/admin-taxo.svg"
+                        size="lg"
+                        variant="accent"
+                        className="h-10 w-10 shadow-soft"
+                      />
+                    </motion.span>
+                  </motion.div>
+
+                  <motion.div
+                    className={`group w-full rounded-lg p-5 transition relative duration-300 cursor-pointer 
+                  hover:translate-y-[3px] opacity-80 hover:opacity-100 ${dark
+                        ? "bg-gray-800 hover:shadow-[0_-8px_0px_0px_#546e7a]"
+                        : "bg-gray-100 hover:shadow-[0_-8px_0px_0px_#d1d5db]"
+                      }`}
+                    onClick={() => setShowRemoveSampleDataModal(true)}
+                    whileTap={{ scale: 0.95 }}
+                    transition={motionTheme.springs.press}
+                  >
+                    <p
+                      className={`text-lg font-bold ${dark ? "text-gray-100" : "text-gray-800"
+                        }`}
+                    >
+                      {t("removeSampleData") || "Remove Sample Data"}
+                    </p>
+                    <p
+                      className={`text-xs mt-1.5 max-w-[75%] ${dark ? "text-gray-300" : "text-gray-600"
+                        }`}
+                    >
+                      {t("removeSampleDataDescription") ||
+                        "Clean database from sample transactions and categories"}
+                    </p>
+                    <motion.span
+                      className="group-hover:opacity-100 absolute right-[10%] top-[50%] translate-y-[-50%] opacity-80 transition group-hover:scale-110 duration-300 h-10 w-10 shadow-soft"
+                      transition={motionTheme.springs.hover}
+                    >
                       <Icon
                         src="/icons/trash.svg"
-                        size="md"
+                        size="lg"
                         variant="danger"
-                        className="icon-md"
-                        alt={t("deleteAccount")}
+                        className="h-10 w-10 shadow-soft"
                       />
-                    }
-                    className="w-full sm:w-auto text-sm"
-                    haptic="heavy"
-                  >
-                    {t("deleteAccount")}
-                  </Button>
+                    </motion.span>
+                  </motion.div>
                 </div>
               </div>
             </div>
-          </div>
-        </div>
-
-        <div className="card lg:col-span-1">
-          <div className="card-body">
-            <h2 className="text-xl font-semibold mb-6">
-              {t("profileSettings")}
-            </h2>
-
-            <form onSubmit={handleProfileSubmit} className="mb-8">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                <div className="form-group">
-                  <Input
-                    type="text"
-                    id="first_name"
-                    name="first_name"
-                    label={t("firstName")}
-                    value={profileData.first_name}
-                    onChange={handleProfileChange}
-                  />
-                </div>
-
-                <div className="form-group">
-                  <Input
-                    type="text"
-                    id="last_name"
-                    name="last_name"
-                    label={t("lastName")}
-                    value={profileData.last_name}
-                    onChange={handleProfileChange}
-                  />
-                </div>
-              </div>
-
-              <div className="form-group mb-6">
-                <Input
-                  type="email"
-                  id="email"
-                  name="email"
-                  label={t("email")}
-                  value={profileData.email}
-                  onChange={handleProfileChange}
-                  required
-                />
-              </div>
-
-              <div className="flex justify-center md:justify-end">
-                <Button variant="primary" type="submit" haptic="impact">
-                  {t("updateProfile")}
-                </Button>
-              </div>
-            </form>
-
-            <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
-              <h3 className="text-lg font-semibold mb-6">
-                {t("changePassword")}
-              </h3>
-              <form onSubmit={handlePasswordSubmit}>
-                <input
-                  type="email"
-                  value={profileData.email}
-                  readOnly
-                  style={{
-                    position: "absolute",
-                    left: "-9999px",
-                    width: "1px",
-                    height: "1px",
-                  }}
-                  tabIndex={-1}
-                  aria-hidden="true"
-                  autoComplete="username"
-                />
-                <div className="form-group">
-                  <Input
-                    type="password"
-                    id="currentPassword"
-                    name="currentPassword"
-                    label={t("currentPassword")}
-                    value={passwordData.currentPassword}
-                    onChange={handlePasswordChange}
-                    required
-                    autoComplete="current-password"
-                  />
-                </div>
-
-                <div className="form-group">
-                  <Input
-                    type="password"
-                    id="newPassword"
-                    name="newPassword"
-                    label={t("newPassword")}
-                    value={passwordData.newPassword}
-                    onChange={handlePasswordChange}
-                    required
-                    autoComplete="new-password"
-                  />
-                </div>
-
-                <div className="form-group">
-                  <Input
-                    type="password"
-                    id="confirmPassword"
-                    name="confirmPassword"
-                    label={t("confirmNewPassword")}
-                    value={passwordData.confirmPassword}
-                    onChange={handlePasswordChange}
-                    required
-                    autoComplete="new-password"
-                  />
-                </div>
-
-                <div className="flex justify-center md:justify-end">
-                  <Button variant="primary" type="submit" haptic="impact">
-                    {t("changePassword")}
-                  </Button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
+          )}
+        </AnimatedSection>
       </div>
-
-      {/* Removed Account Actions card - now integrated into main settings card */}
-
-      {user && user.is_admin && (
-        <div className="card mt-8">
-          <div className="card-body">
-            <h2 className="text-xl font-semibold mb-6">
-              {t("adminSettings") || "Admin Settings"}
-            </h2>
-
-            <div className="grid grid-cols-3 w-full gap-4 max-[800px]:grid-cols-2 max-[500px]:grid-cols-1">
-              <motion.div
-                className={`group w-full rounded-lg p-5 transition relative duration-300 cursor-pointer 
-                  hover:translate-y-[3px] opacity-80 hover:opacity-100 ${
-                    dark
-                      ? "bg-gray-800 hover:shadow-[0_-8px_0px_0px_#546e7a]"
-                      : "bg-gray-100 hover:shadow-[0_-8px_0px_0px_#d1d5db]"
-                  }`}
-                onClick={() => {
-                  // Remove haptic feedback - only notifications and "+" button should have haptic
-                  navigate("/user-management");
-                }}
-                whileTap={{ scale: 0.95 }}
-                transition={motionTheme.springs.press}
-              >
-                <p
-                  className={`text-lg font-bold ${
-                    dark ? "text-gray-100" : "text-gray-800"
-                  }`}
-                >
-                  {t("userManagement")}
-                </p>
-                <p
-                  className={`text-sm mt-1.5 max-w-[75%] ${
-                    dark ? "text-gray-300" : "text-gray-600"
-                  }`}
-                >
-                  {t("manageUsersDescription")}
-                </p>
-                <motion.span
-                  className="group-hover:opacity-100 absolute right-[10%] top-[50%] translate-y-[-50%] opacity-80 transition group-hover:scale-110 duration-300 h-10 w-10 shadow-soft"
-                  transition={motionTheme.springs.hover}
-                >
-                  <Icon
-                    src="/icons/admin-user.svg"
-                    size="lg"
-                    variant="accent"
-                    className="h-10 w-10 shadow-soft"
-                  />
-                </motion.span>
-              </motion.div>
-
-              <motion.div
-                className={`group w-full rounded-lg p-5 transition relative duration-300 cursor-pointer 
-                  hover:translate-y-[3px] opacity-80 hover:opacity-100 ${
-                    dark
-                      ? "bg-gray-800 hover:shadow-[0_-8px_0px_0px_#546e7a]"
-                      : "bg-gray-100 hover:shadow-[0_-8px_0px_0px_#d1d5db]"
-                  }`}
-                onClick={() => {
-                  // Remove haptic feedback - only notifications and "+" button should have haptic
-                  navigate("/admin-taxonomy");
-                }}
-                whileTap={{ scale: 0.95 }}
-                transition={motionTheme.springs.press}
-              >
-                <p
-                  className={`text-lg font-bold ${
-                    dark ? "text-gray-100" : "text-gray-800"
-                  }`}
-                >
-                  {t("adminTaxonomy")}
-                </p>
-                <p
-                  className={`text-xs mt-1.5 max-w-[75%] ${
-                    dark ? "text-gray-300" : "text-gray-600"
-                  }`}
-                >
-                  {t("adminTaxonomyDescription")}
-                </p>
-                <motion.span
-                  className="group-hover:opacity-100 absolute right-[10%] top-[50%] translate-y-[-50%] opacity-80 transition group-hover:scale-110 duration-300 h-10 w-10 shadow-soft"
-                  transition={motionTheme.springs.hover}
-                >
-                  <Icon
-                    src="/icons/admin-taxo.svg"
-                    size="lg"
-                    variant="accent"
-                    className="h-10 w-10 shadow-soft"
-                  />
-                </motion.span>
-              </motion.div>
-
-              <motion.div
-                className={`group w-full rounded-lg p-5 transition relative duration-300 cursor-pointer 
-                  hover:translate-y-[3px] opacity-80 hover:opacity-100 ${
-                    dark
-                      ? "bg-gray-800 hover:shadow-[0_-8px_0px_0px_#546e7a]"
-                      : "bg-gray-100 hover:shadow-[0_-8px_0px_0px_#d1d5db]"
-                  }`}
-                onClick={() => setShowRemoveSampleDataModal(true)}
-                whileTap={{ scale: 0.95 }}
-                transition={motionTheme.springs.press}
-              >
-                <p
-                  className={`text-lg font-bold ${
-                    dark ? "text-gray-100" : "text-gray-800"
-                  }`}
-                >
-                  {t("removeSampleData") || "Remove Sample Data"}
-                </p>
-                <p
-                  className={`text-xs mt-1.5 max-w-[75%] ${
-                    dark ? "text-gray-300" : "text-gray-600"
-                  }`}
-                >
-                  {t("removeSampleDataDescription") ||
-                    "Clean database from sample transactions and categories"}
-                </p>
-                <motion.span
-                  className="group-hover:opacity-100 absolute right-[10%] top-[50%] translate-y-[-50%] opacity-80 transition group-hover:scale-110 duration-300 h-10 w-10 shadow-soft"
-                  transition={motionTheme.springs.hover}
-                >
-                  <Icon
-                    src="/icons/trash.svg"
-                    size="lg"
-                    variant="danger"
-                    className="h-10 w-10 shadow-soft"
-                  />
-                </motion.span>
-              </motion.div>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+    </AnimatedPage>
   );
 };
 
@@ -747,16 +749,14 @@ const SimpleToggle = ({ checked, onChange, disabled = false }) => {
   return (
     <button
       type="button"
-      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 ${
-        checked ? "bg-cyan-600" : "bg-gray-200 dark:bg-gray-700"
-      } ${disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 ${checked ? "bg-cyan-600" : "bg-gray-200 dark:bg-gray-700"
+        } ${disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
       onClick={() => !disabled && onChange(!checked)}
       disabled={disabled}
     >
       <span
-        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-          checked ? "translate-x-6" : "translate-x-1"
-        }`}
+        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${checked ? "translate-x-6" : "translate-x-1"
+          }`}
       />
     </button>
   );

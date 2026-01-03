@@ -23,7 +23,18 @@ export const LanguageProvider = ({ children }) => {
 
     // Auto-detect browser language
     const browserLanguage = navigator.language || navigator.languages[0];
-    const supportedLanguages = ["en", "de"];
+    const supportedLanguages = [
+      "en",
+      "de",
+      "es",
+      "fr",
+      "it",
+      "nl",
+      "pl",
+      "pt",
+      "ru",
+      "zh",
+    ];
     const detectedLanguage =
       supportedLanguages.find((lang) => browserLanguage.startsWith(lang)) ||
       "en";

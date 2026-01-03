@@ -262,5 +262,34 @@ CREATE INDEX IF NOT EXISTS idx_sources_user ON sources(user_id, id);
 CREATE INDEX IF NOT EXISTS idx_targets_user ON targets(user_id, id);
 CREATE INDEX IF NOT EXISTS idx_categories_user ON categories(user_id, id);
 
+-- Performance indexes for common query patterns (v0.8.0+)
+
+-- Composite index for transactions by user, type, and date (for dashboard and reports)
+CREATE INDEX IF NOT EXISTS idx_transactions_user_type_date ON transactions(user_id, type, date DESC);
+
+-- Composite index for transactions ordered by date with user filter
+CREATE INDEX IF NOT EXISTS idx_transactions_user_date_id ON transactions(user_id, date DESC, id DESC);
+
+-- Text search index for transaction descriptions (case-insensitive search)
+CREATE INDEX IF NOT EXISTS idx_transactions_description_lower ON transactions (LOWER(description));
+
+-- Composite indexes for category, source, target lookups with user context
+CREATE INDEX IF NOT EXISTS idx_transactions_user_category ON transactions(user_id, category_id);
+CREATE INDEX IF NOT EXISTS idx_transactions_user_source ON transactions(user_id, source_id);
+CREATE INDEX IF NOT EXISTS idx_transactions_user_target ON transactions(user_id, target_id);
+
+-- Text search indexes for lookup tables (enable fast LOWER(name) LIKE searches)
+CREATE INDEX IF NOT EXISTS idx_categories_name_lower ON categories (LOWER(name));
+CREATE INDEX IF NOT EXISTS idx_sources_name_lower ON sources (LOWER(name));
+CREATE INDEX IF NOT EXISTS idx_targets_name_lower ON targets (LOWER(name));
+
+-- Index for goals by user
+CREATE INDEX IF NOT EXISTS idx_goals_user ON goals(user_id);
+CREATE INDEX IF NOT EXISTS idx_goals_user_deadline ON goals(user_id, deadline);
+
+-- Indexes for recurring transactions
+CREATE INDEX IF NOT EXISTS idx_recurring_user ON recurring_transactions(user_id);
+CREATE INDEX IF NOT EXISTS idx_recurring_user_next_run ON recurring_transactions(user_id, start_date, end_date);
+
 -- Sample data now handled exclusively by init-db.js
 -- All data initialization moved to init-db.js

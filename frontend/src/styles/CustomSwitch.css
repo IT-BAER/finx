@@ -1,15 +1,18 @@
 /* Custom Dark/Light Mode Switch Styles */
 .switch-container {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
 }
 
 .switch {
-  font-size: 17px;
+  font-size: 12px;
   position: relative;
   display: inline-block;
   width: 3.5em;
   height: 2em;
   cursor: pointer;
+  overflow: hidden;
+  vertical-align: middle;
 }
 
 .switch input {
@@ -26,6 +29,7 @@
   background-color: var(--background);
   transition: 0.5s;
   border-radius: 30px;
+  overflow: hidden;
 }
 
 .slider:before {
@@ -36,9 +40,7 @@
   border-radius: 50%;
   left: 10%;
   bottom: 15%;
-  box-shadow:
-    inset 8px -4px 0px 0px #ececd9,
-    -4px 1px 4px 0px #dadada;
+  box-shadow: inset 6px -3px 0px 0px #ececd9;
   background: var(--background);
   transition: 0.5s;
 }
@@ -54,25 +56,25 @@
   background: #e5f041e6;
   transition: all 0.5s;
   box-shadow:
-    -7px 10px 0 #e5f041e6,
-    8px 15px 0 #e5f041e6,
-    -17px 1px 0 #e5f041e6,
-    -20px 10px 0 #e5f041e6,
-    -7px 23px 0 #e5f041e6,
-    -15px 25px 0 #e5f041e6;
+    -6px 8px 0 #e5f041e6,
+    7px 12px 0 #e5f041e6,
+    -14px 1px 0 #e5f041e6,
+    -17px 8px 0 #e5f041e6,
+    -6px 19px 0 #e5f041e6,
+    -12px 21px 0 #e5f041e6;
 }
 
 input:checked ~ .decoration {
-  transform: translateX(-20px);
-  width: 10px;
-  height: 10px;
+  transform: translateX(-17px);
+  width: 8px;
+  height: 8px;
   background: white;
   box-shadow:
-    -12px 0 0 white,
-    -6px 0 0 1.6px white,
-    5px 15px 0 1px white,
-    1px 17px 0 white,
-    10px 17px 0 white;
+    -10px 0 0 white,
+    -5px 0 0 1.4px white,
+    4px 12px 0 1px white,
+    1px 14px 0 white,
+    8px 14px 0 white;
 }
 
 input:checked + .slider {
@@ -82,8 +84,8 @@ input:checked + .slider {
 input:checked + .slider:before {
   transform: translateX(100%);
   box-shadow:
-    inset 15px -4px 0px 15px #efdf2b,
-    0 0 10px 0px #efdf2b;
+    inset 12px -3px 0px 12px #efdf2b,
+    0 0 8px 0px #efdf2b;
 }
 
 /* Dark mode adjustments */
@@ -94,16 +96,16 @@ input:checked + .slider:before {
 }
 
 /* Desktop and responsive adjustments */
-/* Slightly reduce the switch size on larger screens */
+/* Slightly larger on desktop for better clickability */
 @media (min-width: 1024px) {
   .switch {
-    font-size: 16px; /* was 17px; subtle reduction for desktop */
+    font-size: 12px;
   }
 }
 
 /* Mobile: keep it compact */
 @media (max-width: 768px) {
   .switch {
-    font-size: 15px;
+    font-size: 11px;
   }
 }

@@ -17,6 +17,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { useTheme } from "../contexts/ThemeContext.jsx";
 import { motion } from "framer-motion";
 import ChartLegend from "../components/ChartLegend.jsx";
+import { AnimatedPage, AnimatedSection, AnimatedStagger, AnimatedItem } from "../components/AnimatedPage.jsx";
 
 // Helper function to get YYYY-MM-DD from a date object in local timezone
 const parseLocalDate = (value) => {
@@ -1019,9 +1020,14 @@ const Dashboard = () => {
   // monthCompareData removed; replaced by perSourceChartData
 
   return (
-
+  <AnimatedPage>
   <div className="container mx-auto px-4 pt-4 md:pt-0 pb-4 min-h-0">
-    <div className="flex flex-row items-center justify-between mb-8 gap-4 min-h-[3rem]">
+    <motion.div 
+      className="flex flex-row items-center justify-between mb-8 gap-4 min-h-[3rem]"
+      initial={{ opacity: 0, y: -10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, delay: 0.1 }}
+    >
       <div className="flex items-center gap-4">
         <h1 className="display-2 leading-none">{t("dashboard")}</h1>
         <MultiCheckboxDropdown
@@ -1040,16 +1046,19 @@ const Dashboard = () => {
           { month: "long" },
         )}
       </div>
-    </div>
+    </motion.div>
 
     {/* ...existing code... */}
     {/* Source filter dropdown moved to title area */}
 
       {/* Summary Cards */}
-      <div
+      <AnimatedStagger 
         className={`grid grid-cols-1 md:grid-cols-2 ${isIncomeTrackingDisabled ? "lg:grid-cols-2" : "lg:grid-cols-4"} gap-6 mb-8`}
+        staggerDelay={0.08}
+        initialDelay={0}
       >
         {!isIncomeTrackingDisabled && (
+          <AnimatedItem>
           <div
             className="card"
             style={{ borderColor: "rgba(52, 211, 153, 0.5)" }}
@@ -1087,8 +1096,10 @@ const Dashboard = () => {
               </div>
             </div>
           </div>
+          </AnimatedItem>
         )}
 
+        <AnimatedItem>
         <div
           className="card"
           style={{ borderColor: "rgba(248, 113, 113, 0.5)" }}
@@ -1126,8 +1137,10 @@ const Dashboard = () => {
             </div>
           </div>
         </div>
+        </AnimatedItem>
 
         {!isIncomeTrackingDisabled && (
+          <AnimatedItem>
           <div
             className="card"
             style={{ borderColor: "rgba(168, 85, 247, 0.5)" }}
@@ -1166,8 +1179,10 @@ const Dashboard = () => {
               </div>
             </div>
           </div>
+          </AnimatedItem>
         )}
 
+        <AnimatedItem>
         <div
           className="card"
           style={{ borderColor: "rgba(249, 115, 22, 0.5)" }}
@@ -1237,9 +1252,11 @@ const Dashboard = () => {
             </div>
           </div>
         </div>
-      </div>
+        </AnimatedItem>
+      </AnimatedStagger>
 
       {/* Daily Expenses Chart - Moved to top */}
+      <AnimatedSection delay={0.3} scrollTriggered={false}>
       <div className="card md:h-[250px] mb-8">
         <div className="card-body h-full flex flex-col min-h-0">
           <h2 className="text-xl font-semibold mb-6">{t("dailyExpenses")}</h2>
@@ -1287,8 +1304,10 @@ const Dashboard = () => {
           })()}
         </div>
       </div>
+      </AnimatedSection>
 
       {/* Charts */}
+      <AnimatedSection delay={0.4} scrollTriggered={false}>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
         {/* Source Spending by Category Chart */}
         <div className="card md:h-[370px] mb-8">
@@ -1554,10 +1573,12 @@ const Dashboard = () => {
           </div>
         </div>
       </div>
+      </AnimatedSection>
 
       
 
     {/* Expenses by Source (This Month) */}
+    <AnimatedSection delay={0.5} scrollTriggered={false}>
       <div className="card md:h-[370px] mb-8">
         <div className="card-body h-full flex flex-col min-h-0">
       <h2 className="text-xl font-semibold mb-6">{t("expensesBySource")}</h2>
@@ -1610,10 +1631,12 @@ const Dashboard = () => {
           )}
         </div>
       </div>
+    </AnimatedSection>
 
   {/* Income vs Expenses section intentionally removed from dashboard */}
 
       {/* Largest + Recent: side-by-side on desktop, stacked on mobile */}
+      <AnimatedSection delay={0.6} scrollTriggered={false}>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
         <div className="card">
           <div className="card-body">
@@ -1917,8 +1940,10 @@ const Dashboard = () => {
           })()}
         </div>
       </div>
-    </div>
+      </div>
+      </AnimatedSection>
   </div>
+  </AnimatedPage>
   );
 };
 

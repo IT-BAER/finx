@@ -18,6 +18,7 @@ import PerSourceExpensesTrend from "../components/PerSourceExpensesTrend.jsx";
 import PerSourceBalanceTrend from "../components/PerSourceBalanceTrend.jsx";
 import DailyExpensesChart from "../components/DailyExpensesChart.jsx";
 import SummaryCards from "../components/SummaryCards.jsx";
+import { AnimatedPage, AnimatedSection, AnimatedStagger, AnimatedItem } from "../components/AnimatedPage";
 
 // Helper function to process filtered transactions into API-like format
 const processFilteredTransactions = (transactions, timeRange, startDate, endDate) => {
@@ -1611,9 +1612,15 @@ const Reports = () => {
   })();
 
   return (
+    <AnimatedPage>
     <div className="container mx-auto px-4 pt-4 md:pt-0 pb-4 min-h-0">
       {/* ...existing report UI... */}
-      <div className="flex flex-col md:flex-row md:justify-between mb-8 gap-4 min-h-[3rem]">
+      <motion.div 
+        className="flex flex-col md:flex-row md:justify-between mb-8 gap-4 min-h-[3rem]"
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.1 }}
+      >
         <div className="flex items-center gap-4">
           <h1 className="display-2 leading-none">{t("reportsAndAnalytics")}</h1>
           <MultiCheckboxDropdown
@@ -1694,21 +1701,23 @@ const Reports = () => {
             </button>
           </div>
         </div>
-      </div>
+      </motion.div>
 
+      <AnimatedStagger staggerDelay={0.08} initialDelay={0}>
       {/* Summary Cards */}
       {reportData?.summary && (
-        <SummaryCards
-          summary={reportData.summary}
-          timeRange={timeRange}
-          startDate={getDateRange().startDate}
-          endDate={getDateRange().endDate}
-          dailyExpensesSeries={dailyExpensesData || []}
-          incomeTrackingDisabled={isIncomeTrackingDisabled}
-        />
+          <SummaryCards
+            summary={reportData.summary}
+            timeRange={timeRange}
+            startDate={getDateRange().startDate}
+            endDate={getDateRange().endDate}
+            dailyExpensesSeries={dailyExpensesData || []}
+            incomeTrackingDisabled={isIncomeTrackingDisabled}
+          />
       )}
 
       {/* Daily Expenses Chart */}
+      <AnimatedItem>
       <div className="card md:h-[250px] mb-8">
         <div className="card-body h-full flex flex-col min-h-0">
           <h3 className="text-xl font-semibold mb-6">
@@ -1721,10 +1730,12 @@ const Reports = () => {
           <DailyExpensesChart startDate={getDateRange().startDate} endDate={getDateRange().endDate} timeRange={timeRange} />
         </div>
       </div>
+      </AnimatedItem>
 
 
 
       {/* Charts - Source Category Breakdown and Expenses by Category */}
+      <AnimatedItem>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
         {/* Source Spending by Category */}
         <div className="card md:h-[370px]">
@@ -1834,17 +1845,21 @@ const Reports = () => {
           </div>
         </div>
       </div>
+      </AnimatedItem>
 
       {/* Balance Trend */}
+      <AnimatedItem>
       <div className="card md:h-[370px] mb-8">
         <div className="card-body h-full flex flex-col min-h-0">
           <h3 className="text-xl font-semibold mb-6">{t("balanceTrend")}</h3>
           <PerSourceBalanceTrend startDate={getDateRange().startDate} endDate={getDateRange().endDate} timeRange={timeRange} selectedSources={selectedSources} sources={sources} incomeTrackingDisabled={isIncomeTrackingDisabled} />
         </div>
       </div>
+      </AnimatedItem>
 
       {/* Income vs Expenses Chart - Moved to bottom to match Dashboard order */}
       {/* Additional: Expenses by Source and Largest Expenses */}
+      <AnimatedItem>
       <div className="grid grid-cols-1 gap-8 mb-8">
         <div className="card md:h-[370px]">
           <div className="card-body h-full flex flex-col min-h-0">
@@ -1929,7 +1944,10 @@ const Reports = () => {
           </div>
         </div>
       </div>
+      </AnimatedItem>
+      </AnimatedStagger>
     </div>
+    </AnimatedPage>
   );
 };
 

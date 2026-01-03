@@ -43,7 +43,6 @@ class User {
 
   // Find user by email
   static async findByEmail(email) {
-    // Select explicit columns including is_admin if present
     const query =
       "SELECT id, email, password_hash, first_name, last_name, income_tracking_disabled, theme, dark_mode, created_at, COALESCE(is_admin, false) AS is_admin, last_login FROM users WHERE email = $1";
     const result = await db.query(query, [email]);
@@ -53,7 +52,6 @@ class User {
 
   // Find user by ID
   static async findById(id) {
-    // Select explicit columns including is_admin if present
     const query =
       "SELECT id, email, password_hash, first_name, last_name, income_tracking_disabled, theme, dark_mode, created_at, COALESCE(is_admin, false) AS is_admin, last_login FROM users WHERE id = $1";
     const result = await db.query(query, [id]);

@@ -10,12 +10,19 @@ const {
   logout,
 } = require("../controllers/authController");
 const auth = require("../middleware/auth");
+const { validateBody } = require("../middleware/validation");
+const {
+  registerSchema,
+  loginSchema,
+  updateProfileSchema,
+  changePasswordSchema,
+} = require("../middleware/validation/schemas");
 
 const router = express.Router();
 
 // Register route - only enable if DISABLE_REGISTRATION is not set to true
 if (process.env.DISABLE_REGISTRATION !== "true") {
-  router.post("/register", register);
+  router.post("/register", validateBody(registerSchema), register);
 } else {
   router.post("/register", (req, res) => {
     res.status(403).json({ message: "Registration is disabled" });
@@ -23,7 +30,7 @@ if (process.env.DISABLE_REGISTRATION !== "true") {
 }
 
 // Login route
-router.post("/login", login);
+router.post("/login", validateBody(loginSchema), login);
 
 // Refresh token route (no auth middleware - uses refresh token for authentication)
 router.post("/refresh", refreshToken);
@@ -35,10 +42,10 @@ router.post("/logout", auth, logout);
 router.get("/me", auth, getCurrentUser);
 
 // Update user (protected route)
-router.put("/me", auth, updateUser);
+router.put("/me", auth, validateBody(updateProfileSchema), updateUser);
 
 // Change password (protected route)
-router.post("/change-password", auth, changePassword);
+router.post("/change-password", auth, validateBody(changePasswordSchema), changePassword);
 
 // Delete account (protected route)
 router.delete("/me", auth, deleteAccount);

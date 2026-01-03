@@ -98,9 +98,29 @@ const Navbar = () => {
       <nav className="sticky top-0 z-50 transition-all duration-300 shadow-lg shadow-gray-300/50 dark:shadow-gray-900/50">
         <div className="container mx-auto px-4">
           <div className="flex justify-between items-center h-16">
-            <div className="flex items-center">
-              <Link to="/" className="text-2xl font-bold text-gradient">
-                FinX
+            <div className="flex items-center overflow-hidden" style={{ marginLeft: "-1rem", paddingLeft: "1rem" }}>
+              <Link 
+                to="/" 
+                className="group relative flex items-center justify-center" 
+                style={{ height: "64px", width: "90px" }}
+              >
+                <img
+                  src="/logos/logo_full_bg_256.png"
+                  alt=""
+                  className="absolute pointer-events-none object-contain"
+                  style={{ 
+                    height: "180px",
+                    width: "180px",
+                    top: "50%",
+                    left: "50%",
+                    transform: "translate(-50%, -50%)",
+                  }}
+                />
+                <img
+                  src="/logos/logo_full_256.png"
+                  alt="FinX"
+                  className="relative h-10 w-auto object-contain z-10 transition-transform duration-300 ease-out group-hover:scale-110"
+                />
               </Link>
             </div>
 
@@ -171,7 +191,7 @@ const Navbar = () => {
                             animate={{ opacity: 1, y: 0, scale: 1 }}
                             exit={{ opacity: 0, y: -10, scale: 0.95 }}
                             transition={{ duration: 0.2, ease: "easeOut" }}
-                            className="absolute right-0 mt-2 w-48 rounded-lg shadow-2xl max-h-60 overflow-auto border border-gray-200 dark:border-gray-700 ring-1 ring-black/5 dark:ring-white/10 py-2 z-50 bg-white/95 dark:bg-gray-800/95 origin-top-right"
+                            className="absolute right-0 mt-2 w-48 rounded-lg shadow-2xl max-h-60 overflow-auto scrollbar-thin-modern border border-gray-200 dark:border-gray-700 ring-1 ring-black/5 dark:ring-white/10 py-2 z-50 bg-white/95 dark:bg-gray-800/95 origin-top-right"
                             onMouseLeave={closeDropdown}
                           >
                             <NavDropdownItem
@@ -186,6 +206,20 @@ const Navbar = () => {
                             >
                               <div className="flex items-center">
                                 <span>{t("settings")}</span>
+                              </div>
+                            </NavDropdownItem>
+                            <NavDropdownItem
+                              to="/about"
+                              icon="/icons/info.svg"
+                              onClick={() => {
+                                closeDropdown();
+                                if (location.pathname !== "/about") {
+                                  navigate("/about");
+                                }
+                              }}
+                            >
+                              <div className="flex items-center">
+                                <span>{t("about") || "About"}</span>
                               </div>
                             </NavDropdownItem>
                             <div className="border-b border-gray-200 dark:border-gray-700 mx-4 my-1"></div>
@@ -304,7 +338,7 @@ const Navbar = () => {
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: -10, scale: 0.95 }}
                         transition={{ duration: 0.2, ease: "easeOut" }}
-                        className="absolute right-0 mt-2 w-48 rounded-lg shadow-2xl max-h-60 overflow-auto border border-gray-200 dark:border-gray-700 ring-1 ring-black/5 dark:ring-white/10 py-2 z-50 bg-white/95 dark:bg-gray-800/95"
+                        className="absolute right-0 mt-2 w-48 rounded-lg shadow-2xl max-h-60 overflow-auto scrollbar-thin-modern border border-gray-200 dark:border-gray-700 ring-1 ring-black/5 dark:ring-white/10 py-2 z-50 bg-white/95 dark:bg-gray-800/95"
                         onMouseLeave={closeDropdown}
                       >
                         <NavDropdownItem
@@ -318,6 +352,19 @@ const Navbar = () => {
                         >
                           <div className="flex items-center">
                             <span>{t("settings")}</span>
+                          </div>
+                        </NavDropdownItem>
+                        <NavDropdownItem
+                          to="/about"
+                          icon="/icons/info.svg"
+                          onClick={() => {
+                            closeDropdown();
+                            if (location.pathname !== "/about")
+                              navigate("/about");
+                          }}
+                        >
+                          <div className="flex items-center">
+                            <span>{t("about") || "About"}</span>
                           </div>
                         </NavDropdownItem>
                         <div className="border-b border-gray-200 dark:border-gray-700 mx-4 my-1"></div>

@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 import Button from "../components/Button";
 import Modal from "../components/Modal";
 import { motion, AnimatePresence } from "framer-motion";
+import { AnimatedPage, AnimatedSection } from "../components/AnimatedPage";
 
 const AdminTaxonomy = () => {
   const { t } = useTranslation();
@@ -232,8 +233,14 @@ const AdminTaxonomy = () => {
   }
 
   return (
+    <AnimatedPage>
     <div className="container mx-auto px-4 pt-4 md:pt-0 pb-4 min-h-0">
-      <div className="flex items-center justify-between mb-8">
+      <motion.div 
+        className="flex items-center justify-between mb-8"
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.1 }}
+      >
         <h1 className="display-2 leading-none">{t("adminTaxonomy")}</h1>
 
         <div className="flex items-center gap-2">
@@ -273,10 +280,11 @@ const AdminTaxonomy = () => {
             </Button>
           </div>
         </div>
-      </div>
+      </motion.div>
 
       {error && <div className="alert alert-error mb-6">{error}</div>}
 
+      <AnimatedSection delay={0.2}>
   {/* Tabs */}
   <div className="flex space-x-1 mb-6 bg-gray-100 dark:bg-gray-800 rounded-lg">
         <motion.button
@@ -630,7 +638,9 @@ const AdminTaxonomy = () => {
           </motion.div>
         )}
       </AnimatePresence>
+      </AnimatedSection>
     </div>
+    </AnimatedPage>
   );
 };
 

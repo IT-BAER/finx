@@ -8,13 +8,14 @@ const Footer = () => {
 
   return (
     <footer
-      className={`border-t border-gray-200 dark:border-gray-700 ${user ? "pb-16" : ""} md:pb-0`}
+      className={`mt-auto border-t border-gray-200 dark:border-gray-700 ${user ? "pb-16" : ""} md:pb-0`}
       style={{ backgroundColor: "var(--surface)" }}
     >
       <div className="container mx-auto px-4 py-2 flex justify-between items-center">
         <div className="flex items-center">
-          <p className="text-gray-600 dark:text-gray-400 text-sm">
-            <span className="font-bold">FinX</span> -{" "}
+          <p className="text-gray-600 dark:text-gray-400 text-sm flex items-center gap-1">
+            <span className="font-semibold">FinX</span>
+            <span>-</span>
             {t("footerText").split(" - ")[1]}
           </p>
         </div>

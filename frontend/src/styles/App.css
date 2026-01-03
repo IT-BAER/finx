@@ -2,6 +2,7 @@
   display: flex;
   flex-direction: column;
   flex: 1;
+  min-height: 100vh;
 }
 
 /* Override for content-based sizing on mobile */
@@ -272,8 +273,7 @@
 .swipeable-page {
   position: relative;
   width: 100%;
-  /* Ensure minimum height fills available space for swipe detection */
-  min-height: calc(100vh - 10rem);
+  /* Let content determine height - footer uses mt-auto to push to bottom */
   height: auto;
   box-sizing: border-box;
   top: auto;
@@ -284,8 +284,7 @@
 
 @media (max-width: 768px) {
   .swipeable-page {
-    /* Account for mobile bottom nav */
-    min-height: calc(100vh - 12rem);
+    /* No forced minimum height on mobile */
   }
 }
 

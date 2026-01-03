@@ -1,79 +1,63 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import "../utils/haptics.js";
-import { useSharing } from "../contexts/SharingContext";
 import { useTranslation } from "../hooks/useTranslation";
+import { 
+  useSharingPermissions, 
+  useSharingSources,
+  useUpdateSharingPermission,
+  useDeleteSharingPermission 
+} from "../hooks/useQueries";
 import { useNavigate, useParams } from "react-router-dom";
 import DropdownWithInput from "../components/DropdownWithInput.jsx";
 import Button from "../components/Button";
 import Icon from "../components/Icon.jsx";
 import Modal from "../components/Modal";
 import { motion } from "framer-motion";
+import { AnimatedPage, AnimatedSection } from "../components/AnimatedPage";
 
 const EditSharing = () => {
-  const {
-    myPermissions,
-    getUserSources,
-    loading: sharingLoading,
-    error: sharingError,
-    fetchMyPermissions,
-    updatePermission,
-    deletePermission,
-  } = useSharing();
+  // React Query hooks
+  const { data: myPermissions = [], isLoading: permissionsLoading } = useSharingPermissions();
+  const { data: sourcesData = [], isLoading: sourcesLoading } = useSharingSources();
+  
+  // Mutation hooks
+  const updatePermissionMutation = useUpdateSharingPermission();
+  const deletePermissionMutation = useDeleteSharingPermission();
 
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { id } = useParams();
 
-  const [sources, setSources] = useState([]);
+  // Derive loading state
+  const loading = permissionsLoading || sourcesLoading;
+  const submitting = updatePermissionMutation.isPending;
+  const deleting = deletePermissionMutation.isPending;
+
   const [selectedSource, setSelectedSource] = useState("");
   const [permissionLevel, setPermissionLevel] = useState("read");
-  const [submitting, setSubmitting] = useState(false);
-  const [deleting, setDeleting] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  // Removed error state - using toast notifications
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        // Removed setError call
-
-        // Fetch permissions and sources in parallel
-        const [sourcesData] = await Promise.all([
-          getUserSources(),
-          fetchMyPermissions(),
-        ]);
-
-        // Process sources to add display names for shared sources
-        const processedSources = sourcesData.map(source => {
-          if (source.ownership_type === 'shared') {
-            const ownerName = source.owner_first_name || source.owner_email || 'Unknown';
-            return {
-              ...source,
-              displayName: `${source.name} (${ownerName})`,
-              name: source.name // Keep original name for filtering
-            };
-          }
-          return {
-            ...source,
-            displayName: source.name,
-            name: source.name
-          };
-        });
-
-        setSources(processedSources);
-      } catch (err) {
-        window.toastWithHaptic.error(t("failedToLoadData"));
-        console.error("Error loading data:", err);
-      } finally {
-        setLoading(false);
+  // Process sources to add display names for shared sources
+  const sources = useMemo(() => {
+    const arr = Array.isArray(sourcesData) ? sourcesData : [];
+    return arr.map(source => {
+      if (source.ownership_type === 'shared') {
+        const ownerName = source.owner_first_name || source.owner_email || 'Unknown';
+        return {
+          ...source,
+          displayName: `${source.name} (${ownerName})`,
+          name: source.name
+        };
       }
-    };
+      return {
+        ...source,
+        displayName: source.name,
+        name: source.name
+      };
+    });
+  }, [sourcesData]);
 
-    fetchData();
-  }, []);
-
+  // Populate form when permission data is loaded
   useEffect(() => {
     if (myPermissions.length > 0) {
       const permission = myPermissions.find((p) => p.id === parseInt(id));
@@ -97,7 +81,6 @@ const EditSharing = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setSubmitting(true);
 
     try {
       // Prepare source filter - if a specific source is selected, create a JSON array with that source ID
@@ -106,11 +89,14 @@ const EditSharing = () => {
         sourceFilter = JSON.stringify([parseInt(selectedSource)]);
       }
 
-      await updatePermission(id, {
-        permission_level: permissionLevel,
-        can_view_income: true,
-        can_view_expenses: true,
-        source_filter: sourceFilter,
+      await updatePermissionMutation.mutateAsync({
+        id: parseInt(id),
+        data: {
+          permission_level: permissionLevel,
+          can_view_income: true,
+          can_view_expenses: true,
+          source_filter: sourceFilter,
+        },
       });
 
       window.toastWithHaptic.success(t("shareUpdatedSuccessfully"));
@@ -120,22 +106,18 @@ const EditSharing = () => {
         err.response?.data?.message || t("failedToUpdateShare"),
       );
       console.error("Error updating sharing permission:", err);
-    } finally {
-      setSubmitting(false);
     }
   };
 
   const handleDelete = async () => {
-    setDeleting(true);
     try {
-      await deletePermission(parseInt(id));
+      await deletePermissionMutation.mutateAsync(parseInt(id));
       window.toastWithHaptic.success(t("shareDeletedSuccessfully"));
       navigate("/share-data");
     } catch (err) {
       window.toastWithHaptic.error(t("failedToDeleteShare"));
       console.error("Error deleting sharing permission:", err);
     } finally {
-      setDeleting(false);
       setShowDeleteModal(false);
     }
   };
@@ -163,8 +145,14 @@ const EditSharing = () => {
   }
 
   return (
+    <AnimatedPage>
 <div className="container mx-auto px-4 pb-8 sm:py-8 min-h-0">
-      <div className="flex justify-between items-center mb-8">
+      <motion.div 
+        className="flex justify-between items-center mb-8"
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.1 }}
+      >
         <h1 className="display-2 leading-none">{t("editSharing")}</h1>
         <div className="flex items-center gap-2">
           {/* Mobile: Circled Icon */}
@@ -196,7 +184,9 @@ const EditSharing = () => {
             </Button>
           </div>
         </div>
-      </div>
+      </motion.div>
+
+      <AnimatedSection delay={0.2}>
 
       <div className="card max-w-2xl mx-auto">
         <div className="card-body">
@@ -326,7 +316,9 @@ const EditSharing = () => {
           </form>
         </div>
       </div>
+      </AnimatedSection>
     </div>
+    </AnimatedPage>
   );
 };
 

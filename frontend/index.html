@@ -21,20 +21,9 @@
       name="viewport"
       content="width=device-width, initial-scale=1, viewport-fit=cover"
     />
-    <meta name="mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-    <meta name="apple-mobile-web-app-title" content="FinX" />
-    <meta name="application-name" content="FinX" />
 
     <!-- Theme Colors -->
     <meta name="theme-color" content="#ffffff" />
-    <meta name="msapplication-TileColor" content="#ffffff" />
-    <meta name="msapplication-navbutton-color" content="#ffffff" />
-    <meta
-      name="apple-mobile-web-app-status-bar-style"
-      content="black-translucent"
-    />
 
     <!-- Dynamic Theme Color Script -->
     <script>
@@ -88,30 +77,6 @@
     <link rel="apple-touch-icon" sizes="180x180" href="/logos/logo-192.png" />
     <link rel="mask-icon" href="/logos/logo-192.png" color="#06b6d4" />
 
-    <!-- Microsoft Tiles -->
-    <meta
-      name="msapplication-TileImage"
-      content="/logos/logo-192-maskable.png"
-    />
-    <meta
-      name="msapplication-square70x70logo"
-      content="/logos/logo-192-maskable.png"
-    />
-    <meta
-      name="msapplication-square150x150logo"
-      content="/logos/logo-192-maskable.png"
-    />
-    <meta
-      name="msapplication-wide310x150logo"
-      content="/logos/logo-512-maskable.png"
-    />
-    <meta
-      name="msapplication-square310x310logo"
-      content="/logos/logo-512-maskable.png"
-    />
-
-  <!-- PWA Manifest is injected by vite-plugin-pwa during build -->
-
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website" />
     <meta property="og:title" content="FinX - Personal Finance Tracker" />
@@ -140,6 +105,9 @@
     <!-- Preconnect to improve performance -->
     <link rel="preconnect" href="/" />
     <link rel="dns-prefetch" href="/" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700&display=swap" rel="stylesheet" />
   <!-- Removed icon preloads to avoid warnings on routes where they aren't used immediately -->
     <style>
       /* Reduce jank on first paint while CSS hydrates */

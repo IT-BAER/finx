@@ -15,15 +15,12 @@ import {
   useCallback,
   createContext,
 } from "react";
-import { registerSW } from "virtual:pwa-register";
 import { LanguageProvider } from "./contexts/LanguageContext";
 import { SharingProvider } from "./contexts/SharingContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import AmbientBackground from "./components/AmbientBackground";
 import Navbar from "./components/Navbar.jsx";
 import Footer from "./components/Footer.jsx";
-import InstallPrompt from "./components/InstallPrompt.jsx";
-import PWAUpdatePrompt from "./components/PWAUpdatePrompt.jsx";
 import VersionBadge from "./components/VersionBadge.jsx";
 import { lazy, Suspense } from "react";
 import "./services/realtime.js";
@@ -36,6 +33,7 @@ const Settings = lazy(() => import("./pages/Settings.jsx"));
 const Goals = lazy(() => import("./pages/Goals.jsx"));
 const Login = lazy(() => import("./pages/Login.jsx"));
 const Register = lazy(() => import("./pages/Register.jsx"));
+const About = lazy(() => import("./pages/About.jsx"));
 
 // Preload function for warming up the route chunks
 const preloadRoute = (importFunc) => {
@@ -142,19 +140,13 @@ const AppLoadingContext = createContext({
 
 function ComponentWrapper({ Component }) {
   const [isComponentReady, setIsComponentReady] = useState(false);
-  const [containerHeight, setContainerHeight] = useState("auto");
   const componentRef = useRef(null);
   const { setPageContentReady } = useContext(AppLoadingContext);
-  const location = useLocation();
-
-  // For the login page, avoid forcing a large min-height so the layout feels lighter
-  const disableMinHeight = location.pathname === "/login";
 
   useEffect(() => {
     // Component is ready after a short delay
     const timer = setTimeout(() => {
       setIsComponentReady(true);
-      updateHeight();
       // Notify app that page content is ready
       setPageContentReady(true);
     }, 100);
@@ -162,46 +154,19 @@ function ComponentWrapper({ Component }) {
     return () => clearTimeout(timer);
   }, [setPageContentReady]);
 
-  // Update height based on content
-  const updateHeight = () => {
-    if (componentRef.current) {
-      const height = componentRef.current.scrollHeight;
-      const minHeight = Math.max(height, window.innerHeight - 140); // More precise navbar/footer calculation
-      setContainerHeight(`${minHeight}px`);
-    }
-  };
-
-  // Set up window resize listener (debounced with rAF) to update height
-  useEffect(() => {
-    if (!componentRef.current) return;
-    let scheduled = false;
-    const onResize = () => {
-      if (scheduled) return;
-      scheduled = true;
-      requestAnimationFrame(() => {
-        updateHeight();
-        scheduled = false;
-      });
-    };
-    window.addEventListener("resize", onResize, { passive: true });
-    return () => window.removeEventListener("resize", onResize);
-  }, [isComponentReady]);
-
   // Reset page content ready state when component changes
   useEffect(() => {
     setPageContentReady(true);
   }, [Component, setPageContentReady]);
 
   return (
-      <div
+    <div
       ref={componentRef}
       style={{
         opacity: isComponentReady ? 1 : 0,
         transition: "opacity 0.3s ease-in-out, transform 0.3s ease-out",
         transform: isComponentReady ? "translateY(0)" : "translateY(10px)",
-  transitionProperty: "opacity, transform",
-  // Remove min-height on login to prevent overly tall containers
-  minHeight: disableMinHeight ? undefined : containerHeight,
+        transitionProperty: "opacity, transform",
       }}
     >
       <Component />
@@ -273,22 +238,6 @@ function App() {
     };
     window.addEventListener("serverConnectivityChange", handler);
     return () => window.removeEventListener("serverConnectivityChange", handler);
-  }, []);
-
-  // Register service worker and surface update function for our prompt
-  useEffect(() => {
-    const updateSW = registerSW({
-      immediate: true,
-      onNeedRefresh() {
-        try {
-          window.dispatchEvent(new CustomEvent("pwa-update-available"));
-        } catch {}
-      },
-      onOfflineReady() {
-        // no-op
-      },
-    });
-    window.__pwa_update_sw = () => updateSW(true);
   }, []);
 
   // Handle app ready state
@@ -511,6 +460,20 @@ function App() {
                         }
                       />
                       <Route
+                        path="/about"
+                        element={
+                          <Suspense
+                            fallback={
+                              <div className="flex items-center justify-center h-full">
+                                <div className="spinner"></div>
+                              </div>
+                            }
+                          >
+                            <ComponentWrapper Component={About} />
+                          </Suspense>
+                        }
+                      />
+                      <Route
                         path="/goals"
                         element={
                           <ProtectedRoute offlineDisabled>
@@ -603,10 +566,6 @@ function App() {
               >
                 <Footer />
               </div>
-
-              {/* PWA Components */}
-              <InstallPrompt />
-              <PWAUpdatePrompt />
             </div>
           </AppLoadingContext.Provider>
         </ThemeProvider>

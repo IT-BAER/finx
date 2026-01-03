@@ -2,10 +2,39 @@ import { useMemo } from "react";
 import { useLanguage } from "../contexts/LanguageContext";
 import enTranslations from "../translations/en";
 import deTranslations from "../translations/de";
+import esTranslations from "../translations/es";
+import frTranslations from "../translations/fr";
+import itTranslations from "../translations/it";
+import nlTranslations from "../translations/nl";
+import plTranslations from "../translations/pl";
+import ptTranslations from "../translations/pt";
+import ruTranslations from "../translations/ru";
+import zhTranslations from "../translations/zh";
 
 const translations = {
   en: enTranslations,
   de: deTranslations,
+  es: esTranslations,
+  fr: frTranslations,
+  it: itTranslations,
+  nl: nlTranslations,
+  pl: plTranslations,
+  pt: ptTranslations,
+  ru: ruTranslations,
+  zh: zhTranslations,
+};
+
+const locales = {
+  en: "en-US",
+  de: "de-DE",
+  es: "es-ES",
+  fr: "fr-FR",
+  it: "it-IT",
+  nl: "nl-NL",
+  pl: "pl-PL",
+  pt: "pt-PT",
+  ru: "ru-RU",
+  zh: "zh-CN",
 };
 
 export const useTranslation = () => {
@@ -47,7 +76,7 @@ export const useTranslation = () => {
       };
 
       // Use different locales based on selected language
-      const locale = language === "de" ? "de-DE" : "en-US";
+      const locale = locales[language] || "en-US";
       return dateObj.toLocaleDateString(locale, options);
     };
   }, [language]);
@@ -57,9 +86,12 @@ export const useTranslation = () => {
     return (amount) => {
       if (amount === undefined || amount === null) return "";
 
-      // Use different locales and currencies based on selected language
+      const locale = locales[language] || "en-US";
+      const currency = language === "en" ? "USD" : "EUR"; // Simplified currency logic for now, or match app logic
+
+      // If specific custom formatting is needed per language, valid, otherwise standard Intl
       if (language === "de") {
-        // Format with € on the left side like $ with a space
+        // Keep existing custom German format if desired
         return (
           "€ " +
           new Intl.NumberFormat("de-DE", {
@@ -70,12 +102,13 @@ export const useTranslation = () => {
             .replace("€", "")
             .trim()
         );
-      } else {
-        return new Intl.NumberFormat("en-US", {
-          style: "currency",
-          currency: "USD",
-        }).format(amount);
       }
+
+      // Default formatting
+      return new Intl.NumberFormat(locale, {
+        style: "currency",
+        currency: currency,
+      }).format(amount);
     };
   }, [language]);
 

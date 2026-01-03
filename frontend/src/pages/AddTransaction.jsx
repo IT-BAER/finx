@@ -1,20 +1,73 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import "../utils/haptics.js";
 import { useNavigate } from "react-router-dom";
 import offlineAPI from "../services/offlineAPI.js";
 import { recurringTransactionAPI } from "../services/api.jsx";
 import { useTranslation } from "../hooks/useTranslation";
+import { useCategories, useSources, useTargets } from "../hooks/useQueries";
 import Dropdown from "../components/Dropdown.jsx";
 import DropdownWithInput from "../components/DropdownWithInput.jsx";
 import Button from "../components/Button.jsx";
 import Icon from "../components/Icon.jsx";
 import Input from "../components/Input.jsx";
 import { motion } from "framer-motion";
+import { AnimatedPage, AnimatedSection } from "../components/AnimatedPage";
 
 const AddTransaction = () => {
-  const [categories, setCategories] = useState([]);
-  const [sources, setSources] = useState([]);
-  const [targets, setTargets] = useState([]);
+  // React Query hooks for reference data
+  const { data: categoriesData = [] } = useCategories();
+  const { data: sourcesData = [] } = useSources();
+  const { data: targetsData = [] } = useTargets();
+  
+  // Normalize data for components
+  const categories = useMemo(() => {
+    let categoriesArray = [];
+    if (Array.isArray(categoriesData)) {
+      categoriesArray = categoriesData;
+    } else if (categoriesData && typeof categoriesData === "object") {
+      if (Array.isArray(categoriesData.categories)) {
+        categoriesArray = categoriesData.categories;
+      } else if (Array.isArray(categoriesData.data?.categories)) {
+        categoriesArray = categoriesData.data.categories;
+      } else if (Array.isArray(categoriesData.data)) {
+        categoriesArray = categoriesData.data;
+      }
+    }
+    return categoriesArray;
+  }, [categoriesData]);
+  
+  const sources = useMemo(() => {
+    let sourcesArray = [];
+    if (Array.isArray(sourcesData)) {
+      sourcesArray = sourcesData;
+    } else if (sourcesData && typeof sourcesData === "object") {
+      if (Array.isArray(sourcesData.sources)) {
+        sourcesArray = sourcesData.sources;
+      } else if (Array.isArray(sourcesData.data?.sources)) {
+        sourcesArray = sourcesData.data.sources;
+      } else if (Array.isArray(sourcesData.data)) {
+        sourcesArray = sourcesData.data;
+      }
+    }
+    return sourcesArray.map((s) => (typeof s === "string" ? s : s?.name)).filter(Boolean);
+  }, [sourcesData]);
+  
+  const targets = useMemo(() => {
+    let targetsArray = [];
+    if (Array.isArray(targetsData)) {
+      targetsArray = targetsData;
+    } else if (targetsData && typeof targetsData === "object") {
+      if (Array.isArray(targetsData.targets)) {
+        targetsArray = targetsData.targets;
+      } else if (Array.isArray(targetsData.data?.targets)) {
+        targetsArray = targetsData.data.targets;
+      } else if (Array.isArray(targetsData.data)) {
+        targetsArray = targetsData.data;
+      }
+    }
+    return targetsArray.map((t) => (typeof t === "string" ? t : t?.name)).filter(Boolean);
+  }, [targetsData]);
+  
   const [formData, setFormData] = useState({
     type: "expense",
     date: new Date().toISOString().split("T")[0],
@@ -35,114 +88,12 @@ const AddTransaction = () => {
   const navigate = useNavigate();
   const { t, language, formatCurrency } = useTranslation();
 
-  useEffect(() => {
-    loadCategories();
-    loadSources();
-    loadTargets();
-  }, []);
-
   // Ensure category is cleared whenever type switches to income (defensive)
   useEffect(() => {
     if (formData.type === "income" && formData.category) {
       setFormData((f) => ({ ...f, category: "", category_id: "" }));
     }
   }, [formData.type]);
-
-  const loadSources = async () => {
-    try {
-      const res = await offlineAPI.getSources();
-      console.log("Sources data:", res);
-      // Normalize to array of strings for DropdownWithInput
-      // Handle different response formats
-      let sourcesArray = [];
-      if (Array.isArray(res)) {
-        // Direct array response (cached data)
-        sourcesArray = res;
-      } else if (res && typeof res === "object") {
-        // Object response with data property
-        if (Array.isArray(res.sources)) {
-          sourcesArray = res.sources;
-        } else if (Array.isArray(res.data?.sources)) {
-          sourcesArray = res.data.sources;
-        } else if (Array.isArray(res.data)) {
-          sourcesArray = res.data;
-        }
-      }
-
-      // Convert to array of strings
-      const list = sourcesArray
-        .map((s) => (typeof s === "string" ? s : s?.name))
-        .filter(Boolean);
-      console.log("Normalized sources:", list);
-      setSources(list);
-    } catch (err) {
-      console.error("Error loading sources:", err);
-      // Set empty array to prevent UI issues
-      setSources([]);
-    }
-  };
-
-  const loadTargets = async () => {
-    try {
-      const res = await offlineAPI.getTargets();
-      console.log("Targets data:", res);
-      // Normalize to array of strings for DropdownWithInput
-      // Handle different response formats
-      let targetsArray = [];
-      if (Array.isArray(res)) {
-        // Direct array response (cached data)
-        targetsArray = res;
-      } else if (res && typeof res === "object") {
-        // Object response with data property
-        if (Array.isArray(res.targets)) {
-          targetsArray = res.targets;
-        } else if (Array.isArray(res.data?.targets)) {
-          targetsArray = res.data.targets;
-        } else if (Array.isArray(res.data)) {
-          targetsArray = res.data;
-        }
-      }
-
-      // Convert to array of strings
-      const list = targetsArray
-        .map((t) => (typeof t === "string" ? t : t?.name))
-        .filter(Boolean);
-      console.log("Normalized targets:", list);
-      setTargets(list);
-    } catch (err) {
-      console.error("Error loading targets:", err);
-      // Set empty array to prevent UI issues
-      setTargets([]);
-    }
-  };
-
-  const loadCategories = async () => {
-    try {
-      const res = await offlineAPI.getCategories();
-      console.log("Categories data:", res);
-      // Normalize to array of {id,name}
-      // Handle different response formats
-      let categoriesArray = [];
-      if (Array.isArray(res)) {
-        // Direct array response (cached data)
-        categoriesArray = res;
-      } else if (res && typeof res === "object") {
-        // Object response with data property
-        if (Array.isArray(res.categories)) {
-          categoriesArray = res.categories;
-        } else if (Array.isArray(res.data?.categories)) {
-          categoriesArray = res.data.categories;
-        } else if (Array.isArray(res.data)) {
-          categoriesArray = res.data;
-        }
-      }
-      console.log("Normalized categories:", categoriesArray);
-      setCategories(categoriesArray);
-    } catch (err) {
-      setError(t("failedToLoadCategories"));
-      console.error("Error loading categories:", err);
-    }
-  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -338,8 +289,14 @@ const AddTransaction = () => {
   }, [formData, categories, sources, targets]);
 
   return (
+    <AnimatedPage>
     <div className="container mx-auto px-4 pt-0 pb-8 sm:pb-8 min-h-0">
-      <div className="flex justify-between items-center mb-8">
+      <motion.div 
+        className="flex justify-between items-center mb-8"
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.1 }}
+      >
         <h1 className="display-2 leading-none">{t("addTransaction")}</h1>
         <div className="flex items-center gap-2">
           {/* Mobile: Circled Icon */}
@@ -375,10 +332,11 @@ const AddTransaction = () => {
             </Button>
           </div>
         </div>
-      </div>
+      </motion.div>
 
       {/* Error alerts removed - using toast notifications instead */}
 
+      <AnimatedSection delay={0.2}>
       <div className="card">
         <div className="card-body">
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -790,7 +748,9 @@ const AddTransaction = () => {
           </form>
         </div>
       </div>
+      </AnimatedSection>
     </div>
+    </AnimatedPage>
   );
 };
 

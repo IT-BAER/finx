@@ -5,10 +5,12 @@ import { useTranslation } from "../hooks/useTranslation";
 import { useAuth } from "../contexts/AuthContext";
 import Button from "../components/Button";
 import Icon from "../components/Icon.jsx";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { motionTheme } from "../utils/motionTheme";
 import useOfflineAPI from "../hooks/useOfflineAPI.js";
 import Input from "../components/Input.jsx";
+import { AnimatedPage, AnimatedSection } from "../components/AnimatedPage";
+import { useInfiniteTransactions, useDeleteTransaction } from "../hooks/useQueries";
 
 const Transactions = () => {
   const navigate = useNavigate();
@@ -19,6 +21,13 @@ const Transactions = () => {
   const mobileSentinelRef = useRef();
   // Track IDs we've already rendered to avoid duplicates when appending
   const seenKeysRef = useRef(new Set());
+  // Track IDs that have already been animated (so we don't re-animate on re-renders)
+  const animatedIdsRef = useRef(new Set());
+  // Track IDs that should animate in (newly loaded)
+  const [newlyLoadedIds, setNewlyLoadedIds] = useState(new Set());
+  
+  // React Query mutation for delete
+  const deleteTransactionMutation = useDeleteTransaction();
 
   // Helper function to get display source and target for transactions
   // For income transactions, we need to swap them for correct semantic display
@@ -104,13 +113,21 @@ const Transactions = () => {
 
   const isSearching = debouncedQuery.trim().length > 0;
 
-  // When search is cleared, refresh the first page to restore pagination baseline
+  // When search query changes, trigger a server-side search
   useEffect(() => {
-    if (!isSearching) {
-      setServerOffset(0);
+    // Reset pagination state and reload with search query
+    setServerOffset(0);
+    seenKeysRef.current = new Set();
+    animatedIdsRef.current = new Set();
+    setNewlyLoadedIds(new Set());
+    if (debouncedQuery.trim()) {
+      // Server-side search with higher limit for better results
+      loadTransactions(0, false, 50, debouncedQuery.trim());
+    } else {
+      // No search query - load normal paginated results
       loadTransactions(0, false, pageSize);
     }
-  }, [isSearching]);
+  }, [debouncedQuery, pageSize]);
 
   // Build a lightweight search index and filter across columns
   const filteredTransactions = useMemo(() => {
@@ -169,6 +186,7 @@ const Transactions = () => {
     offsetValue = 0,
     append = false,
     overrideLimit = null,
+    searchQuery = null,
   ) => {
     try {
       if (!append) {
@@ -176,6 +194,10 @@ const Transactions = () => {
       }
       const requestedLimit = overrideLimit ?? pageSize;
   const params = { limit: requestedLimit, offset: offsetValue, pageOnly: true };
+  // Add search query to server request if provided
+  if (searchQuery) {
+    params.q = searchQuery;
+  }
   const data = await offlineAPI.getAllTransactions(params);
       // We always treat `data` as a single page possibly containing both online and local (offline) items.
       const pageItems = Array.isArray(data) ? data : [];
@@ -212,15 +234,23 @@ const Transactions = () => {
       } else {
         // Append only unseen items
         const toAppend = [];
+        const newIds = new Set();
         for (const tx of pageItems) {
           const k = getKey(tx);
           if (!seenKeysRef.current.has(k)) {
             seenKeysRef.current.add(k);
             toAppend.push(tx);
+            // Track the ID for animation (only if not already animated)
+            const txId = tx.id || tx._tempId;
+            if (!animatedIdsRef.current.has(txId)) {
+              newIds.add(txId);
+            }
           }
         }
         if (toAppend.length > 0) {
           setRawTransactions((prev) => [...prev, ...toAppend]);
+          // Set newly loaded IDs for animation (merge with existing)
+          setNewlyLoadedIds((prev) => new Set([...prev, ...newIds]));
         }
       }
 
@@ -444,14 +474,13 @@ const Transactions = () => {
   const handleDelete = async (id) => {
     if (window.confirm(t("deleteConfirmation"))) {
       try {
-        const result = await offlineAPI.deleteTransaction(id);
-        if (result.queued) {
+        const result = await deleteTransactionMutation.mutateAsync(id);
+        if (result?.queued) {
           window.toastWithHaptic.info(t("changesQueuedOffline"));
         } else if (result) {
           window.toastWithHaptic.success(t("transactionDeleted"));
         }
-        // Dispatch a custom event to notify the Transactions page to refresh
-        window.dispatchEvent(new CustomEvent("transactionDeleted"));
+        // Note: The mutation hook dispatches transactionDeleted event automatically
       } catch (err) {
         console.error("Error deleting transaction:", err);
         window.toastWithHaptic?.error(
@@ -513,8 +542,14 @@ const Transactions = () => {
   const groupedTransactions = groupTransactionsByDate(filteredTransactions);
 
   return (
+  <AnimatedPage>
   <div className="container mx-auto px-4 pt-4 md:pt-0 pb-4 min-h-0">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6 min-h-[3rem]">
+      <motion.div 
+        className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6 min-h-[3rem]"
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.1 }}
+      >
         <h1 className="display-2 leading-none">{t("transactions")}</h1>
         <div className="relative w-full sm:w-72" role="search">
           <Icon
@@ -547,8 +582,9 @@ const Transactions = () => {
             </button>
           )}
         </div>
-      </div>
+      </motion.div>
 
+      <AnimatedSection delay={0.2}>
       {isSearching && filteredTransactions.length === 0 ? (
         <div className="card">
           <div className="card-body py-10 text-center">
@@ -564,19 +600,46 @@ const Transactions = () => {
       ) : transactions.length > 0 ? (
         <>
           {/* Mobile view - Grouped by date */}
-          <div className="md:hidden space-y-6">
+          <div className="md:hidden space-y-6 overflow-hidden">
+            <AnimatePresence mode="popLayout">
             {Object.entries(groupedTransactions)
               .sort((a, b) => (b[0] || '').localeCompare(a[0] || ''))
               .map(([dateKey, dateTransactions], index) => (
-                <div key={dateKey} className="card">
+                <motion.div 
+                  key={dateKey} 
+                  className="card overflow-hidden"
+                  layout
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  transition={{ duration: 0.2, ease: motionTheme.easings.emphasizedDecelerate }}
+                >
                   <div className="card-body p-4">
                     <h2 className="text-lg font-semibold mb-3">
                       {formatDate(dateTransactions[0]?.date || dateKey)}
                     </h2>
                     <div className="space-y-4">
-                      {dateTransactions.map((transaction, idx) => (
+                      <AnimatePresence mode="popLayout">
+                      {dateTransactions.map((transaction, idx) => {
+                        const txId = transaction.id || transaction._tempId;
+                        const shouldAnimate = newlyLoadedIds.has(txId) && !animatedIdsRef.current.has(txId);
+                        return (
                         <motion.div
                           key={transaction.id}
+                          layout
+                          initial={shouldAnimate || isSearching ? { opacity: 0, y: 20 } : false}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, scale: 0.95 }}
+                          transition={shouldAnimate ? { 
+                            duration: 0.35, 
+                            delay: idx * 0.05,
+                            ease: motionTheme.easings.emphasizedDecelerate 
+                          } : { duration: 0.2, ease: motionTheme.easings.emphasizedDecelerate }}
+                          onAnimationComplete={() => {
+                            if (shouldAnimate) {
+                              animatedIdsRef.current.add(txId);
+                            }
+                          }}
                           className={`border-b border-gray-200 dark:border-gray-700 pb-4 last:border-0 last:pb-0`}
                           onClick={(e) => {
                             if (transaction.readOnly) {
@@ -589,7 +652,6 @@ const Transactions = () => {
                           aria-disabled={transaction.readOnly}
                           whileHover={{ scale: 1.02 }}
                           whileTap={{ scale: 0.95 }}
-                          transition={motionTheme.springs.press}
                         >
                           <div className="flex justify-between items-start">
                             <div className="flex-1 min-w-0 relative">
@@ -699,11 +761,14 @@ const Transactions = () => {
                             </div>
                           </div>
                         </motion.div>
-                      ))}
+                      );
+                      })}
+                      </AnimatePresence>
                     </div>
                   </div>
-                </div>
+                </motion.div>
               ))}
+            </AnimatePresence>
             {/* Mobile sentinel for infinite scroll - observed by IntersectionObserver */}
             <div
               ref={mobileSentinelRef}
@@ -718,9 +783,9 @@ const Transactions = () => {
           </div>
 
           {/* Desktop view - Table */}
-          <div className="hidden md:block card">
+          <div className="hidden md:block card overflow-hidden">
             <div className="card-body">
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto overflow-y-hidden">
                 <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                   <thead className="bg-gray-50 dark:bg-gray-800/50">
                     <tr>
@@ -751,15 +816,33 @@ const Transactions = () => {
                       </th>
                     </tr>
                   </thead>
+                  <AnimatePresence mode="popLayout">
                   <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                    {filteredTransactions.map((transaction, index) => (
-                      <tr
+                    {filteredTransactions.map((transaction, index) => {
+                      const txId = transaction.id || transaction._tempId;
+                      const shouldAnimate = newlyLoadedIds.has(txId) && !animatedIdsRef.current.has(txId);
+                      return (
+                      <motion.tr
                         key={transaction.id}
                         ref={
                           index === filteredTransactions.length - 1 && !isSearching
                             ? lastTransactionRef
                             : null
                         }
+                        layout
+                        initial={shouldAnimate || isSearching ? { opacity: 0, y: 15 } : false}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.98 }}
+                        transition={shouldAnimate ? { 
+                          duration: 0.3, 
+                          delay: (index % pageSize) * 0.03,
+                          ease: motionTheme.easings.emphasizedDecelerate 
+                        } : { duration: 0.2, ease: motionTheme.easings.emphasizedDecelerate }}
+                        onAnimationComplete={() => {
+                          if (shouldAnimate) {
+                            animatedIdsRef.current.add(txId);
+                          }
+                        }}
                         className={`table-row`}
                       >
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200">
@@ -937,9 +1020,11 @@ const Transactions = () => {
     </div>
   </div>
 </td>
-                      </tr>
-                    ))}
+                      </motion.tr>
+                    );
+                    })}
                   </tbody>
+                  </AnimatePresence>
                 </table>
               </div>
               {loading && (
@@ -977,7 +1062,9 @@ const Transactions = () => {
           </div>
         </div>
       )}
+      </AnimatedSection>
     </div>
+  </AnimatedPage>
   );
 };
 

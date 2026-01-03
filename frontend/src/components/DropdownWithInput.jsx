@@ -257,7 +257,7 @@ const DropdownWithInput = ({
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: -10, scale: 0.95 }}
                 transition={{ duration: 0.2, ease: "easeOut" }}
-                className="fixed z-50 shadow-2xl rounded-lg overflow-auto ring-1 ring-black/5 touch-pan-y overscroll-auto"
+                className="fixed z-50 shadow-2xl rounded-lg overflow-auto scrollbar-thin-modern ring-1 ring-black/5 touch-pan-y overscroll-auto"
                 style={{
                   left: "0px",
                   top: "0px",

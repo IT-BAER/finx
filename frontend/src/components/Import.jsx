@@ -690,7 +690,7 @@ const Import = ({ onClose }) => {
       </div>
 
       {showMapping && csvHeaders.length > 0 && (
-        <div className="mt-4 overflow-y-auto max-h-[50vh]">
+        <div className="mt-4 overflow-y-auto scrollbar-thin-modern max-h-[50vh]">
           <h3 className="font-medium mb-2">
             {t("mapColumns") || "Map CSV columns"}
           </h3>

@@ -3,6 +3,7 @@ const react = require("eslint-plugin-react");
 const reactHooks = require("eslint-plugin-react-hooks");
 const importPlugin = require("eslint-plugin-import");
 const globals = require("globals");
+const tseslint = require("typescript-eslint");
 
 module.exports = [
   // Ignore patterns (flat config replaces .eslintignore)
@@ -19,6 +20,12 @@ module.exports = [
 
   // Core recommended rules
   js.configs.recommended,
+
+  // TypeScript configuration for .ts and .tsx files
+  ...tseslint.configs.recommended.map((config) => ({
+    ...config,
+    files: ["**/*.{ts,tsx}"],
+  })),
 
   // Project rules for JS/JSX
   {
@@ -61,6 +68,45 @@ module.exports = [
       "no-empty": ["off", { allowEmptyCatch: true }],
       "no-useless-escape": "off",
       "no-unsafe-finally": "off",
+    },
+  },
+
+  // TypeScript rules with React support
+  {
+    files: ["**/*.{ts,tsx}"],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: "module",
+      parserOptions: {
+        ecmaFeatures: { jsx: true },
+      },
+      globals: {
+        ...globals.browser,
+        ...globals.node,
+      },
+    },
+    settings: {
+      react: { version: "detect" },
+    },
+    plugins: {
+      react,
+      "react-hooks": reactHooks,
+      import: importPlugin,
+    },
+    rules: {
+      // React rules
+      "react/react-in-jsx-scope": "off",
+      "react/prop-types": "off",
+      "react/display-name": "off",
+      "react-hooks/exhaustive-deps": "off",
+
+      // TypeScript specific rules (relaxed for gradual adoption)
+      "@typescript-eslint/no-unused-vars": "off",
+      "@typescript-eslint/no-explicit-any": "off",
+      "@typescript-eslint/explicit-function-return-type": "off",
+      "@typescript-eslint/explicit-module-boundary-types": "off",
+      "@typescript-eslint/no-empty-function": "off",
+      "@typescript-eslint/no-non-null-assertion": "off",
     },
   },
 ];

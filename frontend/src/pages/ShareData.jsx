@@ -1,110 +1,82 @@
-import { useState, useEffect } from "react";
-import { useSharing } from "../contexts/SharingContext";
+import { useState, useMemo } from "react";
 import { useTranslation } from "../hooks/useTranslation";
+import { 
+  useSharingPermissions, 
+  useSharedWithMe, 
+  useSharingUsers, 
+  useSharingSources,
+  useCreateSharingPermission,
+  useDeleteSharingPermission 
+} from "../hooks/useQueries";
 import { useNavigate } from "react-router-dom";
 import DropdownWithInput from "../components/DropdownWithInput.jsx";
 import Button from "../components/Button";
 import Icon from "../components/Icon.jsx";
 import Modal from "../components/Modal";
 import { motion } from "framer-motion";
+import { AnimatedPage, AnimatedSection } from "../components/AnimatedPage";
 
 const ShareData = () => {
-  const {
-    getAllUsers,
-    getUserSources,
-    myPermissions,
-    sharedWithMe,
-    fetchMyPermissions,
-    fetchSharedWithMe,
-    loading: sharingLoading,
-    error: sharingError,
-    createPermission,
-    deletePermission,
-  } = useSharing();
+  // React Query hooks for sharing data
+  const { data: myPermissions = [], isLoading: permissionsLoading } = useSharingPermissions();
+  const { data: sharedWithMe = [], isLoading: sharedWithMeLoading } = useSharedWithMe();
+  const { data: usersData = [], isLoading: usersLoading } = useSharingUsers();
+  const { data: sourcesData = [], isLoading: sourcesLoading } = useSharingSources();
+  
+  // Mutation hooks
+  const createPermissionMutation = useCreateSharingPermission();
+  const deletePermissionMutation = useDeleteSharingPermission();
 
   const { t } = useTranslation();
   const navigate = useNavigate();
 
-  const [users, setUsers] = useState([]);
-  const [sources, setSources] = useState([]);
-  // Prefer live context state as the source of truth; keep local for initial render fallback
-  const [myPerms, setMyPerms] = useState([]);
-  const [sharedToMe, setSharedToMe] = useState([]);
-  const [loading, setLoading] = useState(false);
-  // Removed error state - using toast notifications
+  // Derive loading state
+  const loading = permissionsLoading || sharedWithMeLoading || usersLoading || sourcesLoading;
+  const submitting = createPermissionMutation.isPending || deletePermissionMutation.isPending;
+
+  // Form state
   const [selectedUser, setSelectedUser] = useState("");
   const [selectedSource, setSelectedSource] = useState("");
   const [permissionLevel, setPermissionLevel] = useState("read");
-  const [submitting, setSubmitting] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [permissionToDelete, setPermissionToDelete] = useState(null);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        // Removed setError call
-
-        // Fetch users and sources in parallel
-        const [usersData, sourcesData] = await Promise.all([
-          getAllUsers(),
-          getUserSources(),
-        ]);
-
-        setUsers(usersData);
-        
-        // Process sources to add display names for shared sources
-        const processedSources = sourcesData.map(source => {
-          if (source.ownership_type === 'shared') {
-            const ownerName = source.owner_first_name || source.owner_email || 'Unknown';
-            return {
-              ...source,
-              displayName: `${source.name} (${ownerName})`,
-              name: source.name // Keep original name for filtering
-            };
-          }
-          return {
-            ...source,
-            displayName: source.name,
-            name: source.name
-          };
-        });
-        
-        setSources(processedSources);
-
-        // Kick off context loads; they populate myPermissions/sharedWithMe
-        await Promise.all([fetchMyPermissions(), fetchSharedWithMe()]);
-
-        // Fallback to whatever these functions return for first paint
-        const perms =
-          myPermissions && Array.isArray(myPermissions) ? myPermissions : [];
-        const swm =
-          sharedWithMe && Array.isArray(sharedWithMe) ? sharedWithMe : [];
-        setMyPerms(perms);
-        setSharedToMe(swm);
-      } catch (err) {
-        window.toastWithHaptic.error(t("failedToLoadData"));
-        console.error("Error loading data:", err);
-      } finally {
-        setLoading(false);
+  // Process users to array
+  const users = useMemo(() => {
+    return Array.isArray(usersData) ? usersData : [];
+  }, [usersData]);
+  
+  // Process sources to add display names for shared sources
+  const sources = useMemo(() => {
+    const arr = Array.isArray(sourcesData) ? sourcesData : [];
+    return arr.map(source => {
+      if (source.ownership_type === 'shared') {
+        const ownerName = source.owner_first_name || source.owner_email || 'Unknown';
+        return {
+          ...source,
+          displayName: `${source.name} (${ownerName})`,
+          name: source.name
+        };
       }
-    };
-
-    fetchData();
-  }, []);
-
-  // Keep local lists in sync when context updates resolve after first render
-  useEffect(() => {
-    if (Array.isArray(myPermissions)) setMyPerms(myPermissions);
+      return {
+        ...source,
+        displayName: source.name,
+        name: source.name
+      };
+    });
+  }, [sourcesData]);
+  
+  // Use query data directly
+  const myPerms = useMemo(() => {
+    return Array.isArray(myPermissions) ? myPermissions : [];
   }, [myPermissions]);
-
-  useEffect(() => {
-    if (Array.isArray(sharedWithMe)) setSharedToMe(sharedWithMe);
+  
+  const sharedToMe = useMemo(() => {
+    return Array.isArray(sharedWithMe) ? sharedWithMe : [];
   }, [sharedWithMe]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setSubmitting(true);
 
     try {
       // Build payload for ID-only sharing
@@ -116,12 +88,8 @@ const ShareData = () => {
         payload.source_filter_ids = [Number(selectedSource)];
       }
 
-      await createPermission(payload);
+      await createPermissionMutation.mutateAsync(payload);
       window.toastWithHaptic.success(t("shareCreatedSuccessfully"));
-
-      // Refresh context-backed lists
-      await fetchMyPermissions();
-      await fetchSharedWithMe();
 
       // Reset form
       setSelectedUser("");
@@ -132,8 +100,6 @@ const ShareData = () => {
         err.response?.data?.message || t("failedToCreateShare"),
       );
       console.error("Error sharing data:", err);
-    } finally {
-      setSubmitting(false);
     }
   };
 
@@ -144,10 +110,8 @@ const ShareData = () => {
 
   const handleDelete = async (perm) => {
     try {
-      await deletePermission(perm.id);
+      await deletePermissionMutation.mutateAsync(perm.id);
       window.toastWithHaptic.success(t("shareDeletedSuccessfully"));
-      await fetchMyPermissions();
-      await fetchSharedWithMe();
     } catch (e) {
       window.toastWithHaptic.error(t("failedToDeleteShare"));
       console.error("Failed to delete permission", e);
@@ -180,8 +144,14 @@ const ShareData = () => {
   // Removed error display block
 
   return (
+    <AnimatedPage>
     <div className="container mx-auto px-4 pb-8 sm:py-8 min-h-0">
-      <div className="flex justify-between items-center mb-8">
+      <motion.div 
+        className="flex justify-between items-center mb-8"
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.1 }}
+      >
         <h1 className="display-2 leading-none">{t("shareData")}</h1>
         <div className="flex items-center gap-2">
           {/* Mobile: Circled Icon */}
@@ -214,8 +184,9 @@ const ShareData = () => {
             </Button>
           </div>
         </div>
-      </div>
+      </motion.div>
 
+      <AnimatedSection delay={0.2}>
       {/* Two-column layout: Left = Add Share, Right = lists */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Left column: Add Share */}
@@ -483,7 +454,9 @@ const ShareData = () => {
       >
         <p>{t("deleteSharingConfirmation")}</p>
       </Modal>
+      </AnimatedSection>
     </div>
+    </AnimatedPage>
   );
 };
 

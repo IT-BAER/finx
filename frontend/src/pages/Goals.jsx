@@ -1,5 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
-import { goalAPI } from "../services/api.jsx";
+import { useState, useEffect } from "react";
 import { useTranslation } from "../hooks/useTranslation";
 import { useTheme } from "../contexts/ThemeContext.jsx";
 import { motion, AnimatePresence } from "framer-motion";
@@ -8,6 +7,15 @@ import Button from "../components/Button.jsx";
 import Modal from "../components/Modal.jsx";
 import Input from "../components/Input.jsx";
 import Icon from "../components/Icon.jsx";
+import { AnimatedPage, AnimatedSection } from "../components/AnimatedPage";
+import {
+  useGoals,
+  useGoalsSummary,
+  useCreateGoal,
+  useUpdateGoal,
+  useDeleteGoal,
+  useAddGoalContribution,
+} from "../hooks/useQueries";
 
 // Goal icon options
 const GOAL_ICONS = [
@@ -40,9 +48,8 @@ const GOAL_COLORS = [
 const Goals = () => {
   const { t } = useTranslation();
   const { dark } = useTheme();
-  const [goals, setGoals] = useState([]);
-  const [summary, setSummary] = useState(null);
-  const [loading, setLoading] = useState(true);
+  
+  // Modal states
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showContributeModal, setShowContributeModal] = useState(false);
@@ -70,29 +77,32 @@ const Goals = () => {
   });
   const [contributionAmount, setContributionAmount] = useState("");
   const [contributionNote, setContributionNote] = useState("");
-  const [formLoading, setFormLoading] = useState(false);
 
-  // Load goals and summary
-  const loadGoals = useCallback(async () => {
-    try {
-      setLoading(true);
-      const [goalsRes, summaryRes] = await Promise.all([
-        goalAPI.getAll(showCompleted),
-        goalAPI.getSummary(),
-      ]);
-      setGoals(goalsRes.data.goals || []);
-      setSummary(summaryRes.data.summary || null);
-    } catch (error) {
-      console.error("Failed to load goals:", error);
-      window.toastWithHaptic?.error(t("failedToLoadGoals") || "Failed to load goals");
-    } finally {
-      setLoading(false);
-    }
-  }, [showCompleted, t]);
+  // React Query hooks for goals data
+  const { 
+    data: goals = [], 
+    isLoading: loading, 
+    error: goalsError 
+  } = useGoals({ includeCompleted: showCompleted });
+  
+  const { data: summary = null } = useGoalsSummary();
+  
+  // Mutation hooks
+  const createGoalMutation = useCreateGoal();
+  const updateGoalMutation = useUpdateGoal();
+  const deleteGoalMutation = useDeleteGoal();
+  const addContributionMutation = useAddGoalContribution();
+  
+  // Combined loading state for form operations
+  const formLoading = createGoalMutation.isPending || 
+    updateGoalMutation.isPending || 
+    deleteGoalMutation.isPending || 
+    addContributionMutation.isPending;
 
-  useEffect(() => {
-    loadGoals();
-  }, [loadGoals]);
+  // Show error toast if goals fail to load
+  if (goalsError) {
+    console.error("Failed to load goals:", goalsError);
+  }
 
   // Reset form
   const resetForm = () => {
@@ -116,8 +126,7 @@ const Goals = () => {
     }
 
     try {
-      setFormLoading(true);
-      await goalAPI.create({
+      await createGoalMutation.mutateAsync({
         name: formData.name,
         target_amount: parseFloat(formData.target_amount),
         deadline: formData.deadline || null,
@@ -127,12 +136,9 @@ const Goals = () => {
       window.toastWithHaptic?.success(t("goalCreatedSuccessfully") || "Goal created successfully");
       setShowAddModal(false);
       resetForm();
-      loadGoals();
     } catch (error) {
       console.error("Failed to create goal:", error);
       window.toastWithHaptic?.error(t("failedToCreateGoal") || "Failed to create goal");
-    } finally {
-      setFormLoading(false);
     }
   };
 
@@ -145,24 +151,23 @@ const Goals = () => {
     }
 
     try {
-      setFormLoading(true);
-      await goalAPI.update(selectedGoal.id, {
-        name: formData.name,
-        target_amount: parseFloat(formData.target_amount),
-        deadline: formData.deadline || null,
-        icon: formData.icon,
-        color: formData.color,
+      await updateGoalMutation.mutateAsync({
+        id: selectedGoal.id,
+        data: {
+          name: formData.name,
+          target_amount: parseFloat(formData.target_amount),
+          deadline: formData.deadline || null,
+          icon: formData.icon,
+          color: formData.color,
+        },
       });
       window.toastWithHaptic?.success(t("goalUpdatedSuccessfully") || "Goal updated successfully");
       setShowEditModal(false);
       setSelectedGoal(null);
       resetForm();
-      loadGoals();
     } catch (error) {
       console.error("Failed to update goal:", error);
       window.toastWithHaptic?.error(t("failedToUpdateGoal") || "Failed to update goal");
-    } finally {
-      setFormLoading(false);
     }
   };
 
@@ -171,17 +176,13 @@ const Goals = () => {
     if (!selectedGoal) return;
 
     try {
-      setFormLoading(true);
-      await goalAPI.delete(selectedGoal.id);
+      await deleteGoalMutation.mutateAsync(selectedGoal.id);
       window.toastWithHaptic?.success(t("goalDeletedSuccessfully") || "Goal deleted successfully");
       setShowDeleteModal(false);
       setSelectedGoal(null);
-      loadGoals();
     } catch (error) {
       console.error("Failed to delete goal:", error);
       window.toastWithHaptic?.error(t("failedToDeleteGoal") || "Failed to delete goal");
-    } finally {
-      setFormLoading(false);
     }
   };
 
@@ -194,22 +195,21 @@ const Goals = () => {
     }
 
     try {
-      setFormLoading(true);
-      await goalAPI.addContribution(selectedGoal.id, {
-        amount: parseFloat(contributionAmount),
-        note: contributionNote || null,
+      await addContributionMutation.mutateAsync({
+        goalId: selectedGoal.id,
+        data: {
+          amount: parseFloat(contributionAmount),
+          note: contributionNote || null,
+        },
       });
       window.toastWithHaptic?.success(t("contributionAddedSuccessfully") || "Contribution added successfully");
       setShowContributeModal(false);
       setSelectedGoal(null);
       setContributionAmount("");
       setContributionNote("");
-      loadGoals();
     } catch (error) {
       console.error("Failed to add contribution:", error);
       window.toastWithHaptic?.error(t("failedToAddContribution") || "Failed to add contribution");
-    } finally {
-      setFormLoading(false);
     }
   };
 
@@ -243,8 +243,10 @@ const Goals = () => {
   // Toggle goal completion
   const toggleGoalCompletion = async (goal) => {
     try {
-      await goalAPI.update(goal.id, { is_completed: !goal.is_completed });
-      loadGoals();
+      await updateGoalMutation.mutateAsync({
+        id: goal.id,
+        data: { is_completed: !goal.is_completed },
+      });
     } catch (error) {
       console.error("Failed to toggle goal completion:", error);
     }
@@ -541,9 +543,15 @@ const Goals = () => {
   );
 
   return (
+    <AnimatedPage>
     <div className="container mx-auto px-4 pt-4 md:pt-0 pb-4 min-h-[calc(100vh-8rem)]">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <motion.div 
+        className="flex items-center justify-between mb-6"
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.1 }}
+      >
         <h1 className="display-2 leading-none">{t("goals") || "Goals"}</h1>
         <motion.div
           whileTap={{ scale: 0.95 }}
@@ -560,8 +568,9 @@ const Goals = () => {
             {t("addGoal") || "Add Goal"}
           </Button>
         </motion.div>
-      </div>
+      </motion.div>
 
+      <AnimatedSection delay={0.2}>
       {/* Summary cards */}
       <SummaryCards />
 
@@ -811,7 +820,9 @@ const Goals = () => {
           </div>
         </div>
       </Modal>
+      </AnimatedSection>
     </div>
+    </AnimatedPage>
   );
 };
 

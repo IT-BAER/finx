@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useTranslation } from "../hooks/useTranslation";
 import { motion } from "framer-motion";
+import { AnimatedStagger, AnimatedItem } from "./AnimatedPage";
 
 export default function SummaryCards({
   summary = { total_income: 0, total_expenses: 0 },
@@ -27,8 +28,13 @@ export default function SummaryCards({
   }, [startDate, endDate, dailyExpensesSeries]);
 
   return (
-    <div className={`grid grid-cols-1 md:grid-cols-2 ${incomeTrackingDisabled ? "lg:grid-cols-2" : "lg:grid-cols-4"} gap-6 mb-8`}>
+    <AnimatedStagger 
+      className={`grid grid-cols-1 md:grid-cols-2 ${incomeTrackingDisabled ? "lg:grid-cols-2" : "lg:grid-cols-4"} gap-6 mb-8`}
+      staggerDelay={0.08}
+      initialDelay={0}
+    >
       {!incomeTrackingDisabled && (
+        <AnimatedItem>
         <div className="card" style={{ borderColor: "rgba(52, 211, 153, 0.5)" }}>
           <div className="card-body">
             <div className="flex items-center">
@@ -46,8 +52,10 @@ export default function SummaryCards({
             </div>
           </div>
         </div>
+        </AnimatedItem>
       )}
 
+      <AnimatedItem>
       <div className="card" style={{ borderColor: "rgba(248, 113, 113, 0.5)" }}>
         <div className="card-body">
           <div className="flex items-center">
@@ -65,8 +73,10 @@ export default function SummaryCards({
           </div>
         </div>
       </div>
+      </AnimatedItem>
 
       {!incomeTrackingDisabled && (
+        <AnimatedItem>
         <div className="card" style={{ borderColor: "rgba(168, 85, 247, 0.5)" }}>
           <div className="card-body">
             <div className="flex items-center">
@@ -84,8 +94,10 @@ export default function SummaryCards({
             </div>
           </div>
         </div>
+        </AnimatedItem>
       )}
 
+      <AnimatedItem>
       <div className="card" style={{ borderColor: "rgba(249, 115, 22, 0.5)" }}>
         <div className="card-body">
           <div className="flex items-center">
@@ -103,7 +115,8 @@ export default function SummaryCards({
           </div>
         </div>
       </div>
-    </div>
+      </AnimatedItem>
+    </AnimatedStagger>
   );
 }
 

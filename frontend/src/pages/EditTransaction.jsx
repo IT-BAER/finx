@@ -1,9 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import "../utils/haptics.js";
 import { useNavigate, useParams } from "react-router-dom";
 import offlineAPI from "../services/offlineAPI.js";
 import { recurringTransactionAPI } from "../services/api.jsx";
 import { useTranslation } from "../hooks/useTranslation";
+import { useCategories, useSources, useTargets, useTransaction } from "../hooks/useQueries";
 import Dropdown from "../components/Dropdown.jsx";
 import DropdownWithInput from "../components/DropdownWithInput.jsx";
 import Button from "../components/Button";
@@ -11,11 +12,61 @@ import Icon from "../components/Icon.jsx";
 import Input from "../components/Input";
 import Modal from "../components/Modal";
 import { motion } from "framer-motion";
+import { AnimatedPage, AnimatedSection } from "../components/AnimatedPage";
 
 const EditTransaction = () => {
-  const [categories, setCategories] = useState([]);
-  const [sources, setSources] = useState([]);
-  const [targets, setTargets] = useState([]);
+  const { id } = useParams();
+  
+  // React Query hooks for data fetching
+  const { data: categoriesData = [] } = useCategories();
+  const { data: sourcesData = [] } = useSources();
+  const { data: targetsData = [] } = useTargets();
+  const { data: transactionData } = useTransaction(id);
+  
+  // Normalize categories to array of {id, name}
+  const categories = useMemo(() => {
+    let arr = [];
+    if (Array.isArray(categoriesData)) {
+      arr = categoriesData;
+    } else if (categoriesData?.categories) {
+      arr = categoriesData.categories;
+    } else if (categoriesData?.data?.categories) {
+      arr = categoriesData.data.categories;
+    } else if (categoriesData?.data) {
+      arr = categoriesData.data;
+    }
+    return arr;
+  }, [categoriesData]);
+  
+  // Normalize sources to array of strings
+  const sources = useMemo(() => {
+    let arr = [];
+    if (Array.isArray(sourcesData)) {
+      arr = sourcesData;
+    } else if (sourcesData?.sources) {
+      arr = sourcesData.sources;
+    } else if (sourcesData?.data?.sources) {
+      arr = sourcesData.data.sources;
+    } else if (sourcesData?.data) {
+      arr = sourcesData.data;
+    }
+    return arr.map((s) => (typeof s === "string" ? s : s?.name)).filter(Boolean);
+  }, [sourcesData]);
+  
+  // Normalize targets to array of strings
+  const targets = useMemo(() => {
+    let arr = [];
+    if (Array.isArray(targetsData)) {
+      arr = targetsData;
+    } else if (targetsData?.targets) {
+      arr = targetsData.targets;
+    } else if (targetsData?.data?.targets) {
+      arr = targetsData.data.targets;
+    } else if (targetsData?.data) {
+      arr = targetsData.data;
+    }
+    return arr.map((t) => (typeof t === "string" ? t : t?.name)).filter(Boolean);
+  }, [targetsData]);
   const [formData, setFormData] = useState({
     category_id: "",
     category: "",
@@ -36,236 +87,62 @@ const EditTransaction = () => {
   const [error, setError] = useState("");
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const navigate = useNavigate();
-  const { id } = useParams();
   const { t, language, formatCurrency } = useTranslation();
 
+  // Populate formData when transaction data is loaded
   useEffect(() => {
-    loadCategories();
-    loadSources();
-    loadTargets();
-    if (id) {
-      loadTransaction();
+    if (!transactionData) return;
+    
+    const transaction = transactionData;
+    
+    // Handle date properly to avoid timezone issues
+    let formattedDate = "";
+    if (typeof transaction.date === "string" && transaction.date.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      formattedDate = transaction.date;
+    } else if (typeof transaction.date === "string") {
+      const dateObj = new Date(transaction.date);
+      formattedDate =
+        dateObj.getFullYear() + "-" +
+        String(dateObj.getMonth() + 1).padStart(2, "0") + "-" +
+        String(dateObj.getDate()).padStart(2, "0");
+    } else if (transaction.date instanceof Date) {
+      formattedDate =
+        transaction.date.getFullYear() + "-" +
+        String(transaction.date.getMonth() + 1).padStart(2, "0") + "-" +
+        String(transaction.date.getDate()).padStart(2, "0");
     }
-  }, [id]);
 
-  // Remove unbounded debug effect that forces render noise
-  // useEffect(() => {
-  //   console.log('Component re-rendered with id:', id);
-  // }, [id]);
-
-  // Remove noisy logging that can obscure issues
-  // useEffect(() => {
-  //   console.log('formData updated:', formData);
-  // }, [formData]);
-
-  const loadSources = async () => {
-    try {
-      console.log("Loading sources...");
-      const res = await offlineAPI.getSources();
-      console.log("Sources data:", res);
-      // Normalize to array of strings for DropdownWithInput
-      // Handle different response formats
-      let sourcesArray = [];
-      if (Array.isArray(res)) {
-        // Direct array response (cached data)
-        sourcesArray = res;
-      } else if (res && typeof res === "object") {
-        // Object response with data property
-        if (Array.isArray(res.sources)) {
-          sourcesArray = res.sources;
-        } else if (Array.isArray(res.data?.sources)) {
-          sourcesArray = res.data.sources;
-        } else if (Array.isArray(res.data)) {
-          sourcesArray = res.data;
-        }
-      }
-
-      // Convert to array of strings
-      const list = sourcesArray
-        .map((s) => (typeof s === "string" ? s : s?.name))
-        .filter(Boolean);
-      console.log("Normalized sources:", list);
-      setSources(list);
-    } catch (err) {
-      console.error("Error loading sources:", err);
-      // Set empty array to prevent UI issues
-      setSources([]);
-    }
-  };
-
-  const loadTargets = async () => {
-    try {
-      console.log("Loading targets...");
-      const res = await offlineAPI.getTargets();
-      console.log("Targets data:", res);
-      // Normalize to array of strings for DropdownWithInput
-      // Handle different response formats
-      let targetsArray = [];
-      if (Array.isArray(res)) {
-        // Direct array response (cached data)
-        targetsArray = res;
-      } else if (res && typeof res === "object") {
-        // Object response with data property
-        if (Array.isArray(res.targets)) {
-          targetsArray = res.targets;
-        } else if (Array.isArray(res.data?.targets)) {
-          targetsArray = res.data.targets;
-        } else if (Array.isArray(res.data)) {
-          targetsArray = res.data;
-        }
-      }
-
-      // Convert to array of strings
-      const list = targetsArray
-        .map((t) => (typeof t === "string" ? t : t?.name))
-        .filter(Boolean);
-      console.log("Normalized targets:", list);
-      setTargets(list);
-    } catch (err) {
-      console.error("Error loading targets:", err);
-      // Set empty array to prevent UI issues
-      setTargets([]);
-    }
-  };
-
-  const loadCategories = async () => {
-    try {
-      console.log("Loading categories...");
-      const res = await offlineAPI.getCategories();
-      console.log("Categories data:", res);
-      // Normalize to array of {id,name}
-      // Handle different response formats
-      let categoriesArray = [];
-      if (Array.isArray(res)) {
-        // Direct array response (cached data)
-        categoriesArray = res;
-      } else if (res && typeof res === "object") {
-        // Object response with data property
-        if (Array.isArray(res.categories)) {
-          categoriesArray = res.categories;
-        } else if (Array.isArray(res.data?.categories)) {
-          categoriesArray = res.data.categories;
-        } else if (Array.isArray(res.data)) {
-          categoriesArray = res.data;
-        }
-      }
-      console.log("Normalized categories:", categoriesArray);
-      setCategories(categoriesArray);
-    } catch (err) {
-      console.error("Error loading categories:", err);
-      // Set empty array to prevent UI issues
-      setCategories([]);
-    }
-  };
-
-  const loadTransaction = async () => {
-    try {
-      console.log("Loading transaction with ID:", id);
-      const transaction = await offlineAPI.getTransactionById(id);
-
-      console.log("Transaction data:", transaction);
-
-      // Handle date properly to avoid timezone issues
-      let formattedDate = "";
-
-      // If date is a string in YYYY-MM-DD format, use it as is
-      if (
-        typeof transaction.date === "string" &&
-        transaction.date.match(/^\d{4}-\d{2}-\d{2}$/)
-      ) {
-        formattedDate = transaction.date;
-      } else if (typeof transaction.date === "string") {
-        // If it's a full date string, we need to be more careful about timezone handling
-        // For PostgreSQL DATE type, we should treat it as local time
-        const dateObj = new Date(transaction.date);
-        formattedDate =
-          dateObj.getFullYear() +
-          "-" +
-          String(dateObj.getMonth() + 1).padStart(2, "0") +
-          "-" +
-          String(dateObj.getDate()).padStart(2, "0");
-      } else if (transaction.date instanceof Date) {
-        // If it's already a Date object, format it properly
-        formattedDate =
-          transaction.date.getFullYear() +
-          "-" +
-          String(transaction.date.getMonth() + 1).padStart(2, "0") +
-          "-" +
-          String(transaction.date.getDate()).padStart(2, "0");
-      }
-
-      console.log("Setting form data with:", {
-        category_id: transaction.category_id || "",
-        category: transaction.category_name || transaction.category || "",
-        amount: transaction.amount || "",
-        type: transaction.type || "expense",
-        description: transaction.description || "",
-        source: transaction.source_name || transaction.source || "",
-        target: transaction.target_name || transaction.target || "",
-        date: formattedDate,
-      });
-
-      // Ensure all values are strings to prevent controlled/uncontrolled issues
-      setFormData({
-        // Clear category_id as well when transaction is income so UI state doesn't keep the DB value
-        category_id:
-          transaction.type === "income"
-            ? ""
-            : transaction.category_id
-            ? String(transaction.category_id)
-            : "",
-        // If this transaction is an income, we clear category (categories are only for expenses)
-        category:
-          transaction.type === "income"
-            ? ""
-            : transaction.category_name || transaction.category || "",
-        amount: transaction.amount ? String(transaction.amount) : "",
-        type: transaction.type || "expense",
-        description: transaction.description || "",
-        // For income transactions, swap the source/target mapping from backend
-        source: transaction.type === "income" 
-          ? (transaction.target_name || transaction.target || "")  // Frontend source = backend target
-          : (transaction.source_name || transaction.source || ""), // Frontend source = backend source
-        target: transaction.type === "income"
-          ? (transaction.source_name || transaction.source || "")  // Frontend target = backend source
-          : (transaction.target_name || transaction.target || ""), // Frontend target = backend target
-        date: formattedDate,
-        isRecurring: !!transaction.recurring,
-        recurrence_type: transaction.recurring?.recurrence_type || "monthly",
-        recurrence_interval: transaction.recurring?.recurrence_interval || 1,
-        end_date: transaction.recurring?.end_date 
-          ? (() => {
-              // Parse end_date as local date to avoid timezone shift
-              const dateStr = transaction.recurring.end_date;
-              if (typeof dateStr === "string" && dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
-                return dateStr; // Already in YYYY-MM-DD format
-              }
-              // If it's a full ISO string, extract date part treating it as local
-              const dateObj = new Date(dateStr);
-              return dateObj.getFullYear() + "-" +
-                String(dateObj.getMonth() + 1).padStart(2, "0") + "-" +
-                String(dateObj.getDate()).padStart(2, "0");
-            })()
-          : "",
-        max_occurrences: transaction.recurring?.max_occurrences || "",
-        recurring_id: transaction.recurring?.id || null,
-      });
-    } catch (err) {
-      setError(t("failedToLoadTransaction"));
-      console.error("Error loading transaction:", err);
-      // Set default form data to prevent UI issues
-      setFormData({
-        category_id: "",
-        category: "",
-        amount: "",
-        type: "expense",
-        description: "",
-        source: "",
-        target: "",
-        date: "",
-      });
-    }
-  };
+    setFormData({
+      category_id: transaction.type === "income" ? "" : transaction.category_id ? String(transaction.category_id) : "",
+      category: transaction.type === "income" ? "" : transaction.category_name || transaction.category || "",
+      amount: transaction.amount ? String(transaction.amount) : "",
+      type: transaction.type || "expense",
+      description: transaction.description || "",
+      source: transaction.type === "income" 
+        ? (transaction.target_name || transaction.target || "")
+        : (transaction.source_name || transaction.source || ""),
+      target: transaction.type === "income"
+        ? (transaction.source_name || transaction.source || "")
+        : (transaction.target_name || transaction.target || ""),
+      date: formattedDate,
+      isRecurring: !!transaction.recurring,
+      recurrence_type: transaction.recurring?.recurrence_type || "monthly",
+      recurrence_interval: transaction.recurring?.recurrence_interval || 1,
+      end_date: transaction.recurring?.end_date 
+        ? (() => {
+            const dateStr = transaction.recurring.end_date;
+            if (typeof dateStr === "string" && dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+              return dateStr;
+            }
+            const dateObj = new Date(dateStr);
+            return dateObj.getFullYear() + "-" +
+              String(dateObj.getMonth() + 1).padStart(2, "0") + "-" +
+              String(dateObj.getDate()).padStart(2, "0");
+          })()
+        : "",
+      max_occurrences: transaction.recurring?.max_occurrences ? String(transaction.recurring.max_occurrences) : "",
+    });
+  }, [transactionData]);
 
   const handleDelete = async () => {
     try {
@@ -425,8 +302,14 @@ const EditTransaction = () => {
   };
 
   return (
+    <AnimatedPage>
     <div className="container mx-auto px-4 pt-0 pb-8 sm:pb-8 min-h-0">
-      <div className="flex justify-between items-center mb-8">
+      <motion.div 
+        className="flex justify-between items-center mb-8"
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.1 }}
+      >
         <h1 className="display-2 leading-none">{t("editTransactionTitle")}</h1>
         <div className="flex items-center gap-2">
           {/* Mobile: Circled Icon */}
@@ -461,10 +344,11 @@ const EditTransaction = () => {
             </Button>
           </div>
         </div>
-      </div>
+      </motion.div>
 
       {error && <div className="alert alert-error mb-6">{error}</div>}
 
+      <AnimatedSection delay={0.2}>
       <div className="card">
         <div className="card-body">
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -897,7 +781,9 @@ const EditTransaction = () => {
       >
         <p>{t("areYouSureYouWantToDeleteThisTransaction")}</p>
       </Modal>
+      </AnimatedSection>
     </div>
+    </AnimatedPage>
   );
 };
 

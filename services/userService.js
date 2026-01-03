@@ -11,7 +11,8 @@ class UserService {
 
     // Get all users
     const query = `
-      SELECT id, email, first_name, last_name, created_at, COALESCE(is_admin, false) AS is_admin
+      SELECT id, email, first_name, last_name, created_at, 
+             COALESCE(is_admin, false) AS is_admin
       FROM users
       ORDER BY created_at DESC;
     `;

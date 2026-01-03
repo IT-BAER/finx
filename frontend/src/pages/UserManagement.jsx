@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
 import Modal from "../components/Modal";
-import { userAPI } from "../services/api.jsx";
 import { useAuth } from "../contexts/AuthContext";
 import { useTranslation } from "../hooks/useTranslation";
+import { useAdminUsers, useCreateAdminUser, useUpdateAdminUser, useDeleteAdminUser } from "../hooks/useQueries";
 import { useNavigate } from "react-router-dom";
 import Button from "../components/Button";
 import Icon from "../components/Icon.jsx";
 import { motion } from "framer-motion";
+import { AnimatedPage, AnimatedSection } from "../components/AnimatedPage";
 
 // Simple toggle switch component (same style used in Settings)
 const SimpleToggle = ({ checked, onChange, disabled = false }) => {
@@ -32,9 +33,15 @@ const UserManagement = () => {
   const { user } = useAuth();
   const { t } = useTranslation();
   const navigate = useNavigate();
-
-  const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(false);
+  
+  // React Query hooks for admin user management
+  const { data: users = [], isLoading: usersLoading, refetch: refetchUsers } = useAdminUsers();
+  const createUserMutation = useCreateAdminUser();
+  const updateUserMutation = useUpdateAdminUser();
+  const deleteUserMutation = useDeleteAdminUser();
+  
+  // Derive loading state from any mutation
+  const loading = usersLoading || createUserMutation.isPending || updateUserMutation.isPending || deleteUserMutation.isPending;
 
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -57,57 +64,30 @@ const UserManagement = () => {
     }
   }, [user, navigate]);
 
-  // Fetch all users
-  useEffect(() => {
-    if (user && user.is_admin) {
-      fetchUsers();
-    }
-  }, [user]);
-
-  const fetchUsers = async () => {
-    try {
-      setLoading(true);
-      const res = await userAPI.getAllUsers();
-      setUsers(res.data.data);
-    } catch (err) {
-      window.toastWithHaptic.error(t("failedToLoadUsers"));
-      console.error("Error loading users:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleCreateUser = async (e) => {
     e.preventDefault();
     try {
-      setLoading(true);
-      await userAPI.createUser(newUser);
+      await createUserMutation.mutateAsync(newUser);
       window.toastWithHaptic.success(t("userCreatedSuccessfully"));
-      setNewUser({ email: "", password: "", first_name: "", last_name: "" });
+      setNewUser({ email: "", password: "", first_name: "", last_name: "", is_admin: false });
       setShowCreateForm(false);
-      fetchUsers(); // Refresh the user list
     } catch (err) {
       window.toastWithHaptic.error(
         err.response?.data?.message || t("failedToCreateUser"),
       );
-    } finally {
-      setLoading(false);
     }
   };
 
   const handleDeleteUser = async () => {
     if (!userToDelete) return;
     try {
-      setLoading(true);
-      await userAPI.deleteUser(userToDelete);
+      await deleteUserMutation.mutateAsync(userToDelete);
       window.toastWithHaptic.success(t("userDeletedSuccessfully"));
-      fetchUsers(); // Refresh the user list
     } catch (err) {
       window.toastWithHaptic.error(
         err.response?.data?.message || t("failedToDeleteUser"),
       );
     } finally {
-      setLoading(false);
       setShowDeleteModal(false);
       setUserToDelete(null);
     }
@@ -122,8 +102,14 @@ const UserManagement = () => {
   }
 
   return (
+    <AnimatedPage>
     <div className="container mx-auto px-4 pt-4 md:pt-0 pb-4 min-h-0">
-      <div className="flex items-center justify-between mb-8">
+      <motion.div 
+        className="flex items-center justify-between mb-8"
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.1 }}
+      >
         <h1 className="display-2 leading-none">{t("userManagement")}</h1>
 
         <div className="flex items-center gap-2">
@@ -154,8 +140,9 @@ const UserManagement = () => {
             </Button>
           </div>
         </div>
-      </div>
+      </motion.div>
 
+      <AnimatedSection delay={0.2}>
       <div className="card">
         <div className="card-body">
           <div className="flex justify-between items-center mb-6">
@@ -177,8 +164,7 @@ const UserManagement = () => {
             confirmText={t("createUser")}
             onConfirm={async () => {
               try {
-                setLoading(true);
-                await userAPI.createUser(newUser);
+                await createUserMutation.mutateAsync(newUser);
                 window.toastWithHaptic.success(t("userCreatedSuccessfully"));
                 setNewUser({
                   email: "",
@@ -188,13 +174,10 @@ const UserManagement = () => {
                   is_admin: false,
                 });
                 setShowCreateModal(false);
-                fetchUsers();
               } catch (err) {
                 window.toastWithHaptic.error(
                   err.response?.data?.message || t("failedToCreateUser"),
                 );
-              } finally {
-                setLoading(false);
               }
             }}
           >
@@ -275,7 +258,7 @@ const UserManagement = () => {
               {users.map((user) => (
                 <div
                   key={user.id}
-                  className="grid grid-cols-[minmax(120px,1fr)_100px_60px] md:grid-cols-[1fr_150px_80px] items-center p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer"
+                  className="flex items-center gap-4 p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer"
                   onClick={() => {
                     setEditingUser({
                       id: user.id,
@@ -287,40 +270,45 @@ const UserManagement = () => {
                     setShowEditModal(true);
                   }}
                 >
-                  <div className="min-w-0">
-                    <div className="font-medium text-gray-900 dark:text-gray-100 truncate">
-                      {user.first_name && user.last_name
-                        ? `${user.first_name} ${user.last_name}`
-                        : user.first_name || user.last_name || "-"}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-gray-900 dark:text-gray-100 truncate">
+                        {user.first_name && user.last_name
+                          ? `${user.first_name} ${user.last_name}`
+                          : user.first_name || user.last_name || "-"}
+                      </span>
+                      {user.is_admin && (
+                        <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400 shrink-0">
+                          Admin
+                        </span>
+                      )}
                     </div>
                     <div className="text-sm text-gray-500 dark:text-gray-400 truncate">
                       {user.email}
                     </div>
                   </div>
-                  <div className="text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                  <div className="text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap hidden md:block">
                     {new Date(user.created_at).toLocaleDateString(t("locale"), {
                       day: "2-digit",
                       month: "2-digit",
                       year: "numeric",
                     })}
                   </div>
-                  <div className="flex justify-center">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setUserToDelete(user.id);
-                        setShowDeleteModal(true);
-                      }}
-                      disabled={loading}
-                      className="p-2 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-full transition-colors"
-                    >
-                      <img
-                        src="/icons/trash.svg"
-                        alt={t("delete")}
-                        className="w-6 h-6 icon-tint-danger"
-                      />
-                    </button>
-                  </div>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setUserToDelete(user.id);
+                      setShowDeleteModal(true);
+                    }}
+                    disabled={loading}
+                    className="p-2 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-full transition-colors shrink-0"
+                  >
+                    <img
+                      src="/icons/trash.svg"
+                      alt={t("delete")}
+                      className="w-6 h-6 icon-tint-danger"
+                    />
+                  </button>
                 </div>
               ))}
             </div>
@@ -347,23 +335,22 @@ const UserManagement = () => {
         onConfirm={async () => {
           if (!editingUser) return;
           try {
-            setLoading(true);
-            await userAPI.updateUser(editingUser.id, {
-              first_name: editingUser.first_name,
-              last_name: editingUser.last_name,
-              email: editingUser.email,
-              is_admin: editingUser.is_admin,
+            await updateUserMutation.mutateAsync({
+              id: editingUser.id,
+              data: {
+                first_name: editingUser.first_name,
+                last_name: editingUser.last_name,
+                email: editingUser.email,
+                is_admin: editingUser.is_admin,
+              },
             });
             window.toastWithHaptic.success(t("success"));
             setShowEditModal(false);
             setEditingUser(null);
-            fetchUsers();
           } catch (err) {
             window.toastWithHaptic.error(
               err.response?.data?.message || t("failedToLoadUsers"),
             );
-          } finally {
-            setLoading(false);
           }
         }}
       >
@@ -415,7 +402,9 @@ const UserManagement = () => {
           </div>
         )}
       </Modal>
+      </AnimatedSection>
     </div>
+    </AnimatedPage>
   );
 };
 

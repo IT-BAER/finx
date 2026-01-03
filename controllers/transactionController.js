@@ -187,16 +187,19 @@ const createTransaction = async (req, res) => {
 const getTransactions = async (req, res) => {
   try {
     // Optional filter to view as a specific accessible user
-    const { asUserId, limit, offset } = req.query;
+    const { asUserId, limit, offset, q } = req.query;
     const validAsUserId = await validateAsUserId(req.user.id, asUserId, "all");
 
     // Parse limit and offset with defaults
     const limitNum = limit ? Math.min(parseInt(limit), 100) : 20; // Max 100, default 20
     const offsetNum = offset ? parseInt(offset) : 0;
 
+    // Normalize search query for case-insensitive, accent-insensitive search
+    const searchQuery = q ? q.trim() : null;
+
     if (validAsUserId) {
       // If a specific accessible user is requested, respect sharing permissions at row level
-      // Note: This path doesn't currently support pagination
+      // Note: This path doesn't currently support pagination or search
       const transactions = await Transaction.findByUserIdWithSharing(
         validAsUserId,
         req.user.id,
@@ -215,6 +218,27 @@ const getTransactions = async (req, res) => {
     const placeholders = accessibleUserIds
       .map((_, i) => `$${i + 1}`)
       .join(", ");
+
+    // Build search condition if search query is provided
+    let searchCondition = "";
+    let queryParams = [...accessibleUserIds];
+    let paramIndex = accessibleUserIds.length + 1;
+
+    if (searchQuery) {
+      // Search across description, category name, source name, target name, and amount
+      searchCondition = `
+        AND (
+          LOWER(t.description) LIKE LOWER($${paramIndex})
+          OR LOWER(c.name) LIKE LOWER($${paramIndex})
+          OR LOWER(s.name) LIKE LOWER($${paramIndex})
+          OR LOWER(tg.name) LIKE LOWER($${paramIndex})
+          OR CAST(t.amount AS TEXT) LIKE $${paramIndex}
+        )
+      `;
+      queryParams.push(`%${searchQuery}%`);
+      paramIndex++;
+    }
+
     const query = `
       SELECT t.*, c.name as category_name, s.name as source_name, tg.name as target_name,
              t.recurring_transaction_id as recurring_id, rt.recurrence_type as recurring_recurrence_type
@@ -224,14 +248,19 @@ const getTransactions = async (req, res) => {
       LEFT JOIN targets tg ON t.target_id = tg.id
       LEFT JOIN recurring_transactions rt ON t.recurring_transaction_id = rt.id
       WHERE t.user_id IN (${placeholders})
+      ${searchCondition}
       ORDER BY t.date DESC, t.id DESC
-      LIMIT $${accessibleUserIds.length + 1} OFFSET $${accessibleUserIds.length + 2};
+      LIMIT $${paramIndex} OFFSET $${paramIndex + 1};
     `;
-    const result = await db.query(query, [
-      ...accessibleUserIds,
-      limitNum,
-      offsetNum,
-    ]);
+    queryParams.push(limitNum, offsetNum);
+
+    // Debug logging
+    console.log('[getTransactions] searchQuery:', searchQuery);
+    console.log('[getTransactions] searchCondition:', searchCondition);
+    console.log('[getTransactions] Full SQL:', query);
+    console.log('[getTransactions] Params:', queryParams);
+
+    const result = await db.query(query, queryParams);
     const rows = result.rows;
 
     // Compute per-owner edit capability for requester based on sharing_permissions
