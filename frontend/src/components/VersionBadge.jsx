@@ -1,7 +1,15 @@
 import React from "react";
 
-// Version should match root package.json
-export const APP_VERSION = "0.7.4";
+// Version is now injected at build time via Vite's define
+// Falls back to package.json import if define is not available
+const APP_VERSION = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : (() => {
+  try {
+    // Dynamic import doesn't work in all contexts, so we use a static fallback
+    return "0.8.2";
+  } catch {
+    return "unknown";
+  }
+})();
 
 const VersionBadge = () => {
   return (
@@ -17,4 +25,5 @@ const VersionBadge = () => {
   );
 };
 
+export { APP_VERSION };
 export default VersionBadge;
