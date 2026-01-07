@@ -1,9 +1,14 @@
 const dotenv = require("dotenv");
-const { Pool } = require("pg");
+const { Pool, types } = require("pg");
 const fs = require("fs");
 const logger = require("../utils/logger");
 
 dotenv.config();
+
+// Configure pg to return DATE types as strings (YYYY-MM-DD) instead of JavaScript Date objects.
+// This prevents timezone conversion issues where the server's timezone shifts the date.
+// OID 1082 = DATE type in PostgreSQL
+types.setTypeParser(1082, (val) => val); // Return as-is (string)
 
 // Detect if running in Docker
 const isDocker = fs.existsSync("/.dockerenv");

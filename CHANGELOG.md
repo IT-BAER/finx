@@ -2,6 +2,27 @@
 
 All notable changes to this project are documented in this file.
 
+## [v0.8.2] - 2026-01-08
+
+### fix
+
+- **Reports**: Fixed Balance Trend (Saldoentwicklung) chart discrepancy between web and mobile
+  - Added initial balance calculation from transactions BEFORE the selected date range
+  - Web now shows actual running balance (like mobile) instead of cumulative change from zero
+  - Refactored source ID extraction into reusable helper function for consistency
+  - Both "Other" aggregated sources and individual sources now include initial balance
+
+- **Reports**: Fixed time-range-aware average expense calculations on web
+  - Weekly view: Shows average daily expenses (total / days)
+  - Monthly view: Shows average weekly expenses (total / weeks)  
+  - Yearly view: Shows average monthly expenses (total / 12)
+  - Dynamic label updates based on selected time range
+
+- **Database**: Fixed DATE type timezone issues in PostgreSQL
+  - Configured pg driver to return DATE types as strings (YYYY-MM-DD) instead of JavaScript Date objects
+  - Prevents server timezone from shifting dates during serialization
+  - Ensures consistent date handling across all environments
+
 ## [v0.8.1] - 2026-01-07
 
 ### fix

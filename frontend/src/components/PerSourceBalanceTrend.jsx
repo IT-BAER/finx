@@ -111,18 +111,8 @@ export default function PerSourceBalanceTrend({
         });
         const selectedSet = new Set((selectedSources || []).map((x) => String(x)));
 
-        const inRange = (all || []).filter((tx) => {
-          const d = new Date(tx.date);
-          return d >= start && d <= end;
-        });
-
-        inRange.forEach((tx) => {
-          const d = new Date(tx.date);
-          let idx = -1;
-          for (let i = 0; i < bucketCount; i++) { if (d >= bucketStarts[i] && d <= bucketEnds[i]) { idx = i; break; } }
-          if (idx < 0) return;
-
-          // Determine source id
+        // Helper function to get source ID from transaction
+        const getSourceIdFromTx = (tx) => {
           let sid = null;
           const type = String(tx.type).toLowerCase();
           if (type === 'expense') {
@@ -141,6 +131,41 @@ export default function PerSourceBalanceTrend({
             // As a last resort, if the record carries a source_id, accept it
             if (!sid && tx.source_id != null) sid = String(tx.source_id);
           }
+          return sid;
+        };
+
+        // Calculate initial balance from transactions BEFORE the selected date range
+        const initialBalanceBySource = new Map(); // id -> initial balance
+        (all || []).forEach((tx) => {
+          const d = toDate(tx.date);
+          if (d < start) {
+            const sid = getSourceIdFromTx(tx);
+            if (!sid) return;
+            
+            if (!initialBalanceBySource.has(sid)) initialBalanceBySource.set(sid, 0);
+            const amt = Number(tx.amount || 0);
+            const type = String(tx.type).toLowerCase();
+            if (type === 'income') {
+              initialBalanceBySource.set(sid, initialBalanceBySource.get(sid) + amt);
+            } else if (type === 'expense') {
+              initialBalanceBySource.set(sid, initialBalanceBySource.get(sid) - amt);
+            }
+          }
+        });
+
+        const inRange = (all || []).filter((tx) => {
+          const d = toDate(tx.date);
+          return d >= start && d <= end;
+        });
+
+        inRange.forEach((tx) => {
+          const d = toDate(tx.date);
+          let idx = -1;
+          for (let i = 0; i < bucketCount; i++) { if (d >= bucketStarts[i] && d <= bucketEnds[i]) { idx = i; break; } }
+          if (idx < 0) return;
+
+          // Use helper function to determine source id
+          const sid = getSourceIdFromTx(tx);
           if (!sid) return;
 
           if (String(tx.type).toLowerCase() === 'expense') {
@@ -186,12 +211,17 @@ export default function PerSourceBalanceTrend({
         idsToShow.forEach((id, i) => {
           const e = (bySrcExp.get(id) || new Array(bucketCount).fill(0)).slice();
           const inc = (bySrcInc.get(id) || new Array(bucketCount).fill(0)).slice();
+          // Get initial balance from transactions before the selected date range
+          const initialBalance = initialBalanceBySource.get(id) || 0;
           let series = new Array(bucketCount).fill(0);
           if (incomeTrackingDisabled) {
             for (let k = 1; k < e.length; k++) e[k] += e[k - 1];
-            series = e.map((v) => -v);
+            // Start from initial balance (negative since we're tracking expenses)
+            series = e.map((v) => initialBalance - v);
           } else {
             const net = e.map((v, idx) => (inc[idx] || 0) - v);
+            // Add initial balance to the first bucket, then accumulate
+            net[0] += initialBalance;
             for (let k = 1; k < net.length; k++) net[k] += net[k - 1];
             series = net;
           }
@@ -210,6 +240,8 @@ export default function PerSourceBalanceTrend({
           const restIds = sourceTotals.slice(5).map((x) => x.id);
           const aggE = new Array(bucketCount).fill(0);
           const aggI = new Array(bucketCount).fill(0);
+          // Calculate combined initial balance for "other" sources
+          let aggInitialBalance = 0;
           restIds.forEach((id) => {
             const e = bySrcExp.get(id) || [];
             const inc = bySrcInc.get(id) || [];
@@ -217,13 +249,16 @@ export default function PerSourceBalanceTrend({
               aggE[i] += Number(e[i] || 0);
               aggI[i] += Number(inc[i] || 0);
             }
+            aggInitialBalance += initialBalanceBySource.get(id) || 0;
           });
           let series = new Array(bucketCount).fill(0);
           if (incomeTrackingDisabled) {
             for (let k = 1; k < aggE.length; k++) aggE[k] += aggE[k - 1];
-            series = aggE.map((v) => -v);
+            series = aggE.map((v) => aggInitialBalance - v);
           } else {
             const net = aggE.map((v, idx) => (aggI[idx] || 0) - v);
+            // Add aggregated initial balance to the first bucket
+            net[0] += aggInitialBalance;
             for (let k = 1; k < net.length; k++) net[k] += net[k - 1];
             series = net;
           }

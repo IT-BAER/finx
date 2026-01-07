@@ -17,15 +17,39 @@ export default function SummaryCards({
   const totalExpenses = summary?.total_expenses || 0;
   const netSavings = incomeTrackingDisabled ? -totalExpenses : totalIncome - totalExpenses;
 
-  const averageDailyExpenses = useMemo(() => {
-    if (!startDate || !endDate) return 0;
+  // Calculate average expenses based on time range:
+  // - weekly: average daily expenses (total / days)
+  // - monthly: average weekly expenses (total / weeks)
+  // - yearly: average monthly expenses (total / 12)
+  const { averageExpense, averageLabel } = useMemo(() => {
+    if (!startDate || !endDate) return { averageExpense: 0, averageLabel: t("dailyExpenses") };
     const s = new Date(startDate);
     const e = new Date(endDate);
     const diffTime = Math.abs(e - s);
     const days = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
     const total = (dailyExpensesSeries || []).reduce((sum, item) => sum + (parseFloat(item.total || 0)), 0);
-    return days > 0 ? total / days : 0;
-  }, [startDate, endDate, dailyExpensesSeries]);
+    
+    if (timeRange === 'yearly') {
+      // Monthly average for yearly view
+      return { 
+        averageExpense: total / 12, 
+        averageLabel: t("monthlyExpenses") || "Monthly Expenses" 
+      };
+    } else if (timeRange === 'monthly') {
+      // Weekly average for monthly view
+      const weeks = days / 7;
+      return { 
+        averageExpense: weeks > 0 ? total / weeks : 0, 
+        averageLabel: t("weeklyExpenses") || "Weekly Expenses" 
+      };
+    } else {
+      // Daily average for weekly view (default)
+      return { 
+        averageExpense: days > 0 ? total / days : 0, 
+        averageLabel: t("dailyExpenses") 
+      };
+    }
+  }, [startDate, endDate, dailyExpensesSeries, timeRange, t]);
 
   return (
     <AnimatedStagger 
@@ -107,9 +131,9 @@ export default function SummaryCards({
               </svg>
             </div>
             <div>
-              <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">{`Ø ${t("dailyExpenses")}`}</h3>
+              <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">{`Ø ${averageLabel}`}</h3>
               <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }} className="text-2xl font-bold text-orange-600 dark:text-orange-400">
-                {formatCurrency(averageDailyExpenses)}
+                {formatCurrency(averageExpense)}
               </motion.p>
             </div>
           </div>

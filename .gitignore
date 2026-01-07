@@ -98,5 +98,9 @@ temp/
 .github/instructions
 .github/agents
 
+# Expo artifacts (in case accidentally created in wrong folder)
+.expo/
+nul
+
 ASSETS
 context.md
