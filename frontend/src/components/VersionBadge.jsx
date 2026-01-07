@@ -1,15 +1,8 @@
 import React from "react";
 
-// Version is now injected at build time via Vite's define
-// Falls back to package.json import if define is not available
-const APP_VERSION = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : (() => {
-  try {
-    // Dynamic import doesn't work in all contexts, so we use a static fallback
-    return "0.8.2";
-  } catch {
-    return "unknown";
-  }
-})();
+// Version is injected at build time via Vite's define
+// Fallback to hardcoded version if define is not available (e.g., during dev/test)
+const APP_VERSION = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : "0.8.2";
 
 const VersionBadge = () => {
   return (
