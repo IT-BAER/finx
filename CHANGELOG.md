@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented in this file.
 
+## [v0.8.1] - 2026-01-07
+
+### fix
+
+- **Validation**: Fixed crash in Zod error formatting middleware
+  - Added defensive null check in `formatZodErrors` function
+  - Handle cases where `error.errors` is undefined by falling back to `error.issues`
+  - Added safe property access with optional chaining to prevent unhandled rejections
+  - Prevents server crash when validation errors have unexpected structure
+
 ## [v0.8.0] - 2026-01-03
 
 ### feat

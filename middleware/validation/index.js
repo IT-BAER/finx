@@ -15,10 +15,19 @@ const formatZodErrors = (error) => {
     return { message: 'Validation error', errors: [] };
   }
   
-  const errors = error.errors.map(err => ({
-    field: err.path.join('.'),
-    message: err.message,
-    code: err.code,
+  // Defensive check for error.errors being undefined or not an array
+  const zodErrors = error.errors || error.issues || [];
+  if (!Array.isArray(zodErrors)) {
+    return { 
+      message: error.message || 'Validation failed', 
+      errors: [] 
+    };
+  }
+  
+  const errors = zodErrors.map(err => ({
+    field: err.path?.join('.') || '',
+    message: err.message || 'Invalid value',
+    code: err.code || 'validation_error',
   }));
   
   // Create a summary message from the first few errors
