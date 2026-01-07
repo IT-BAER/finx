@@ -45,8 +45,11 @@ const createTransactionSchema = z.object({
     z.literal('Withdrawal').transform(() => 'expense')
   ),
   category: z.string().min(1).max(50).optional().nullable(),
+  category_id: optionalIdSchema,
   source: z.string().min(1).max(100).optional().nullable(),
+  source_id: optionalIdSchema,
   target: z.string().min(1).max(100).optional().nullable(),
+  target_id: optionalIdSchema,
   description: z.string().max(500).optional().nullable(),
   date: optionalDateSchema,
   _tempId: z.union([z.string(), z.number()]).optional(),

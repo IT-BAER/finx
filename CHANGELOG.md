@@ -12,6 +12,11 @@ All notable changes to this project are documented in this file.
   - Added safe property access with optional chaining to prevent unhandled rejections
   - Prevents server crash when validation errors have unexpected structure
 
+- **Validation**: Allow category_id, source_id, target_id in transaction schema
+  - Mobile app sends ID-based references alongside name-based references
+  - Added `category_id`, `source_id`, `target_id` as optional fields to `createTransactionSchema`
+  - Fixes 400 Bad Request error when creating transactions from mobile app
+
 ## [v0.8.0] - 2026-01-03
 
 ### feat
