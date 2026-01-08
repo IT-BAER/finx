@@ -2,6 +2,23 @@
 
 All notable changes to this project are documented in this file.
 
+## [v0.8.3] - 2026-01-08
+
+### fix
+
+- **Rate Limiting**: Refactored rate limiting with tiered approach for finance apps
+  - Previous config was too strict (only 10 auth requests per 15 min including token refresh!)
+  - New global limit: 120 requests per minute (handles sync bursts)
+  - Auth-specific limiters per endpoint:
+    - Login/Register: 15 failed attempts per 15 min (bruteforce protection)
+    - Token Refresh: 20 requests per minute (mobile background sync friendly)
+    - Password Change: 5 attempts per hour
+    - Account Deletion: 3 attempts per 24 hours
+  - Transaction/Recurring routes: 60 writes per minute
+  - Token refresh now separate from login - won't block legitimate refresh calls
+  - Successful requests skipped for login/register (won't lock out legitimate users)
+  - Using `standardHeaders: "draft-7"` for modern rate limit headers
+
 ## [v0.8.2] - 2026-01-08
 
 ### fix

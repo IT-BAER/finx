@@ -88,23 +88,33 @@ app.use(
   }),
 );
 
-// General rate limiting
+// ============================================================================
+// Rate Limiting Configuration
+// Tiered approach for personal finance app with mobile sync support
+// Auth-specific limiters are defined in routes/auth.js per-endpoint
+// ============================================================================
+
+// General API limiter - generous for data sync operations
+// Finance apps may fetch transactions, categories, sources, targets, goals, etc.
 const generalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 1000,
-  standardHeaders: true,
+  windowMs: 1 * 60 * 1000, // 1 minute window
+  limit: 120, // 120 requests per minute (2 req/sec sustained)
+  standardHeaders: "draft-7",
   legacyHeaders: false,
+  message: { error: "Too many requests. Please wait a moment before trying again." },
 });
 
-// Strict rate limiting
-const strictLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 10,
-  standardHeaders: true,
+// Transaction/write limiter - slightly stricter for write operations
+// Prevents accidental or malicious flooding of transaction/recurring creation
+const transactionWriteLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute window
+  limit: 60, // 60 writes per minute (1 per second sustained)
+  standardHeaders: "draft-7",
   legacyHeaders: false,
-  skipSuccessfulRequests: true,
+  message: { error: "Too many write operations. Please slow down." },
 });
 
+// Apply general limiter to all routes
 app.use(generalLimiter);
 
 // Routes
@@ -128,10 +138,12 @@ app.get("/ready", async (req, res) => {
 });
 
 // API Routes
-app.use("/api/auth", strictLimiter, require("./routes/auth"));
+// Auth routes need separate handling - some endpoints are sensitive, others less so
+const authRouter = require("./routes/auth");
+app.use("/api/auth", authRouter);
 app.use("/api/categories", require("./routes/category"));
-app.use("/api/transactions", require("./routes/transaction"));
-app.use("/api/recurring-transactions", require("./routes/recurring-transactions"));
+app.use("/api/transactions", transactionWriteLimiter, require("./routes/transaction"));
+app.use("/api/recurring-transactions", transactionWriteLimiter, require("./routes/recurring-transactions"));
 app.use("/api/sources", require("./routes/source"));
 app.use("/api/targets", require("./routes/target"));
 app.use("/api/sharing", require("./routes/sharing"));
