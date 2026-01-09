@@ -375,7 +375,7 @@ See full terms in [LICENSE](LICENSE) (Commons Clause v1.0 + Apache-2.0).
 
 ## 💜 Support Development
 
-If this project helps you, consider supporting future work:
+If this project helps you, consider supporting this and future work, which heavily relies on coffee:
 
 <div align="center">
 <a href="https://www.buymeacoffee.com/itbaer" target="_blank"><img src="https://github.com/user-attachments/assets/64107f03-ba5b-473e-b8ad-f3696fe06002" alt="Buy Me A Coffee" style="height: 60px; max-width: 217px;"></a>
