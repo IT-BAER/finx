@@ -98,7 +98,7 @@ app.use(
 // Finance apps may fetch transactions, categories, sources, targets, goals, etc.
 const generalLimiter = rateLimit({
   windowMs: 1 * 60 * 1000, // 1 minute window
-  limit: 120, // 120 requests per minute (2 req/sec sustained)
+  limit: 300, // Increased to 300 to handle hot-reloads during development
   standardHeaders: "draft-7",
   legacyHeaders: false,
   message: { error: "Too many requests. Please wait a moment before trying again." },
@@ -108,7 +108,7 @@ const generalLimiter = rateLimit({
 // Prevents accidental or malicious flooding of transaction/recurring creation
 const transactionWriteLimiter = rateLimit({
   windowMs: 1 * 60 * 1000, // 1 minute window
-  limit: 60, // 60 writes per minute (1 per second sustained)
+  limit: 120, // Increased to 120 to handle burst testing
   standardHeaders: "draft-7",
   legacyHeaders: false,
   message: { error: "Too many write operations. Please slow down." },

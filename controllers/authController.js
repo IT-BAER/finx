@@ -332,8 +332,11 @@ const refreshToken = async (req, res) => {
   try {
     const { refreshToken: token, refreshTokenFamily: family, userId } = req.body;
 
+    logger.info(`[Refresh] Attempt for user ${userId} - token present: ${!!token}, family present: ${!!family}`);
+
     // Validate required fields
     if (!token || !family || !userId) {
+      logger.warn(`[Refresh] Missing required fields - token: ${!!token}, family: ${!!family}, userId: ${!!userId}`);
       return res.status(400).json({
         message: "Refresh token, token family, and user ID are required"
       });
@@ -342,6 +345,7 @@ const refreshToken = async (req, res) => {
     // Validate user ID is a number
     const parsedUserId = parseInt(userId, 10);
     if (isNaN(parsedUserId)) {
+      logger.warn(`[Refresh] Invalid user ID: ${userId}`);
       return res.status(400).json({ message: "Invalid user ID" });
     }
 
@@ -353,8 +357,8 @@ const refreshToken = async (req, res) => {
     );
 
     if (!result.valid) {
-      // Log the security event
-      logger.warn(`Refresh token validation failed for user ${parsedUserId}: ${result.error}`);
+      // Log the security event with full details
+      logger.warn(`[Refresh] Token validation failed for user ${parsedUserId}: ${result.error}`);
       return res.status(401).json({ message: result.error });
     }
 

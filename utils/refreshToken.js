@@ -142,15 +142,21 @@ async function revokeTokenFamily(tokenFamily) {
  * @returns {Promise<{valid: boolean, newToken?: string, newFamily?: string, error?: string}>}
  */
 async function validateAndRotateToken(userId, token, tokenFamily) {
+    logger.info(`[RefreshToken] Validating for user ${userId}, family: ${tokenFamily?.substring(0, 8)}...`);
+
     const tokenData = await getRefreshTokenData(userId);
 
     // No refresh token stored
     if (!tokenData || !tokenData.hash) {
+        logger.warn(`[RefreshToken] No refresh token found in DB for user ${userId}`);
         return { valid: false, error: "No refresh token found" };
     }
 
+    logger.info(`[RefreshToken] DB has token - stored family: ${tokenData.family?.substring(0, 8)}..., expires: ${tokenData.expires}`);
+
     // Token family mismatch - potential reuse attack!
     if (tokenData.family !== tokenFamily) {
+        logger.error(`[RefreshToken] Family mismatch! Stored: ${tokenData.family}, Received: ${tokenFamily}`);
         // Revoke all tokens in the claimed family (attacker's token)
         await revokeTokenFamily(tokenFamily);
         // Revoke the user's current token too (compromised)
@@ -161,6 +167,7 @@ async function validateAndRotateToken(userId, token, tokenFamily) {
 
     // Check expiry
     if (new Date() > new Date(tokenData.expires)) {
+        logger.warn(`[RefreshToken] Token expired for user ${userId}. Expiry: ${tokenData.expires}`);
         await revokeRefreshToken(userId);
         return { valid: false, error: "Refresh token expired" };
     }
@@ -168,8 +175,11 @@ async function validateAndRotateToken(userId, token, tokenFamily) {
     // Validate token
     const isValid = await compareToken(token, tokenData.hash);
     if (!isValid) {
+        logger.warn(`[RefreshToken] Token hash mismatch for user ${userId}`);
         return { valid: false, error: "Invalid refresh token" };
     }
+
+    logger.info(`[RefreshToken] Token valid for user ${userId}, rotating...`);
 
     // Token is valid - rotate it
     const newToken = generateRefreshToken();
