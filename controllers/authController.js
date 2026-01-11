@@ -16,7 +16,7 @@ const generateToken = (id) => {
 // Register user
 const register = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, deviceId, deviceName, deviceType } = req.body;
 
     // Check if user already exists
     const existingUser = await User.findByEmail(email);
@@ -30,8 +30,17 @@ const register = async (req, res) => {
     // Generate access token (short-lived)
     const accessToken = generateToken(user.id);
 
-    // Generate refresh token (long-lived)
-    const refreshData = await refreshTokenUtil.createRefreshToken(user.id);
+    // Prepare device info for multi-device token storage
+    const deviceInfo = {
+      deviceId: deviceId || `web-${Date.now()}`,
+      deviceName: deviceName || req.get('User-Agent')?.substring(0, 50) || 'Unknown Device',
+      deviceType: deviceType || 'web',
+      ipAddress: req.ip || req.connection?.remoteAddress,
+      userAgent: req.get('User-Agent'),
+    };
+
+    // Generate refresh token (long-lived) with device info
+    const refreshData = await refreshTokenUtil.createRefreshToken(user.id, deviceInfo);
 
     res.status(201).json({
       success: true,
@@ -60,7 +69,7 @@ const register = async (req, res) => {
 // Login user
 const login = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, deviceId, deviceName, deviceType } = req.body;
 
     // Check if user exists
     const user = await User.findByEmail(email);
@@ -83,8 +92,17 @@ const login = async (req, res) => {
     // Generate access token (short-lived)
     const accessToken = generateToken(user.id);
 
-    // Generate refresh token (long-lived)
-    const refreshData = await refreshTokenUtil.createRefreshToken(user.id);
+    // Prepare device info for multi-device token storage
+    const deviceInfo = {
+      deviceId: deviceId || `web-${Date.now()}`,
+      deviceName: deviceName || req.get('User-Agent')?.substring(0, 50) || 'Unknown Device',
+      deviceType: deviceType || 'web',
+      ipAddress: req.ip || req.connection?.remoteAddress,
+      userAgent: req.get('User-Agent'),
+    };
+
+    // Generate refresh token (long-lived) with device info
+    const refreshData = await refreshTokenUtil.createRefreshToken(user.id, deviceInfo);
 
     res.json({
       success: true,
@@ -330,7 +348,7 @@ const deleteAccount = async (req, res) => {
 // Refresh access token using refresh token
 const refreshToken = async (req, res) => {
   try {
-    const { refreshToken: token, refreshTokenFamily: family, userId } = req.body;
+    const { refreshToken: token, refreshTokenFamily: family, userId, deviceId, deviceName, deviceType } = req.body;
 
     logger.info(`[Refresh] Attempt for user ${userId} - token present: ${!!token}, family present: ${!!family}`);
 
@@ -349,11 +367,21 @@ const refreshToken = async (req, res) => {
       return res.status(400).json({ message: "Invalid user ID" });
     }
 
+    // Prepare device info for tracking
+    const deviceInfo = {
+      deviceId: deviceId,
+      deviceName: deviceName,
+      deviceType: deviceType,
+      ipAddress: req.ip || req.connection?.remoteAddress,
+      userAgent: req.get('User-Agent'),
+    };
+
     // Validate and rotate the refresh token
     const result = await refreshTokenUtil.validateAndRotateToken(
       parsedUserId,
       token,
-      family
+      family,
+      deviceInfo
     );
 
     if (!result.valid) {
@@ -365,7 +393,7 @@ const refreshToken = async (req, res) => {
     // Get user to verify they still exist
     const user = await User.findById(parsedUserId);
     if (!user) {
-      await refreshTokenUtil.revokeRefreshToken(parsedUserId);
+      await refreshTokenUtil.revokeRefreshToken(parsedUserId, family);
       return res.status(401).json({ message: "User not found" });
     }
 
@@ -396,16 +424,65 @@ const refreshToken = async (req, res) => {
   }
 };
 
-// Logout - revoke refresh token
+// Logout - revoke refresh token for this device only
 const logout = async (req, res) => {
   try {
-    // Revoke the user's refresh token
-    await refreshTokenUtil.revokeRefreshToken(req.user.id);
-
-    logger.info(`User ${req.user.id} logged out successfully`);
+    const { refreshTokenFamily } = req.body;
+    
+    // If token family is provided, only revoke that specific session
+    // Otherwise revoke all sessions for this user (backward compatibility)
+    if (refreshTokenFamily) {
+      await refreshTokenUtil.revokeRefreshToken(req.user.id, refreshTokenFamily);
+      logger.info(`User ${req.user.id} logged out from device with token family ${refreshTokenFamily.substring(0, 8)}...`);
+    } else {
+      await refreshTokenUtil.revokeRefreshToken(req.user.id);
+      logger.info(`User ${req.user.id} logged out from all devices`);
+    }
+    
     res.json({ success: true, message: "Logged out successfully" });
   } catch (err) {
     logger.error("Logout error:", err.message);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// Logout from all devices
+const logoutAll = async (req, res) => {
+  try {
+    await refreshTokenUtil.revokeRefreshToken(req.user.id);
+    logger.info(`User ${req.user.id} logged out from all devices`);
+    res.json({ success: true, message: "Logged out from all devices" });
+  } catch (err) {
+    logger.error("Logout all error:", err.message);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// Get active sessions for the user
+const getSessions = async (req, res) => {
+  try {
+    const sessions = await refreshTokenUtil.getActiveSessions(req.user.id);
+    res.json({ success: true, sessions });
+  } catch (err) {
+    logger.error("Get sessions error:", err.message);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// Revoke a specific session
+const revokeSession = async (req, res) => {
+  try {
+    const { tokenFamily } = req.body;
+    
+    if (!tokenFamily) {
+      return res.status(400).json({ message: "Token family is required" });
+    }
+    
+    await refreshTokenUtil.revokeRefreshToken(req.user.id, tokenFamily);
+    logger.info(`User ${req.user.id} revoked session with token family ${tokenFamily.substring(0, 8)}...`);
+    res.json({ success: true, message: "Session revoked" });
+  } catch (err) {
+    logger.error("Revoke session error:", err.message);
     res.status(500).json({ message: "Server error" });
   }
 };
@@ -419,4 +496,7 @@ module.exports = {
   deleteAccount,
   refreshToken,
   logout,
+  logoutAll,
+  getSessions,
+  revokeSession,
 };

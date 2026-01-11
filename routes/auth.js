@@ -9,6 +9,9 @@ const {
   deleteAccount,
   refreshToken,
   logout,
+  logoutAll,
+  getSessions,
+  revokeSession,
 } = require("../controllers/authController");
 const auth = require("../middleware/auth");
 const { validateBody } = require("../middleware/validation");
@@ -84,8 +87,18 @@ router.post("/login", loginLimiter, validateBody(loginSchema), login);
 // Refresh token route (no auth middleware - uses refresh token for authentication)
 router.post("/refresh", refreshLimiter, refreshToken);
 
-// Logout route (protected - needs valid access token or refresh token)
+// Logout route (protected - needs valid access token)
+// Can pass refreshTokenFamily in body to logout only from current device
 router.post("/logout", auth, logout);
+
+// Logout from all devices (protected route)
+router.post("/logout-all", auth, logoutAll);
+
+// Get active sessions (protected route)
+router.get("/sessions", auth, getSessions);
+
+// Revoke a specific session (protected route)
+router.post("/sessions/revoke", auth, revokeSession);
 
 // Get current user (protected route)
 router.get("/me", auth, getCurrentUser);

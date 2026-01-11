@@ -8,6 +8,7 @@ import {
   clearAuthData,
   isTokenExpiringSoon
 } from "../utils/auth";
+import { getDeviceInfo } from "../utils/deviceInfo";
 import cache, { getCachedData, setCachedData, cacheKeys } from "../utils/cache";
 import offlineStorage from "../utils/offlineStorage.js";
 import { getIsOnline } from "./connectivity.js";
@@ -48,11 +49,15 @@ const refreshAccessToken = async () => {
     throw new Error("No refresh token available");
   }
 
+  // Get device info for the refresh request
+  const deviceInfo = getDeviceInfo();
+
   // Use a direct axios call to avoid interceptor loop
   const response = await axios.post("/api/auth/refresh", {
     refreshToken,
     refreshTokenFamily,
     userId,
+    ...deviceInfo,
   });
 
   // Store the new tokens
@@ -148,9 +153,22 @@ api.interceptors.response.use(
 
 // Auth endpoints
 export const authAPI = {
-  register: (data) => api.post("/auth/register", data),
-  login: (data) => api.post("/auth/login", data),
-  logout: () => api.post("/auth/logout"),
+  register: (data) => {
+    const deviceInfo = getDeviceInfo();
+    return api.post("/auth/register", { ...data, ...deviceInfo });
+  },
+  login: (data) => {
+    const deviceInfo = getDeviceInfo();
+    return api.post("/auth/login", { ...data, ...deviceInfo });
+  },
+  logout: () => {
+    // Get current refresh token family to logout only this device
+    const refreshTokenFamily = getRefreshTokenFamily();
+    return api.post("/auth/logout", { refreshTokenFamily });
+  },
+  logoutAll: () => api.post("/auth/logout-all"),
+  getSessions: () => api.get("/auth/sessions"),
+  revokeSession: (tokenFamily) => api.post("/auth/sessions/revoke", { tokenFamily }),
   refresh: (data) => api.post("/auth/refresh", data),
   getCurrentUser: () => api.get("/auth/me"),
   updateUser: (data) => api.put("/auth/me", data),
