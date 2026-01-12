@@ -5,8 +5,8 @@ const bcrypt = require("bcryptjs");
 const refreshTokenUtil = require("../utils/refreshToken");
 const logger = require("../utils/logger");
 
-// Access token lifetime: 15 minutes (short-lived for security)
-const ACCESS_TOKEN_EXPIRY_SECONDS = 15 * 60;
+// Access token lifetime: 1 hour (increased for better mobile UX - reduces refresh frequency)
+const ACCESS_TOKEN_EXPIRY_SECONDS = 60 * 60;
 
 // Generate JWT access token (short-lived)
 const generateToken = (id) => {
@@ -428,7 +428,7 @@ const refreshToken = async (req, res) => {
 const logout = async (req, res) => {
   try {
     const { refreshTokenFamily } = req.body;
-    
+
     // If token family is provided, only revoke that specific session
     // Otherwise revoke all sessions for this user (backward compatibility)
     if (refreshTokenFamily) {
@@ -438,7 +438,7 @@ const logout = async (req, res) => {
       await refreshTokenUtil.revokeRefreshToken(req.user.id);
       logger.info(`User ${req.user.id} logged out from all devices`);
     }
-    
+
     res.json({ success: true, message: "Logged out successfully" });
   } catch (err) {
     logger.error("Logout error:", err.message);
@@ -473,11 +473,11 @@ const getSessions = async (req, res) => {
 const revokeSession = async (req, res) => {
   try {
     const { tokenFamily } = req.body;
-    
+
     if (!tokenFamily) {
       return res.status(400).json({ message: "Token family is required" });
     }
-    
+
     await refreshTokenUtil.revokeRefreshToken(req.user.id, tokenFamily);
     logger.info(`User ${req.user.id} revoked session with token family ${tokenFamily.substring(0, 8)}...`);
     res.json({ success: true, message: "Session revoked" });
