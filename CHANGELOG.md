@@ -2,6 +2,19 @@
 
 All notable changes to this project are documented in this file.
 
+## [v0.8.6] - 2025-01-29
+
+### Security
+- Updated `tar` package to fix CVE-2026-23950 (race condition via Unicode collisions)
+- Updated `undici` package to fix decompression chain vulnerability in Node.js Fetch API
+- Updated `react-router` and `react-router-dom` in frontend to fix multiple vulnerabilities:
+  - CSRF issue in Action/Server Action Request Processing
+  - XSS via Open Redirects
+  - SSR XSS in ScrollRestoration
+  - Unexpected external redirect via untrusted paths
+
+---
+
 ## [v0.8.3] - 2026-01-08
 
 ### fix
