@@ -23,7 +23,13 @@ const dateSchema = z.string().regex(
   return val;
 });
 
-const optionalDateSchema = dateSchema.optional().nullable();
+// Allow empty string, null, undefined for optional dates - convert empty string to undefined
+const optionalDateSchema = z.union([
+  dateSchema,
+  z.literal('').transform(() => undefined),
+  z.null(),
+  z.undefined()
+]).optional();
 
 const amountSchema = z.number()
   .or(z.string().transform(val => parseFloat(val)))
@@ -54,7 +60,20 @@ const createTransactionSchema = z.object({
   date: optionalDateSchema,
   _tempId: z.union([z.string(), z.number()]).optional(),
   recurring_transaction_id: optionalIdSchema,
-}).strict();
+  // Recurring transaction fields (used by AddTransaction page, stripped before storage)
+  isRecurring: z.boolean().optional(),
+  recurrence_type: z.enum(['daily', 'weekly', 'monthly', 'yearly']).optional(),
+  recurrence_interval: z.union([
+    z.number().int().positive(),
+    z.string().transform(v => v ? parseInt(v, 10) : undefined).refine(v => v === undefined || (v > 0 && Number.isInteger(v)), { message: 'Must be a positive integer' })
+  ]).optional(),
+  end_date: optionalDateSchema,
+  max_occurrences: z.union([
+    z.number().int().positive(),
+    z.string().transform(v => v ? parseInt(v, 10) : undefined).refine(v => v === undefined || (v > 0 && Number.isInteger(v)), { message: 'Must be a positive integer' }),
+    z.literal('').transform(() => undefined)
+  ]).optional(),
+});
 
 const updateTransactionSchema = createTransactionSchema.partial().refine(
   data => Object.keys(data).length > 0,

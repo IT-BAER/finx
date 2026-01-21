@@ -195,14 +195,14 @@ export function useDeleteTransaction() {
     mutationFn: async (id: number | string) => {
       return await offlineAPI.deleteTransaction(id);
     },
-    onSuccess: () => {
+    onSuccess: (_data, id) => {
       // Invalidate all transaction-related queries
       queryClient.invalidateQueries({ queryKey: queryKeys.transactions });
       queryClient.invalidateQueries({ queryKey: queryKeys.dashboard });
       queryClient.invalidateQueries({ queryKey: queryKeys.reports });
       queryClient.invalidateQueries({ queryKey: queryKeys.goals });
-      // Also dispatch custom event for components that still use event-based refresh
-      window.dispatchEvent(new CustomEvent('transactionDeleted'));
+      // Dispatch custom event with the deleted ID for optimistic UI updates
+      window.dispatchEvent(new CustomEvent('transactionDeleted', { detail: { id } }));
       window.dispatchEvent(new CustomEvent('dataRefreshNeeded'));
     },
   });

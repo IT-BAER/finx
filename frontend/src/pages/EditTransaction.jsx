@@ -152,7 +152,7 @@ const EditTransaction = () => {
       } else {
         window.toastWithHaptic.success(t("transactionDeleted"));
       }
-      window.dispatchEvent(new CustomEvent("transactionDeleted"));
+      window.dispatchEvent(new CustomEvent("transactionDeleted", { detail: { id } }));
       navigate("/transactions");
     } catch (err) {
       window.toastWithHaptic.error(t("failedToDeleteTransaction"));

@@ -25,7 +25,7 @@ const Transactions = () => {
   const animatedIdsRef = useRef(new Set());
   // Track IDs that should animate in (newly loaded)
   const [newlyLoadedIds, setNewlyLoadedIds] = useState(new Set());
-  
+
   // React Query mutation for delete
   const deleteTransactionMutation = useDeleteTransaction();
 
@@ -167,7 +167,7 @@ const Transactions = () => {
             parseFloat(tx.amount || 0),
           )}`,
         );
-      } catch (e) {}
+      } catch (e) { }
       const typeStr = normalize(tx.type);
       const recurring = tx.recurring_id ? "recurring" : "";
 
@@ -193,12 +193,12 @@ const Transactions = () => {
         setLoading(true);
       }
       const requestedLimit = overrideLimit ?? pageSize;
-  const params = { limit: requestedLimit, offset: offsetValue, pageOnly: true };
-  // Add search query to server request if provided
-  if (searchQuery) {
-    params.q = searchQuery;
-  }
-  const data = await offlineAPI.getAllTransactions(params);
+      const params = { limit: requestedLimit, offset: offsetValue, pageOnly: true };
+      // Add search query to server request if provided
+      if (searchQuery) {
+        params.q = searchQuery;
+      }
+      const data = await offlineAPI.getAllTransactions(params);
       // We always treat `data` as a single page possibly containing both online and local (offline) items.
       const pageItems = Array.isArray(data) ? data : [];
 
@@ -214,19 +214,35 @@ const Transactions = () => {
         if (!pageItems || pageItems.length === 0) {
           setHasMore(false);
         } else {
+          // Get current IDs before replacing
+          const previousIds = new Set(rawTransactions.map((tx) => tx.id || tx._tempId));
+          
           // Reset seen keys and list on fresh load
           seenKeysRef.current = new Set();
           const uniqueFirstPage = [];
+          const newIds = new Set();
+          
           for (const tx of pageItems) {
             const k = getKey(tx);
             if (!seenKeysRef.current.has(k)) {
               seenKeysRef.current.add(k);
               uniqueFirstPage.push(tx);
+              
+              // Track IDs that are new (not in previous list) for animation
+              const txId = tx.id || tx._tempId;
+              if (!previousIds.has(txId) && !animatedIdsRef.current.has(txId)) {
+                newIds.add(txId);
+              }
             }
           }
+          
           // Only replace list if we actually have content
           if (uniqueFirstPage.length > 0) {
             setRawTransactions(uniqueFirstPage);
+            // Set newly loaded IDs for entrance animation
+            if (newIds.size > 0) {
+              setNewlyLoadedIds((prev) => new Set([...prev, ...newIds]));
+            }
           } else {
             setHasMore(false);
           }
@@ -255,8 +271,8 @@ const Transactions = () => {
       }
 
       // Update server offset and hasMore based on online items only
-  setServerOffset(offsetValue + onlineCount);
-  setHasMore(isOnline && onlineCount === requestedLimit);
+      setServerOffset(offsetValue + onlineCount);
+      setHasMore(isOnline && onlineCount === requestedLimit);
     } catch (err) {
       setError("Failed to load transactions");
       console.error("Error loading transactions:", err);
@@ -281,7 +297,7 @@ const Transactions = () => {
             const evt = new CustomEvent('finxUpdateAutoHeight');
             window.dispatchEvent(evt);
           });
-        } catch (e) {}
+        } catch (e) { }
       });
     }
   }, [hasMore, loading, serverOffset, isOnline, pageSize, isSearching]);
@@ -341,9 +357,9 @@ const Transactions = () => {
     const size = isMobile ? 10 : 20;
     setPageSize(size);
     // Reset offset and load first page
-  // Always attempt to load; internal guards keep current list if empty
-  loadTransactions(0, false, size);
-  if (!isOnline) setHasMore(false);
+    // Always attempt to load; internal guards keep current list if empty
+    loadTransactions(0, false, size);
+    if (!isOnline) setHasMore(false);
     setServerOffset(0);
   }, [isOnline]);
 
@@ -370,10 +386,16 @@ const Transactions = () => {
       loadTransactions(0, false, pageSize);
     };
 
-    const handleTransactionDeleted = () => {
-      // Reload first page when a transaction is deleted
-      setServerOffset(0);
-      loadTransactions(0, false, pageSize);
+    const handleTransactionDeleted = (event) => {
+      // If the event has a detail with the deleted ID, we've already optimistically removed it
+      // Only do a full reload if it was deleted from another source (e.g., another tab/device)
+      const deletedId = event?.detail?.id;
+      if (!deletedId) {
+        // External delete - reload to sync
+        setServerOffset(0);
+        loadTransactions(0, false, pageSize);
+      }
+      // Otherwise, we've already removed it optimistically in handleDelete
     };
 
     // Listen for when transactions are synced from offline to online
@@ -391,7 +413,7 @@ const Transactions = () => {
     };
 
     // Listen for general data refresh needs
-  const handleDataRefreshNeeded = () => {
+    const handleDataRefreshNeeded = () => {
       // Reload first page when data refresh is needed. If offline and fetch yields nothing, keep current list.
       setServerOffset(0);
       loadTransactions(0, false, pageSize);
@@ -453,7 +475,7 @@ const Transactions = () => {
             return el;
           }
         }
-      } catch (e) {}
+      } catch (e) { }
       return null;
     })();
 
@@ -474,6 +496,9 @@ const Transactions = () => {
   const handleDelete = async (id) => {
     if (window.confirm(t("deleteConfirmation"))) {
       try {
+        // Optimistically remove from local state first for smooth exit animation
+        setRawTransactions((prev) => prev.filter((tx) => tx.id !== id && tx._tempId !== id));
+        
         const result = await deleteTransactionMutation.mutateAsync(id);
         if (result?.queued) {
           window.toastWithHaptic.info(t("changesQueuedOffline"));
@@ -481,8 +506,12 @@ const Transactions = () => {
           window.toastWithHaptic.success(t("transactionDeleted"));
         }
         // Note: The mutation hook dispatches transactionDeleted event automatically
+        // We've already removed it optimistically, so we skip the full reload here
       } catch (err) {
         console.error("Error deleting transaction:", err);
+        // On error, reload to restore the item
+        setServerOffset(0);
+        loadTransactions(0, false, pageSize);
         window.toastWithHaptic?.error(
           t("failedToDeleteTransaction") || "Failed to delete transaction",
         );
@@ -542,529 +571,525 @@ const Transactions = () => {
   const groupedTransactions = groupTransactionsByDate(filteredTransactions);
 
   return (
-  <AnimatedPage>
-  <div className="container mx-auto px-4 pt-4 md:pt-0 pb-4 min-h-0">
-      <motion.div 
-        className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6 min-h-[3rem]"
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, delay: 0.1 }}
-      >
-        <h1 className="display-2 leading-none">{t("transactions")}</h1>
-        <div className="relative w-full sm:w-72" role="search">
-          <Icon
-            src="/icons/search.svg"
-            size="sm"
-            variant="strong"
-            aria-hidden={true}
-            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 opacity-70"
-          />
-          <Input
-            type="search"
-            id="tx-search"
-            name="q"
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            placeholder={t("search") || "Search"}
-            className={`form-input-with-prefix pr-10 h-10 rounded-xl bg-[var(--surface)] border border-[color-mix(in_srgb,var(--accent)_10%,transparent)]
-              focus:ring-2 focus:ring-[color-mix(in_srgb,var(--accent)_40%,transparent)] focus:border-transparent`}
-            aria-label={t("searchTransactions") || "Search transactions"}
-            autoComplete="off"
-          />
-          {searchInput && (
-            <button
-              type="button"
-              onClick={() => setSearchInput("")}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-sm rounded-full px-2 py-1 text-[var(--muted-text)] hover:text-[var(--text)] focus:outline-none"
-              aria-label={t("clear") || "Clear"}
-            >
-              ×
-            </button>
-          )}
-        </div>
-      </motion.div>
-
-      <AnimatedSection delay={0.2}>
-      {isSearching && filteredTransactions.length === 0 ? (
-        <div className="card">
-          <div className="card-body py-10 text-center">
-            <Icon src="/icons/search.svg" size="lg" variant="default" aria-hidden={true} className="mx-auto opacity-60" />
-            <h3 className="mt-4 text-lg font-medium text-gray-900 dark:text-gray-200">
-              {t("noResults") || "No matching transactions"}
-            </h3>
-            <p className="mt-2 text-gray-500 dark:text-gray-400">
-              {t("tryDifferentSearch") || "Try a different keyword or clear the search."}
-            </p>
-          </div>
-        </div>
-      ) : transactions.length > 0 ? (
-        <>
-          {/* Mobile view - Grouped by date */}
-          <div className="md:hidden space-y-6 overflow-hidden">
-            <AnimatePresence mode="popLayout">
-            {Object.entries(groupedTransactions)
-              .sort((a, b) => (b[0] || '').localeCompare(a[0] || ''))
-              .map(([dateKey, dateTransactions], index) => (
-                <motion.div 
-                  key={dateKey} 
-                  className="card overflow-hidden"
-                  layout
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  transition={{ duration: 0.2, ease: motionTheme.easings.emphasizedDecelerate }}
-                >
-                  <div className="card-body p-4">
-                    <h2 className="text-lg font-semibold mb-3">
-                      {formatDate(dateTransactions[0]?.date || dateKey)}
-                    </h2>
-                    <div className="space-y-4">
-                      <AnimatePresence mode="popLayout">
-                      {dateTransactions.map((transaction, idx) => {
-                        const txId = transaction.id || transaction._tempId;
-                        const shouldAnimate = newlyLoadedIds.has(txId) && !animatedIdsRef.current.has(txId);
-                        return (
-                        <motion.div
-                          key={transaction.id}
-                          layout
-                          initial={shouldAnimate || isSearching ? { opacity: 0, y: 20 } : false}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, scale: 0.95 }}
-                          transition={shouldAnimate ? { 
-                            duration: 0.35, 
-                            delay: idx * 0.05,
-                            ease: motionTheme.easings.emphasizedDecelerate 
-                          } : { duration: 0.2, ease: motionTheme.easings.emphasizedDecelerate }}
-                          onAnimationComplete={() => {
-                            if (shouldAnimate) {
-                              animatedIdsRef.current.add(txId);
-                            }
-                          }}
-                          className={`border-b border-gray-200 dark:border-gray-700 pb-4 last:border-0 last:pb-0`}
-                          onClick={(e) => {
-                            if (transaction.readOnly) {
-                              e.preventDefault();
-                              return;
-                            }
-                            navigate(`/edit-transaction/${transaction.id}`);
-                          }}
-                          role="button"
-                          aria-disabled={transaction.readOnly}
-                          whileHover={{ scale: 1.02 }}
-                          whileTap={{ scale: 0.95 }}
-                        >
-                          <div className="flex justify-between items-start">
-                            <div className="flex-1 min-w-0 relative">
-                              <div className="font-medium text-gray-900 dark:text-gray-200 truncate">
-{transaction.description || transaction.category_name || transaction.category || (t("uncategorized") || "Uncategorized")}
-                              </div>
-                              {(transaction.source_name ||
-                                transaction.source) &&
-                              (transaction.target_name ||
-                                transaction.target) ? (
-                                <div
-                                  className="truncate mt-1"
-                                  style={{
-                                    fontSize: "0.8rem",
-                                    color: "rgb(79, 91, 111)",
-                                  }}
-                                >
-                                  {(() => {
-                                    const { displaySource, displayTarget } = getDisplaySourceTarget(transaction);
-                                    return (
-                                      <>
-                                        <span className="dark:text-[rgb(153,165,190)]">
-                                          {displaySource}
-                                        </span>
-                                        <span className="mx-1 dark:text-[rgb(153,165,190)]">
-                                          →
-                                        </span>
-                                        <span className="dark:text-[rgb(153,165,190)]">
-                                          {displayTarget}
-                                        </span>
-                                      </>
-                                    );
-                                  })()}
-                                </div>
-                              ) : transaction.source_name ||
-                                transaction.source ? (
-                                <div
-                                  className="truncate mt-1"
-                                  style={{
-                                    fontSize: "0.8rem",
-                                    color: "rgb(79, 91, 111)",
-                                  }}
-                                >
-                                  <span className="dark:text-[rgb(153,165,190)]">
-                                    {t("source")}:{" "}
-                                    {getDisplaySourceTarget(transaction).displaySource}
-                                  </span>
-                                </div>
-                              ) : transaction.target_name ||
-                                transaction.target ? (
-                                <div
-                                  className="truncate mt-1"
-                                  style={{
-                                    fontSize: "0.8rem",
-                                    color: "rgb(79, 91, 111)",
-                                  }}
-                                >
-                                  <span className="dark:text-[rgb(153,165,190)]">
-                                    {t("target")}:{" "}
-                                    {getDisplaySourceTarget(transaction).displayTarget}
-                                  </span>
-                                </div>
-                              ) : null}
-                              <div className="flex items-center gap-2 mt-1">
-                                <span className="badge badge-primary text-xs">
-                                  {transaction.category_name ||
-                                    transaction.category}
-                                </span>
-                                {transaction.recurring_id && (
-                                  <Icon
-                                    src="/icons/recurring.svg"
-                                    size="sm"
-                                    variant="accent"
-                                    alt={t("recurring") || "Recurring"}
-                                    className="ml-2"
-                                  />
-                                )}
-                                {transaction._isOffline && (
-                                  <div className="flex items-center text-xs text-amber-600 dark:text-amber-400">
-                                    <svg
-                                      className="w-3 h-3 mr-1"
-                                      fill="none"
-                                      stroke="currentColor"
-                                      viewBox="0 0 24 24"
-                                    >
-                                      <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth="2"
-                                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                                      />
-                                    </svg>
-                                    <span className="font-medium">Offline</span>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                            <div
-                              className={`font-medium whitespace-nowrap ml-2 ${
-                                transaction.type === "income"
-                                  ? "text-green-600 dark:text-green-400"
-                                  : "text-red-600 dark:text-red-400"
-                              }`}
-                            >
-                              {transaction.type === "income" ? "+" : "-"}
-                              {formatCurrency(parseFloat(transaction.amount))}
-                            </div>
-                          </div>
-                        </motion.div>
-                      );
-                      })}
-                      </AnimatePresence>
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
-            </AnimatePresence>
-            {/* Mobile sentinel for infinite scroll - observed by IntersectionObserver */}
-            <div
-              ref={mobileSentinelRef}
-              aria-hidden="true"
-              className="w-full h-1"
+    <AnimatedPage>
+      <div className="container mx-auto px-4 pt-4 md:pt-0 pb-4 min-h-0">
+        <motion.div
+          className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6 min-h-[3rem]"
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.1 }}
+        >
+          <h1 className="display-2 leading-none">{t("transactions")}</h1>
+          <div className="relative w-full sm:w-72" role="search">
+            <Icon
+              src="/icons/search.svg"
+              size="sm"
+              variant="strong"
+              aria-hidden={true}
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 opacity-70"
             />
-            {loading && (
-              <div className="flex justify-center py-4">
-                <div className="spinner"></div>
-              </div>
+            <Input
+              type="search"
+              id="tx-search"
+              name="q"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              placeholder={t("search") || "Search"}
+              className={`form-input-with-prefix pr-10 h-10 rounded-xl bg-[var(--surface)] border border-[color-mix(in_srgb,var(--accent)_10%,transparent)]
+              focus:ring-2 focus:ring-[color-mix(in_srgb,var(--accent)_40%,transparent)] focus:border-transparent`}
+              aria-label={t("searchTransactions") || "Search transactions"}
+              autoComplete="off"
+            />
+            {searchInput && (
+              <button
+                type="button"
+                onClick={() => setSearchInput("")}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-sm rounded-full px-2 py-1 text-[var(--muted-text)] hover:text-[var(--text)] focus:outline-none"
+                aria-label={t("clear") || "Clear"}
+              >
+                ×
+              </button>
             )}
           </div>
+        </motion.div>
 
-          {/* Desktop view - Table */}
-          <div className="hidden md:block card overflow-hidden">
-            <div className="card-body">
-              <div className="overflow-x-auto overflow-y-hidden">
-                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                  <thead className="bg-gray-50 dark:bg-gray-800/50">
-                    <tr>
-                      <th className="px-6 py-2 text-left text-xs font-medium text-gray-600 dark:text-gray-300">
-                        <span className="inline-flex items-center gap-1 text-xs font-medium text-gray-600 dark:text-gray-300">
-                          {t("date")}
-                        </span>
-                      </th>
-                      <th className="px-6 py-2 text-left text-xs font-medium text-gray-600 dark:text-gray-300">
-                        <span className="inline-flex items-center gap-1 text-xs font-medium text-gray-600 dark:text-gray-300">
-                          {t("description")}
-                        </span>
-                      </th>
-                      <th className="px-6 py-2 text-left text-xs font-medium text-gray-600 dark:text-gray-300">
-                        <span className="inline-flex items-center gap-1 text-xs font-medium text-gray-600 dark:text-gray-300">
-                          {t("category")}
-                        </span>
-                      </th>
-                      <th className="px-6 py-2 text-left text-xs font-medium text-gray-600 dark:text-gray-300">
-                        <span className="inline-flex items-center gap-1 text-xs font-medium text-gray-600 dark:text-gray-300">
-                          {t("amount")}
-                        </span>
-                      </th>
-                      <th className="px-6 py-2 text-right text-xs font-medium text-gray-600 dark:text-gray-300">
-                        <span className="inline-flex items-center gap-1 text-xs font-medium text-gray-600 dark:text-gray-300">
-                          {t("actions")}
-                        </span>
-                      </th>
-                    </tr>
-                  </thead>
-                  <AnimatePresence mode="popLayout">
-                  <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                    {filteredTransactions.map((transaction, index) => {
-                      const txId = transaction.id || transaction._tempId;
-                      const shouldAnimate = newlyLoadedIds.has(txId) && !animatedIdsRef.current.has(txId);
-                      return (
-                      <motion.tr
-                        key={transaction.id}
-                        ref={
-                          index === filteredTransactions.length - 1 && !isSearching
-                            ? lastTransactionRef
-                            : null
-                        }
-                        layout
-                        initial={shouldAnimate || isSearching ? { opacity: 0, y: 15 } : false}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.98 }}
-                        transition={shouldAnimate ? { 
-                          duration: 0.3, 
-                          delay: (index % pageSize) * 0.03,
-                          ease: motionTheme.easings.emphasizedDecelerate 
-                        } : { duration: 0.2, ease: motionTheme.easings.emphasizedDecelerate }}
-                        onAnimationComplete={() => {
-                          if (shouldAnimate) {
-                            animatedIdsRef.current.add(txId);
-                          }
-                        }}
-                        className={`table-row`}
-                      >
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200">
-                          {formatDate(transaction.date)}
-                        </td>
-                        <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-200 md:table-cell break-words max-w-xs">
-                          <div className="flex items-center gap-2">
-<span>{transaction.description || transaction.category_name || transaction.category || (t("uncategorized") || "Uncategorized")}</span>
-                            {transaction._isOffline && (
-                              <div className="flex items-center text-xs text-amber-600 dark:text-amber-400">
-                                <svg
-                                  className="w-3 h-3"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  viewBox="0 0 24 24"
-                                >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth="2"
-                                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                                  />
-                                </svg>
-                              </div>
-                            )}
-                          </div>
-                          {(transaction.source_name || transaction.source) &&
-                          (transaction.target_name || transaction.target) ? (
-                            <>
-                              <div
-                                className="mt-1"
-                                style={{
-                                  fontSize: "0.8rem",
-                                  color: "rgb(79, 91, 111)",
-                                }}
-                              >
-                                {(() => {
-                                  const { displaySource, displayTarget } = getDisplaySourceTarget(transaction);
-                                  return (
-                                    <>
-                                      <span className="dark:text-[rgb(153,165,190)]">
-                                        {displaySource}
-                                      </span>
-                                      <span className="mx-1 dark:text-[rgb(153,165,190)]">
-                                        →
-                                      </span>
-                                      <span className="dark:text-[rgb(153,165,190)]">
-                                        {displayTarget}
-                                      </span>
-                                    </>
-                                  );
-                                })()}
-                              </div>
-                              {transaction.recurring_id && (
-                                <Icon
-                                  src="/icons/recurring.svg"
-                                  size="sm"
-                                  variant="accent"
-                                  alt={t("recurring") || "Recurring"}
-                                  className="ml-1"
-                                />
-                              )}
-                            </>
-                          ) : transaction.source_name || transaction.source ? (
-                            <div
-                              className="mt-1"
-                              style={{
-                                fontSize: "0.8rem",
-                                color: "rgb(79, 91, 111)",
-                              }}
-                            >
-                              <span className="dark:text-[rgb(153,165,190)]">
-                                {t("source")}:{" "}
-                                {getDisplaySourceTarget(transaction).displaySource}
-                              </span>
-                            </div>
-                          ) : transaction.target_name || transaction.target ? (
-                            <div
-                              className="mt-1"
-                              style={{
-                                fontSize: "0.8rem",
-                                color: "rgb(79, 91, 111)",
-                              }}
-                            >
-                              <span className="dark:text-[rgb(153,165,190)]">
-                                {t("target")}:{" "}
-                                {getDisplaySourceTarget(transaction).displayTarget}
-                              </span>
-                            </div>
-                          ) : null}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200">
-                          <span className="badge badge-primary">
-                            {transaction.category_name || transaction.category}
-                          </span>
-                        </td>
-                        <td
-                          className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${
-                            transaction.type === "income"
-                              ? "text-green-600 dark:text-green-400"
-                              : "text-red-600 dark:text-red-400"
-                          }`}
-                        >
-                          {transaction.type === "income" ? "+" : "-"}
-                          {formatCurrency(parseFloat(transaction.amount))}
-                        </td>
-<td className="px-6 py-4 text-right align-middle">
-  <div className="flex justify-end items-center gap-2">
-    <div className="flex items-center justify-center h-8 w-8">
-      <motion.div
-        whileHover={{ scale: 1.1 }}
-        whileTap={{ scale: 0.96 }}
-        transition={motionTheme.springs.press}
-        className="rounded-full"
-      >
-        <Link
-          to={
-            transaction.readOnly
-              ? "#"
-              : `/edit-transaction/${transaction.id}`
-          }
-          onClick={(e) => {
-            if (transaction.readOnly) e.preventDefault();
-          }}
-          aria-disabled={transaction.readOnly}
-          tabIndex={transaction.readOnly ? -1 : 0}
-          className={`table-action-button flex items-center justify-center h-8 w-8 rounded-full ${
-            transaction.readOnly
-              ? "text-gray-400 cursor-not-allowed pointer-events-none"
-              : "text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
-          }`}
-        >
-          <Icon
-            src="/icons/edit.svg"
-            size="sm"
-            variant={transaction.readOnly ? "default" : "accent"}
-            alt={t("edit") || "Edit"}
-            className={`icon-sm ${transaction.readOnly ? "icon-disabled" : "icon-tint-accent"}`}
-          />
-        </Link>
-      </motion.div>
-    </div>
-    <div className="flex items-center justify-center h-8 w-8">
-      <motion.div
-        whileHover={{ scale: 1.1 }}
-        whileTap={{ scale: 0.96 }}
-        transition={motionTheme.springs.press}
-        className="rounded-full"
-      >
-        <button
-          onClick={(e) => {
-            if (transaction.readOnly) {
-              e.preventDefault();
-              return;
-            }
-            handleDelete(transaction.id);
-          }}
-          disabled={transaction.readOnly}
-          aria-disabled={transaction.readOnly}
-          className={`table-action-button flex items-center justify-center h-8 w-8 rounded-full ${
-            transaction.readOnly
-              ? "text-gray-400 cursor-not-allowed"
-              : "text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
-          }`}
-        >
-          <Icon
-            src="/icons/trash.svg"
-            size="sm"
-            variant={transaction.readOnly ? "default" : "danger"}
-            alt={t("delete") || "Delete"}
-            className={`icon-sm ${transaction.readOnly ? "icon-disabled" : "icon-tint-danger"}`}
-          />
-        </button>
-      </motion.div>
-    </div>
-  </div>
-</td>
-                      </motion.tr>
-                    );
-                    })}
-                  </tbody>
-                  </AnimatePresence>
-                </table>
+        <AnimatedSection delay={0.2}>
+          {isSearching && filteredTransactions.length === 0 ? (
+            <div className="card">
+              <div className="card-body py-10 text-center">
+                <Icon src="/icons/search.svg" size="lg" variant="default" aria-hidden={true} className="mx-auto opacity-60" />
+                <h3 className="mt-4 text-lg font-medium text-gray-900 dark:text-gray-200">
+                  {t("noResults") || "No matching transactions"}
+                </h3>
+                <p className="mt-2 text-gray-500 dark:text-gray-400">
+                  {t("tryDifferentSearch") || "Try a different keyword or clear the search."}
+                </p>
               </div>
-              {loading && (
-                <div className="flex justify-center py-4">
-                  <div className="spinner"></div>
+            </div>
+          ) : transactions.length > 0 ? (
+            <>
+              {/* Mobile view - Grouped by date */}
+              <div className="md:hidden space-y-6 overflow-hidden">
+                <AnimatePresence mode="popLayout">
+                  {Object.entries(groupedTransactions)
+                    .sort((a, b) => (b[0] || '').localeCompare(a[0] || ''))
+                    .map(([dateKey, dateTransactions], index) => (
+                      <motion.div
+                        key={dateKey}
+                        className="card overflow-hidden"
+                        layout
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                        transition={{ duration: 0.2, ease: motionTheme.easings.emphasizedDecelerate }}
+                      >
+                        <div className="card-body p-4">
+                          <h2 className="text-lg font-semibold mb-3">
+                            {formatDate(dateTransactions[0]?.date || dateKey)}
+                          </h2>
+                          <div className="space-y-4">
+                            <AnimatePresence mode="popLayout">
+                              {dateTransactions.map((transaction, idx) => {
+                                const txId = transaction.id || transaction._tempId;
+                                const shouldAnimate = newlyLoadedIds.has(txId) && !animatedIdsRef.current.has(txId);
+                                return (
+                                  <motion.div
+                                    key={transaction.id}
+                                    layout
+                                    initial={shouldAnimate || isSearching ? { opacity: 0, y: 20 } : false}
+                                    animate={{ opacity: 1, y: 0, x: 0, scale: 1 }}
+                                    exit={{ opacity: 0, x: -100, scale: 0.9, transition: { duration: 0.25, ease: motionTheme.easings.emphasizedAccelerate } }}
+                                    transition={shouldAnimate ? {
+                                      duration: 0.35,
+                                      delay: idx * 0.05,
+                                      ease: motionTheme.easings.emphasizedDecelerate
+                                    } : { duration: 0.2, ease: motionTheme.easings.emphasizedDecelerate }}
+                                    onAnimationComplete={() => {
+                                      if (shouldAnimate) {
+                                        animatedIdsRef.current.add(txId);
+                                      }
+                                    }}
+                                    className={`border-b border-gray-200 dark:border-gray-700 pb-4 last:border-0 last:pb-0`}
+                                    onClick={(e) => {
+                                      if (transaction.readOnly) {
+                                        e.preventDefault();
+                                        return;
+                                      }
+                                      navigate(`/edit-transaction/${transaction.id}`);
+                                    }}
+                                    role="button"
+                                    aria-disabled={transaction.readOnly}
+                                    whileHover={{ scale: 1.02 }}
+                                    whileTap={{ scale: 0.95 }}
+                                  >
+                                    <div className="flex justify-between items-start">
+                                      <div className="flex-1 min-w-0 relative">
+                                        <div className="font-medium text-gray-900 dark:text-gray-200 truncate">
+                                          {transaction.description || transaction.category_name || transaction.category || (t("uncategorized") || "Uncategorized")}
+                                        </div>
+                                        {(transaction.source_name ||
+                                          transaction.source) &&
+                                          (transaction.target_name ||
+                                            transaction.target) ? (
+                                          <div
+                                            className="truncate mt-1"
+                                            style={{
+                                              fontSize: "0.8rem",
+                                              color: "rgb(79, 91, 111)",
+                                            }}
+                                          >
+                                            {(() => {
+                                              const { displaySource, displayTarget } = getDisplaySourceTarget(transaction);
+                                              return (
+                                                <>
+                                                  <span className="dark:text-[rgb(153,165,190)]">
+                                                    {displaySource}
+                                                  </span>
+                                                  <span className="mx-1 dark:text-[rgb(153,165,190)]">
+                                                    →
+                                                  </span>
+                                                  <span className="dark:text-[rgb(153,165,190)]">
+                                                    {displayTarget}
+                                                  </span>
+                                                </>
+                                              );
+                                            })()}
+                                          </div>
+                                        ) : transaction.source_name ||
+                                          transaction.source ? (
+                                          <div
+                                            className="truncate mt-1"
+                                            style={{
+                                              fontSize: "0.8rem",
+                                              color: "rgb(79, 91, 111)",
+                                            }}
+                                          >
+                                            <span className="dark:text-[rgb(153,165,190)]">
+                                              {t("source")}:{" "}
+                                              {getDisplaySourceTarget(transaction).displaySource}
+                                            </span>
+                                          </div>
+                                        ) : transaction.target_name ||
+                                          transaction.target ? (
+                                          <div
+                                            className="truncate mt-1"
+                                            style={{
+                                              fontSize: "0.8rem",
+                                              color: "rgb(79, 91, 111)",
+                                            }}
+                                          >
+                                            <span className="dark:text-[rgb(153,165,190)]">
+                                              {t("target")}:{" "}
+                                              {getDisplaySourceTarget(transaction).displayTarget}
+                                            </span>
+                                          </div>
+                                        ) : null}
+                                        <div className="flex items-center gap-2 mt-1">
+                                          <span className="badge badge-primary text-xs">
+                                            {transaction.category_name ||
+                                              transaction.category}
+                                          </span>
+                                          {transaction.recurring_id && (
+                                            <Icon
+                                              src="/icons/recurring.svg"
+                                              size="sm"
+                                              variant="accent"
+                                              alt={t("recurring") || "Recurring"}
+                                              className="ml-2"
+                                            />
+                                          )}
+                                          {transaction._isOffline && (
+                                            <div className="flex items-center text-xs text-amber-600 dark:text-amber-400">
+                                              <svg
+                                                className="w-3 h-3 mr-1"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                viewBox="0 0 24 24"
+                                              >
+                                                <path
+                                                  strokeLinecap="round"
+                                                  strokeLinejoin="round"
+                                                  strokeWidth="2"
+                                                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                                                />
+                                              </svg>
+                                              <span className="font-medium">Offline</span>
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
+                                      <div
+                                        className={`font-medium whitespace-nowrap ml-2 ${transaction.type === "income"
+                                            ? "text-green-600 dark:text-green-400"
+                                            : "text-red-600 dark:text-red-400"
+                                          }`}
+                                      >
+                                        {transaction.type === "income" ? "+" : "-"}
+                                        {formatCurrency(parseFloat(transaction.amount))}
+                                      </div>
+                                    </div>
+                                  </motion.div>
+                                );
+                              })}
+                            </AnimatePresence>
+                          </div>
+                        </div>
+                      </motion.div>
+                    ))}
+                </AnimatePresence>
+                {/* Mobile sentinel for infinite scroll - observed by IntersectionObserver */}
+                <div
+                  ref={mobileSentinelRef}
+                  aria-hidden="true"
+                  className="w-full h-1"
+                />
+                {loading && (
+                  <div className="flex justify-center py-4">
+                    <div className="spinner"></div>
+                  </div>
+                )}
+              </div>
+
+              {/* Desktop view - Table */}
+              <div className="hidden md:block card overflow-hidden">
+                <div className="card-body">
+                  <div className="overflow-x-auto overflow-y-hidden">
+                    <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                      <thead className="bg-gray-50 dark:bg-gray-800/50">
+                        <tr>
+                          <th className="px-6 py-2 text-left text-xs font-medium text-gray-600 dark:text-gray-300">
+                            <span className="inline-flex items-center gap-1 text-xs font-medium text-gray-600 dark:text-gray-300">
+                              {t("date")}
+                            </span>
+                          </th>
+                          <th className="px-6 py-2 text-left text-xs font-medium text-gray-600 dark:text-gray-300">
+                            <span className="inline-flex items-center gap-1 text-xs font-medium text-gray-600 dark:text-gray-300">
+                              {t("description")}
+                            </span>
+                          </th>
+                          <th className="px-6 py-2 text-left text-xs font-medium text-gray-600 dark:text-gray-300">
+                            <span className="inline-flex items-center gap-1 text-xs font-medium text-gray-600 dark:text-gray-300">
+                              {t("category")}
+                            </span>
+                          </th>
+                          <th className="px-6 py-2 text-left text-xs font-medium text-gray-600 dark:text-gray-300">
+                            <span className="inline-flex items-center gap-1 text-xs font-medium text-gray-600 dark:text-gray-300">
+                              {t("amount")}
+                            </span>
+                          </th>
+                          <th className="px-6 py-2 text-right text-xs font-medium text-gray-600 dark:text-gray-300">
+                            <span className="inline-flex items-center gap-1 text-xs font-medium text-gray-600 dark:text-gray-300">
+                              {t("actions")}
+                            </span>
+                          </th>
+                        </tr>
+                      </thead>
+                      <AnimatePresence mode="popLayout">
+                        <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                          {filteredTransactions.map((transaction, index) => {
+                            const txId = transaction.id || transaction._tempId;
+                            const shouldAnimate = newlyLoadedIds.has(txId) && !animatedIdsRef.current.has(txId);
+                            return (
+                              <motion.tr
+                                key={transaction.id}
+                                ref={
+                                  index === filteredTransactions.length - 1 && !isSearching
+                                    ? lastTransactionRef
+                                    : null
+                                }
+                                layout
+                                initial={shouldAnimate || isSearching ? { opacity: 0, y: 15 } : false}
+                                animate={{ opacity: 1, y: 0, x: 0 }}
+                                exit={{ opacity: 0, x: -50, scale: 0.95, transition: { duration: 0.2, ease: motionTheme.easings.emphasizedAccelerate } }}
+                                transition={shouldAnimate ? {
+                                  duration: 0.3,
+                                  delay: (index % pageSize) * 0.03,
+                                  ease: motionTheme.easings.emphasizedDecelerate
+                                } : { duration: 0.2, ease: motionTheme.easings.emphasizedDecelerate }}
+                                onAnimationComplete={() => {
+                                  if (shouldAnimate) {
+                                    animatedIdsRef.current.add(txId);
+                                  }
+                                }}
+                                className={`table-row`}
+                              >
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200">
+                                  {formatDate(transaction.date)}
+                                </td>
+                                <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-200 md:table-cell break-words max-w-xs">
+                                  <div className="flex items-center gap-2">
+                                    <span>{transaction.description || transaction.category_name || transaction.category || (t("uncategorized") || "Uncategorized")}</span>
+                                    {transaction._isOffline && (
+                                      <div className="flex items-center text-xs text-amber-600 dark:text-amber-400">
+                                        <svg
+                                          className="w-3 h-3"
+                                          fill="none"
+                                          stroke="currentColor"
+                                          viewBox="0 0 24 24"
+                                        >
+                                          <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth="2"
+                                            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                                          />
+                                        </svg>
+                                      </div>
+                                    )}
+                                  </div>
+                                  {(transaction.source_name || transaction.source) &&
+                                    (transaction.target_name || transaction.target) ? (
+                                    <>
+                                      <div
+                                        className="mt-1"
+                                        style={{
+                                          fontSize: "0.8rem",
+                                          color: "rgb(79, 91, 111)",
+                                        }}
+                                      >
+                                        {(() => {
+                                          const { displaySource, displayTarget } = getDisplaySourceTarget(transaction);
+                                          return (
+                                            <>
+                                              <span className="dark:text-[rgb(153,165,190)]">
+                                                {displaySource}
+                                              </span>
+                                              <span className="mx-1 dark:text-[rgb(153,165,190)]">
+                                                →
+                                              </span>
+                                              <span className="dark:text-[rgb(153,165,190)]">
+                                                {displayTarget}
+                                              </span>
+                                            </>
+                                          );
+                                        })()}
+                                      </div>
+                                      {transaction.recurring_id && (
+                                        <Icon
+                                          src="/icons/recurring.svg"
+                                          size="sm"
+                                          variant="accent"
+                                          alt={t("recurring") || "Recurring"}
+                                          className="ml-1"
+                                        />
+                                      )}
+                                    </>
+                                  ) : transaction.source_name || transaction.source ? (
+                                    <div
+                                      className="mt-1"
+                                      style={{
+                                        fontSize: "0.8rem",
+                                        color: "rgb(79, 91, 111)",
+                                      }}
+                                    >
+                                      <span className="dark:text-[rgb(153,165,190)]">
+                                        {t("source")}:{" "}
+                                        {getDisplaySourceTarget(transaction).displaySource}
+                                      </span>
+                                    </div>
+                                  ) : transaction.target_name || transaction.target ? (
+                                    <div
+                                      className="mt-1"
+                                      style={{
+                                        fontSize: "0.8rem",
+                                        color: "rgb(79, 91, 111)",
+                                      }}
+                                    >
+                                      <span className="dark:text-[rgb(153,165,190)]">
+                                        {t("target")}:{" "}
+                                        {getDisplaySourceTarget(transaction).displayTarget}
+                                      </span>
+                                    </div>
+                                  ) : null}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200">
+                                  <span className="badge badge-primary">
+                                    {transaction.category_name || transaction.category}
+                                  </span>
+                                </td>
+                                <td
+                                  className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${transaction.type === "income"
+                                      ? "text-green-600 dark:text-green-400"
+                                      : "text-red-600 dark:text-red-400"
+                                    }`}
+                                >
+                                  {transaction.type === "income" ? "+" : "-"}
+                                  {formatCurrency(parseFloat(transaction.amount))}
+                                </td>
+                                <td className="px-6 py-4 text-right align-middle">
+                                  <div className="flex justify-end items-center gap-2">
+                                    <div className="flex items-center justify-center h-8 w-8">
+                                      <motion.div
+                                        whileHover={{ scale: 1.1 }}
+                                        whileTap={{ scale: 0.96 }}
+                                        transition={motionTheme.springs.press}
+                                        className="rounded-full"
+                                      >
+                                        <Link
+                                          to={
+                                            transaction.readOnly
+                                              ? "#"
+                                              : `/edit-transaction/${transaction.id}`
+                                          }
+                                          onClick={(e) => {
+                                            if (transaction.readOnly) e.preventDefault();
+                                          }}
+                                          aria-disabled={transaction.readOnly}
+                                          tabIndex={transaction.readOnly ? -1 : 0}
+                                          className={`table-action-button flex items-center justify-center h-8 w-8 rounded-full ${transaction.readOnly
+                                              ? "text-gray-400 cursor-not-allowed pointer-events-none"
+                                              : "text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
+                                            }`}
+                                        >
+                                          <Icon
+                                            src="/icons/edit.svg"
+                                            size="sm"
+                                            variant={transaction.readOnly ? "default" : "accent"}
+                                            alt={t("edit") || "Edit"}
+                                            className={`icon-sm ${transaction.readOnly ? "icon-disabled" : "icon-tint-accent"}`}
+                                          />
+                                        </Link>
+                                      </motion.div>
+                                    </div>
+                                    <div className="flex items-center justify-center h-8 w-8">
+                                      <motion.div
+                                        whileHover={{ scale: 1.1 }}
+                                        whileTap={{ scale: 0.96 }}
+                                        transition={motionTheme.springs.press}
+                                        className="rounded-full"
+                                      >
+                                        <button
+                                          onClick={(e) => {
+                                            if (transaction.readOnly) {
+                                              e.preventDefault();
+                                              return;
+                                            }
+                                            handleDelete(transaction.id);
+                                          }}
+                                          disabled={transaction.readOnly}
+                                          aria-disabled={transaction.readOnly}
+                                          className={`table-action-button flex items-center justify-center h-8 w-8 rounded-full ${transaction.readOnly
+                                              ? "text-gray-400 cursor-not-allowed"
+                                              : "text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
+                                            }`}
+                                        >
+                                          <Icon
+                                            src="/icons/trash.svg"
+                                            size="sm"
+                                            variant={transaction.readOnly ? "default" : "danger"}
+                                            alt={t("delete") || "Delete"}
+                                            className={`icon-sm ${transaction.readOnly ? "icon-disabled" : "icon-tint-danger"}`}
+                                          />
+                                        </button>
+                                      </motion.div>
+                                    </div>
+                                  </div>
+                                </td>
+                              </motion.tr>
+                            );
+                          })}
+                        </tbody>
+                      </AnimatePresence>
+                    </table>
+                  </div>
+                  {loading && (
+                    <div className="flex justify-center py-4">
+                      <div className="spinner"></div>
+                    </div>
+                  )}
                 </div>
-              )}
+              </div>
+            </>
+          ) : (
+            <div className="card text-center py-16">
+              <div className="card-body">
+                <Icon
+                  src="/icons/chart.svg"
+                  size="lg"
+                  variant="default"
+                  aria-hidden={true}
+                  className="mx-auto opacity-60"
+                />
+                <h3 className="mt-4 text-lg font-medium text-gray-900 dark:text-gray-200">
+                  {t("noTransactions")}
+                </h3>
+                <p className="mt-2 text-gray-500 dark:text-gray-400">
+                  {t("getStartedAddTransaction")}
+                </p>
+                <div className="mt-6">
+                  <Button
+                    variant="primary"
+                    onClick={() => navigate("/add-transaction")}
+                  >
+                    {t("addTransaction")}
+                  </Button>
+                </div>
+              </div>
             </div>
-          </div>
-        </>
-      ) : (
-        <div className="card text-center py-16">
-          <div className="card-body">
-            <Icon
-              src="/icons/chart.svg"
-              size="lg"
-              variant="default"
-              aria-hidden={true}
-              className="mx-auto opacity-60"
-            />
-            <h3 className="mt-4 text-lg font-medium text-gray-900 dark:text-gray-200">
-              {t("noTransactions")}
-            </h3>
-            <p className="mt-2 text-gray-500 dark:text-gray-400">
-              {t("getStartedAddTransaction")}
-            </p>
-            <div className="mt-6">
-              <Button
-                variant="primary"
-                onClick={() => navigate("/add-transaction")}
-              >
-                {t("addTransaction")}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-      </AnimatedSection>
-    </div>
-  </AnimatedPage>
+          )}
+        </AnimatedSection>
+      </div>
+    </AnimatedPage>
   );
 };
 

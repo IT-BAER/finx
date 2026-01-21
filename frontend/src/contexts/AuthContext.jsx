@@ -1,6 +1,6 @@
 import { createContext, useState, useEffect, useContext } from "react";
 import { authAPI } from "../services/api.jsx";
-import { setAuthToken, isAuthenticated, getCurrentUser } from "../utils/auth.jsx";
+import { setAuthToken, isAuthenticated, getCurrentUser, storeAuthData, clearAuthData } from "../utils/auth.jsx";
 import offlineAPI from "../services/offlineAPI.js";
 import tRaw from "../lib/i18n";
 
@@ -107,7 +107,8 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password, rememberMe = false) => {
     try {
       const res = await authAPI.login({ email, password, rememberMe });
-      setAuthToken(res.data.token);
+      // Store access token and refresh token data for automatic token refresh
+      storeAuthData(res.data);
   setUser(res.data.user);
   try { localStorage.setItem("user", JSON.stringify(res.data.user)); } catch {}
 
@@ -136,7 +137,8 @@ export const AuthProvider = ({ children }) => {
   const register = async (email, password) => {
     try {
       const res = await authAPI.register({ email, password });
-      setAuthToken(res.data.token);
+      // Store access token and refresh token data for automatic token refresh
+      storeAuthData(res.data);
   setUser(res.data.user);
   try { localStorage.setItem("user", JSON.stringify(res.data.user)); } catch {}
       return { success: true };
@@ -149,7 +151,8 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
-    setAuthToken(null);
+    // Clear all auth data including refresh tokens
+    clearAuthData();
     setUser(null);
   try { localStorage.removeItem("user"); } catch {}
 

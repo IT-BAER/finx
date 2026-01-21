@@ -39,7 +39,7 @@ pnpm-debug.log*
 *.sw?
 .editorconfig
 .nvmrc
-
+.copilot
 
 # OS generated files
 .DS_Store
