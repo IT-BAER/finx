@@ -3,6 +3,7 @@ import offlineAPI from "../services/offlineAPI";
 import { LazyLine as Line } from "./LazyChart.jsx";
 import ChartLegend from "./ChartLegend.jsx";
 import { useTranslation } from "../hooks/useTranslation";
+import { getLocaleString } from "../utils/locale";
 
 function toDate(value) {
   if (typeof value === "string" && /\d{4}-\d{2}-\d{2}/.test(value)) {
@@ -21,6 +22,7 @@ export default function PerSourceBalanceTrend({
   incomeTrackingDisabled = false,
 }) {
   const { t, formatCurrency, language } = useTranslation();
+  const locale = getLocaleString(language);
   const [chartData, setChartData] = useState(null);
   const [legend, setLegend] = useState([]);
 
@@ -30,7 +32,7 @@ export default function PerSourceBalanceTrend({
 
   const formatShortWeekday = (dateStr) => {
     const dateObj = toDate(dateStr);
-    const weekday = dateObj.toLocaleDateString(language === "de" ? "de-DE" : "en-US", { weekday: "short" });
+    const weekday = dateObj.toLocaleDateString(locale, { weekday: "short" });
     return weekday.replace(/\.$/, "");
   };
   const getWeekNumber = (dateObj) => {
@@ -280,10 +282,10 @@ export default function PerSourceBalanceTrend({
         } else if (timeRange === "monthly") {
           labelsForChart = bucketStarts.map((ws) => {
             const weekNumber = getWeekNumber(ws);
-            return language === "de" ? `KW ${weekNumber}` : `CW ${weekNumber}`;
+            return `${t("calendarWeekShort")} ${weekNumber}`;
           });
         } else {
-          labelsForChart = bucketStarts.map((ms) => ms.toLocaleDateString(language === 'de' ? 'de-DE' : 'en-US', { month: 'short' }));
+          labelsForChart = bucketStarts.map((ms) => ms.toLocaleDateString(locale, { month: 'short' }));
         }
 
         setChartData({ labels: labelsForChart, datasets });

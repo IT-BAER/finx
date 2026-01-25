@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from "react";
 import offlineAPI from "../services/offlineAPI";
 import { LazyBar as Bar } from "./LazyChart.jsx";
 import { useTranslation } from "../hooks/useTranslation";
+import { getLocaleString } from "../utils/locale";
 
 function toDate(value) {
   if (typeof value === "string" && /\d{4}-\d{2}-\d{2}/.test(value)) {
@@ -14,10 +15,11 @@ function toDate(value) {
 export default function DailyExpensesChart({ startDate, endDate, timeRange }) {
   const { t, formatCurrency, language } = useTranslation();
   const [series, setSeries] = useState([]);
+  const locale = getLocaleString(language);
 
   const formatShortWeekday = (dateStr) => {
     const dateObj = toDate(dateStr);
-    const weekday = dateObj.toLocaleDateString(language === "de" ? "de-DE" : "en-US", { weekday: "short" });
+    const weekday = dateObj.toLocaleDateString(locale, { weekday: "short" });
     return weekday.replace(/\.$/, "");
   };
   const getWeekNumber = (date) => {
@@ -102,10 +104,10 @@ export default function DailyExpensesChart({ startDate, endDate, timeRange }) {
     if (timeRange === "monthly") return series.map((d) => {
       const dt = toDate(d.date);
       const wn = getWeekNumber(dt);
-      return language === "de" ? `KW ${wn}` : `CW ${wn}`;
+      return `${t("calendarWeekShort")} ${wn}`;
     });
-    return series.map((d) => toDate(d.date).toLocaleDateString(language === "de" ? "de-DE" : "en-US", { month: "short" }));
-  }, [series, timeRange, language]);
+    return series.map((d) => toDate(d.date).toLocaleDateString(locale, { month: "short" }));
+  }, [series, timeRange, language, locale, t]);
 
   const data = useMemo(() => ({
     labels,

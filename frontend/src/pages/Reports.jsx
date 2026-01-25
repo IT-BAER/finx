@@ -5,6 +5,7 @@ import {
   LazyPie as Pie,
 } from "../components/LazyChart.jsx";
 import { useTranslation } from "../hooks/useTranslation";
+import { getLocaleString } from "../utils/locale";
 import DateRangeToggle from "../components/DateRangeToggle.jsx";
 import { useAuth } from "../contexts/AuthContext";
 import { useTheme } from "../contexts/ThemeContext.jsx";
@@ -254,9 +255,10 @@ const Reports = () => {
 
   // Helper function to format date as short weekday based on language
   const formatShortWeekday = (date) => {
+    const locale = getLocaleString(language);
     const dateObj = new Date(date);
     const weekday = dateObj.toLocaleDateString(
-      language === "de" ? "de-DE" : "en-US",
+      locale,
       { weekday: "short" },
     );
     // Remove period if it exists (for German dates like "Mo." -> "Mo")
@@ -347,7 +349,7 @@ const Reports = () => {
     const end = new Date(endDate);
 
     // Format dates based on language and time range
-    const locale = language === "de" ? "de-DE" : "en-US";
+    const locale = getLocaleString(language);
 
     if (timeRange === "monthly") {
       // Show month name and year (e.g., "Aug. 2025")
@@ -667,7 +669,7 @@ const Reports = () => {
           incomeExpensesLabels = weeklyExpensesData.map((item) => {
             const date = new Date(item.date);
             const weekNumber = getWeekNumber(date);
-            return language === "de" ? `KW ${weekNumber}` : `CW ${weekNumber}`;
+            return `${t("calendarWeekShort")} ${weekNumber}`;
           });
 
           // Create a map of income by date for quick lookup in weekly data
@@ -773,7 +775,7 @@ const Reports = () => {
           incomeExpensesLabels = monthlyExpensesData.map((item) => {
             const date = new Date(item.date);
             return date.toLocaleDateString(
-              language === "de" ? "de-DE" : "en-US",
+              getLocaleString(language),
               { month: "short" },
             );
           });
@@ -998,13 +1000,11 @@ const Reports = () => {
             } else if (timeRange === "monthly") {
               // Show week numbers (CW/KW)
               const weekNumber = getWeekNumber(date);
-              return language === "de"
-                ? `KW ${weekNumber}`
-                : `CW ${weekNumber}`;
+              return `${t("calendarWeekShort")} ${weekNumber}`;
             } else if (timeRange === "yearly") {
               // Show month names
               return date.toLocaleDateString(
-                language === "de" ? "de-DE" : "en-US",
+                getLocaleString(language),
                 { month: "short" },
               );
             }
@@ -1440,10 +1440,10 @@ const Reports = () => {
             } else if (timeRange === "monthly") {
               labelsForChart = bucketStarts.map((ws) => {
                 const weekNumber = getWeekNumber(ws);
-                return language === "de" ? `KW ${weekNumber}` : `CW ${weekNumber}`;
+                return `${t("calendarWeekShort")} ${weekNumber}`;
               });
             } else {
-              labelsForChart = bucketStarts.map((ms) => ms.toLocaleDateString(language === 'de' ? 'de-DE' : 'en-US', { month: 'short' }));
+              labelsForChart = bucketStarts.map((ms) => ms.toLocaleDateString(getLocaleString(language), { month: 'short' }));
             }
 
             setTrendPerSourceChartData({ labels: labelsForChart, datasets });

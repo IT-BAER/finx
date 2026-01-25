@@ -8,6 +8,7 @@ export default {
     recurring: "Récurrent",
     recurringTransactions: "Transactions Récurrentes",
     reports: "Rapports",
+    currencySymbol: "€",
     settings: "Paramètres",
     about: "À propos",
     themePalette: "Thème",
@@ -703,4 +704,8 @@ export default {
     aboutViewGitHub: "Voir sur GitHub",
     aboutVersion: "Version",
     aboutCreatedBy: "Créé par IT-BAER",
+
+    // Common
+    unknown: "Inconnu",
+    calendarWeekShort: "S",
 };

@@ -3,6 +3,7 @@ import offlineAPI from "../services/offlineAPI";
 import { LazyLine as Line } from "./LazyChart.jsx";
 import ChartLegend from "./ChartLegend.jsx";
 import { useTranslation } from "../hooks/useTranslation";
+import { getLocaleString } from "../utils/locale";
 
 function toDate(value) {
   if (typeof value === "string" && /\d{4}-\d{2}-\d{2}/.test(value)) {
@@ -22,6 +23,7 @@ export default function PerSourceExpensesTrend({
   const { t, formatCurrency, language } = useTranslation();
   const [chartData, setChartData] = useState(null);
   const [legend, setLegend] = useState([]);
+  const locale = getLocaleString(language);
 
   const shouldFilter = useMemo(() => {
     return selectedSources.length > 0 && selectedSources.length < (sources?.length || Infinity);
@@ -30,7 +32,7 @@ export default function PerSourceExpensesTrend({
   // Helpers
   const formatShortWeekday = (dateStr) => {
     const dateObj = toDate(dateStr);
-    const weekday = dateObj.toLocaleDateString(language === "de" ? "de-DE" : "en-US", { weekday: "short" });
+    const weekday = dateObj.toLocaleDateString(locale, { weekday: "short" });
     return weekday.replace(/\.$/, "");
   };
   const getWeekNumber = (dateObj) => {
@@ -187,7 +189,7 @@ export default function PerSourceExpensesTrend({
         } else if (timeRange === "monthly") {
           labelsForChart = bucketStarts.map((d) => String(d.getDate()));
         } else {
-          labelsForChart = bucketStarts.map((ms) => ms.toLocaleDateString(language === 'de' ? 'de-DE' : 'en-US', { month: 'short' }));
+          labelsForChart = bucketStarts.map((ms) => ms.toLocaleDateString(locale, { month: 'short' }));
         }
 
         setChartData({ labels: labelsForChart, datasets });

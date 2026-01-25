@@ -164,11 +164,17 @@ const createTransaction = async (req, res) => {
       console.warn("Cache invalidation failed:", cacheErr?.message);
     }
 
+    let sharedWith = [];
+    try {
+      sharedWith = await getUsersSharedWithOwner(req.user.id);
+    } catch (e) {
+      console.warn("Failed to resolve shared users:", e && e.message ? e.message : e);
+    }
+
     // Emit SSE event to owner and any viewers
     try {
       const sse = req.app.get("sse");
       if (sse) {
-        const sharedWith = await getUsersSharedWithOwner(req.user.id);
         const payload = { type: "transaction:create", transactionId: transaction.id, ownerId: req.user.id, at: Date.now() };
         sse.broadcastToUser(req.user.id, payload);
         if (sharedWith && sharedWith.length) sse.broadcastToUsers(sharedWith, payload);
@@ -672,20 +678,24 @@ const updateTransaction = async (req, res) => {
 
     // Invalidate dashboard cache for affected users
     try {
-      const ownerId = Number(updatedTransaction.user_id);
-      await cache.invalidateDashboard(ownerId);
+      await cache.invalidateDashboard(Number(ownerId));
     } catch (cacheErr) {
       console.warn("Cache invalidation failed:", cacheErr?.message);
+    }
+
+    let sharedWith = [];
+    try {
+      sharedWith = await getUsersSharedWithOwner(Number(ownerId));
+    } catch (e) {
+      console.warn("Failed to resolve shared users:", e && e.message ? e.message : e);
     }
 
     // Emit update event
     try {
       const sse = req.app.get("sse");
       if (sse) {
-        const ownerId = Number(updatedTransaction.user_id);
-        const sharedWith = await getUsersSharedWithOwner(ownerId);
-        const payload = { type: "transaction:update", transactionId: updatedTransaction.id, ownerId, at: Date.now() };
-        sse.broadcastToUser(ownerId, payload);
+        const payload = { type: "transaction:update", transactionId: updatedTransaction.id, ownerId: Number(ownerId), at: Date.now() };
+        sse.broadcastToUser(Number(ownerId), payload);
         if (sharedWith && sharedWith.length) sse.broadcastToUsers(sharedWith, payload);
       }
     } catch (e) { }
@@ -746,21 +756,25 @@ const deleteTransaction = async (req, res) => {
     // Invalidate dashboard cache for affected users
     if (deletedTransaction) {
       try {
-        const ownerId = Number(deletedTransaction.user_id);
-        await cache.invalidateDashboard(ownerId);
+        await cache.invalidateDashboard(Number(ownerId));
       } catch (cacheErr) {
         console.warn("Cache invalidation failed:", cacheErr?.message);
       }
+    }
+
+    let sharedWith = [];
+    try {
+      sharedWith = await getUsersSharedWithOwner(Number(ownerId));
+    } catch (e) {
+      console.warn("Failed to resolve shared users:", e && e.message ? e.message : e);
     }
 
     // Emit delete event
     try {
       const sse = req.app.get("sse");
       if (sse && deletedTransaction) {
-        const ownerId = Number(deletedTransaction.user_id);
-        const sharedWith = await getUsersSharedWithOwner(ownerId);
-        const payload = { type: "transaction:delete", transactionId: Number(id), ownerId, at: Date.now() };
-        sse.broadcastToUser(ownerId, payload);
+        const payload = { type: "transaction:delete", transactionId: Number(id), ownerId: Number(ownerId), at: Date.now() };
+        sse.broadcastToUser(Number(ownerId), payload);
         if (sharedWith && sharedWith.length) sse.broadcastToUsers(sharedWith, payload);
       }
     } catch (e) { }

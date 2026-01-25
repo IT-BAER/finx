@@ -2,6 +2,42 @@
 
 All notable changes to this project are documented in this file.
 
+## [v0.8.7] - 2025-01-30
+
+### Removed (Backend)
+- **Push Notifications**: Removed all FCM/Firebase push notification infrastructure
+  - Aligns with mobile app v0.9.6 which switched to SSE + background-fetch
+  - Deleted: `services/fcm.js`, `models/DeviceToken.js`, `controllers/pushController.js`, `routes/push.js`
+  - Removed `device_tokens` table from database schema
+  - Removed `firebase-admin` dependency from package.json
+
+### Added (Frontend)
+- **Translation Keys**: Added new translation keys to all 10 language files:
+  - `calendarWeekShort`: Abbreviated calendar week labels (CW, KW, S, W, T, Н, 周)
+  - `unknown`: Label for unknown/unspecified values
+  - `currencySymbol`: Locale-appropriate currency symbols ($, €, zł, ₽, ¥)
+
+### Improved (Frontend)
+- **Localization**: Extended locale support from 2 languages (English, German) to all 10 supported languages
+  - Created centralized `getLocaleString()` utility in `utils/locale.js`
+  - Date formatting now uses proper BCP 47 locale codes for all languages:
+    - English (en-US), German (de-DE), Spanish (es-ES), French (fr-FR), Italian (it-IT)
+    - Portuguese (pt-PT), Dutch (nl-NL), Polish (pl-PL), Russian (ru-RU), Chinese (zh-CN)
+
+- **Chart Labels**: Updated all chart components to use locale-aware date formatting
+  - `DailyExpensesChart.jsx`: Weekly labels now show localized weekday abbreviations
+  - `PerSourceExpensesTrend.jsx`: Monthly labels use localized month names
+  - `PerSourceBalanceTrend.jsx`: All time range labels now properly localized
+  - `Dashboard.jsx`: Month display and weekday formatting use correct locales
+  - `Reports.jsx`: All date labels (weekly, monthly, yearly) now locale-aware
+
+### Fixed (Frontend)
+- **Hardcoded Strings**: Replaced hardcoded German/English patterns with proper translations
+  - Default target "Misc"/"Sonstiges" now uses `t("misc")` translation
+  - Currency symbol display now uses `t("currencySymbol")` instead of hardcoded € or $
+
+---
+
 ## [v0.8.6] - 2025-01-29
 
 ### Security

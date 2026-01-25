@@ -1,4 +1,5 @@
 export default {
+    currencySymbol: "€",
     home: "Início", overview: "Visão Geral", dashboard: "Painel", transactions: "Transações",
     addTransaction: "Adicionar Transação", recurring: "Recorrente", recurringTransactions: "Transações Recorrentes",
     reports: "Relatórios", settings: "Configurações", about: "Sobre", themePalette: "Tema", login: "Entrar",
@@ -348,4 +349,8 @@ export default {
     aboutViewGitHub: "Ver no GitHub",
     aboutVersion: "Versão",
     aboutCreatedBy: "Criado por IT-BAER",
+
+    // Common
+    unknown: "Desconhecido",
+    calendarWeekShort: "S",
 };

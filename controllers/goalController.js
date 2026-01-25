@@ -1,4 +1,5 @@
 const Goal = require("../models/Goal");
+const { getUsersSharedWithOwner } = require("../utils/access");
 
 // Get all goals for the authenticated user
 exports.getGoals = async (req, res) => {

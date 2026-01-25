@@ -167,8 +167,8 @@ const AddTransaction = () => {
     }
 
     try {
-      // Default empty target to localized "Misc"/"Sonstiges"
-      const defaultTarget = language === "de" ? "Sonstiges" : "Misc";
+      // Default empty target to localized "Misc"
+      const defaultTarget = t("misc");
       
       let dataToSend;
       if (formData.type === "income") {
@@ -470,7 +470,7 @@ const AddTransaction = () => {
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <span className="text-gray-500 sm:text-sm">
-                      {language === "de" ? "€" : "$"}
+                      {t("currencySymbol")}
                     </span>
                   </div>
                   <Input

@@ -1,4 +1,5 @@
 export default {
+    currencySymbol: "¥",
     home: "首页", overview: "概览", dashboard: "仪表盘", transactions: "交易",
     addTransaction: "添加交易", recurring: "周期性", recurringTransactions: "周期性交易",
     reports: "报告", settings: "设置", about: "关于", themePalette: "主题", login: "登录",
@@ -348,4 +349,8 @@ export default {
     aboutViewGitHub: "在 GitHub 上查看",
     aboutVersion: "版本",
     aboutCreatedBy: "由 IT-BAER 创建",
+
+    // Common
+    unknown: "未知",
+    calendarWeekShort: "周",
 };

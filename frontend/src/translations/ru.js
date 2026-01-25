@@ -1,4 +1,5 @@
 export default {
+    currencySymbol: "₽",
     home: "Главная", overview: "Обзор", dashboard: "Панель", transactions: "Транзакции",
     addTransaction: "Добавить Транзакцию", recurring: "Повторяющиеся", recurringTransactions: "Повторяющиеся Транзакции",
     reports: "Отчёты", settings: "Настройки", about: "О приложении", themePalette: "Тема", login: "Войти",
@@ -348,4 +349,8 @@ export default {
     aboutViewGitHub: "Посмотреть на GitHub",
     aboutVersion: "Версия",
     aboutCreatedBy: "Создано IT-BAER",
+
+    // Common
+    unknown: "Неизвестно",
+    calendarWeekShort: "Н",
 };

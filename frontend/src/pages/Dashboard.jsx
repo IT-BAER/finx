@@ -13,6 +13,7 @@ import {
   LazyPie as Pie,
 } from "../components/LazyChart.jsx";
 import { useTranslation } from "../hooks/useTranslation";
+import { getLocaleString } from "../utils/locale";
 import { useAuth } from "../contexts/AuthContext";
 import { useTheme } from "../contexts/ThemeContext.jsx";
 import { motion } from "framer-motion";
@@ -697,9 +698,10 @@ const Dashboard = () => {
 
   // Helper function to format date as short weekday based on language
   const formatShortWeekday = (date) => {
+    const locale = getLocaleString(language);
     const dateObj = new Date(date);
     const weekday = dateObj.toLocaleDateString(
-      language === "de" ? "de-DE" : "en-US",
+      locale,
       { weekday: "short" },
     );
     // Remove period if it exists (for German dates like "Mo." -> "Mo")
@@ -1042,7 +1044,7 @@ const Dashboard = () => {
       </div>
       <div className="text-gray-500 dark:text-gray-400 text-base font-medium text-right whitespace-nowrap">
         {new Date().toLocaleDateString(
-          language === "de" ? "de-DE" : "en-US",
+          getLocaleString(language),
           { month: "long" },
         )}
       </div>

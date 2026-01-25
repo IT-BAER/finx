@@ -1,4 +1,5 @@
 export default {
+    currencySymbol: "€",
     home: "Home", overview: "Overzicht", dashboard: "Dashboard", transactions: "Transacties",
     addTransaction: "Transactie Toevoegen", recurring: "Terugkerend", recurringTransactions: "Terugkerende Transacties",
     reports: "Rapporten", settings: "Instellingen", about: "Over", themePalette: "Thema", login: "Inloggen",
@@ -348,4 +349,8 @@ export default {
     aboutViewGitHub: "Bekijk op GitHub",
     aboutVersion: "Versie",
     aboutCreatedBy: "Gemaakt door IT-BAER",
+
+    // Common
+    unknown: "Onbekend",
+    calendarWeekShort: "W",
 };

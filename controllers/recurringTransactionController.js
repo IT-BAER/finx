@@ -183,11 +183,17 @@ const createRecurringTransaction = async (req, res) => {
       recurring: recurringTransaction,
     });
 
+    let sharedWith = [];
+    try {
+      sharedWith = await getUsersSharedWithOwner(req.user.id);
+    } catch (e) {
+      console.warn("Failed to resolve shared users:", e && e.message ? e.message : e);
+    }
+
     // Emit create event for real-time sync across devices
     try {
       const sse = req.app.get("sse");
       if (sse) {
-        const sharedWith = await getUsersSharedWithOwner(req.user.id);
         const payload = {
           type: "recurring:create",
           recurringTransactionId: recurringTransaction.id,
@@ -378,11 +384,17 @@ const updateRecurringTransaction = async (req, res) => {
       recurringTransaction: updatedRecurringTransaction,
     });
 
+    let sharedWith = [];
+    try {
+      sharedWith = await getUsersSharedWithOwner(ownerId);
+    } catch (e) {
+      console.warn("Failed to resolve shared users:", e && e.message ? e.message : e);
+    }
+
     // Emit update event for real-time sync across devices
     try {
       const sse = req.app.get("sse");
       if (sse) {
-        const sharedWith = await getUsersSharedWithOwner(ownerId);
         const payload = {
           type: "recurring:update",
           recurringTransactionId: updatedRecurringTransaction.id,
@@ -444,11 +456,17 @@ const deleteRecurringTransaction = async (req, res) => {
       message: "Recurring transaction deleted successfully",
     });
 
+    let sharedWith = [];
+    try {
+      sharedWith = await getUsersSharedWithOwner(ownerId);
+    } catch (e) {
+      console.warn("Failed to resolve shared users:", e && e.message ? e.message : e);
+    }
+
     // Emit delete event for real-time sync across devices
     try {
       const sse = req.app.get("sse");
       if (sse) {
-        const sharedWith = await getUsersSharedWithOwner(ownerId);
         const payload = {
           type: "recurring:delete",
           recurringTransactionId: id,

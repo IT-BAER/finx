@@ -1,4 +1,5 @@
 export default {
+    currencySymbol: "zł",
     home: "Strona główna", overview: "Przegląd", dashboard: "Panel", transactions: "Transakcje",
     addTransaction: "Dodaj Transakcję", recurring: "Cykliczne", recurringTransactions: "Transakcje Cykliczne",
     reports: "Raporty", settings: "Ustawienia", about: "O aplikacji", themePalette: "Motyw", login: "Zaloguj",
@@ -348,4 +349,8 @@ export default {
     aboutViewGitHub: "Zobacz na GitHub",
     aboutVersion: "Wersja",
     aboutCreatedBy: "Stworzone przez IT-BAER",
+
+    // Common
+    unknown: "Nieznany",
+    calendarWeekShort: "T",
 };
