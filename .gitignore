@@ -86,6 +86,7 @@ frontend/dev-dist/
 .clinerules/
 .kiro/
 .agent
+.claude/
 .tests/
 tmp/
 temp/
