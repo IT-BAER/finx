@@ -1,6 +1,6 @@
 # Privacy Policy for FinX
 
-**Last Updated:** January 9, 2026
+**Last Updated:** June 25, 2025
 
 Your privacy is our priority. How we handle your data depends on how you use the app.
 
@@ -13,6 +13,10 @@ When using Local Mode, your financial data never leaves your device. We do not c
 ## Online Mode Privacy
 
 When using Online Mode, your data is stored on your own self-hosted server. FinX does not have access to your data. Your privacy and data security depend on how you configure and secure your server.
+
+## Managed Hosting Privacy
+
+When using the FinX managed hosting service, your data is stored on servers located in the European Union (EU) and is fully DSGVO/GDPR compliant. Your financial data remains on EU servers and is never shared with third parties.
 
 ---
 
@@ -35,11 +39,25 @@ Your data is used solely to provide the app's functionality:
 
 ## Data Sharing
 
-**We do not share your data with any third parties.**
+**We do not share your financial data with any third parties.**
 
 - No advertising networks
 - No analytics providers
 - No data brokers
+
+### Subscription Management (RevenueCat)
+
+FinX uses RevenueCat to manage optional Premium subscriptions. RevenueCat processes only billing-related metadata:
+- Subscription status (active, expired, canceled)
+- Purchase and renewal events
+- Anonymous app user ID
+
+**RevenueCat does NOT have access to:**
+- Your transaction data, balances, or categories
+- Your personal financial information
+- Any data stored in Local Mode or on your server
+
+For more information, see [RevenueCat's Privacy Policy](https://www.revenuecat.com/privacy).
 
 ## Data Security
 

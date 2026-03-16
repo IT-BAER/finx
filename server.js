@@ -117,6 +117,9 @@ const transactionWriteLimiter = rateLimit({
 // Apply general limiter to all routes
 app.use(generalLimiter);
 
+// Public legal pages (no auth required)
+app.use(require("./routes/legal"));
+
 // Routes
 app.get("/", (req, res) => {
   res.json({ message: "FinX API is running!" });
