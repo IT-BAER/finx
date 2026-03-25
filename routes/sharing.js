@@ -7,18 +7,25 @@ const {
   updateSharingSchema,
 } = require("../middleware/validation/schemas");
 const {
+  getMyShareCode,
+  regenerateShareCode,
+  resolveShareCode,
   createSharingPermission,
   getMySharingPermissions,
   getSharedWithMe,
   updateSharingPermission,
   deleteSharingPermission,
   getSharedTransactions,
-  getAllUsers,
   getUserSources,
 } = require("../controllers/sharingController");
 
 // All routes require authentication
 router.use(auth);
+
+// Share code management
+router.get("/my-code", getMyShareCode);
+router.post("/regenerate-code", regenerateShareCode);
+router.post("/resolve-code", resolveShareCode);
 
 // Sharing management routes
 router.post("/", validateBody(createSharingSchema), createSharingPermission);
@@ -29,9 +36,6 @@ router.delete("/:id", deleteSharingPermission);
 
 // Shared data access routes
 router.get("/transactions", getSharedTransactions);
-
-// User selection route
-router.get("/users", getAllUsers);
 
 // User sources route
 router.get("/sources", getUserSources);

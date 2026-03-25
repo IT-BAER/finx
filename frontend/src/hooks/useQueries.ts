@@ -382,12 +382,12 @@ export function useSharedWithMe() {
   });
 }
 
-export function useSharingUsers() {
+export function useMyShareCode() {
   return useQuery({
-    queryKey: ['sharing', 'users'],
+    queryKey: ['sharing', 'my-code'],
     queryFn: async () => {
-      const response = await sharingAPI.getAllUsers();
-      return (response.data || []) as User[];
+      const response = await sharingAPI.getMyShareCode();
+      return (response.data?.data?.share_code || '') as string;
     },
     staleTime: 5 * 60 * 1000,
   });
@@ -408,7 +408,7 @@ export function useCreateSharingPermission() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async (data: { user_id: number; permission_level: string; source_filter?: string }) => {
+    mutationFn: async (data: { share_code: string; permission_level: string; source_filter_ids?: number[] }) => {
       return await sharingAPI.createPermission(data);
     },
     onSuccess: () => {

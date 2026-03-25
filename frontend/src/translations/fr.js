@@ -413,6 +413,17 @@ export default {
     sourceToShare: "Source à partager",
     sourceToShareDescription: "Optionnel : Limiter le partage à une source spécifique. Laisser vide pour partager tout.",
 
+    // Code de partage
+    myShareCode: "Mon Code",
+    shareCodeHint: "Partagez ce code avec d'autres pour qu'ils puissent partager des données avec vous.",
+    enterShareCode: "Entrer le code",
+    invalidShareCode: "Code invalide",
+    shareCodeRequired: "Veuillez entrer un code valide",
+    shareCodeRegenerated: "Code régénéré",
+    regenerateShareCode: "Régénérer",
+    copied: "Copié !",
+    copy: "Copier",
+
     // User Management
     userManagement: "Gestion des utilisateurs",
     manageUsers: "Gérer les utilisateurs",

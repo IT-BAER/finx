@@ -433,6 +433,17 @@ export default {
   sourceToShareDescription:
     "Optionally limit sharing to a specific source. Leave empty to share all sources.",
 
+  // Share code
+  myShareCode: "My Share Code",
+  shareCodeHint: "Share this code with others so they can share data with you.",
+  enterShareCode: "Enter Share Code",
+  invalidShareCode: "Invalid share code",
+  shareCodeRequired: "Please enter a valid share code",
+  shareCodeRegenerated: "Share code regenerated",
+  regenerateShareCode: "Regenerate",
+  copied: "Copied!",
+  copy: "Copy",
+
   // User Management
   userManagement: "User Management",
   manageUsers: "Manage Users",

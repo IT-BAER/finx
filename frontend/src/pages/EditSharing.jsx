@@ -62,7 +62,9 @@ const EditSharing = () => {
     if (myPermissions.length > 0) {
       const permission = myPermissions.find((p) => p.id === parseInt(id));
       if (permission) {
-        setPermissionLevel(permission.permission_level);
+        // Normalize permission level for form display
+        const level = permission.permission_level === "readwrite" ? "read_write" : permission.permission_level;
+        setPermissionLevel(level);
 
         // Parse source filter if it exists
         if (permission.source_filter) {

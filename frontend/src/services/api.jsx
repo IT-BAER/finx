@@ -505,7 +505,10 @@ export const sharingAPI = {
   deletePermission: (id) => api.delete(`/sharing/${id}`),
   getSharedTransactions: (owner_user_id) =>
     api.get("/sharing/transactions", { params: { owner_user_id } }),
-  getAllUsers: () => api.get("/sharing/users"),
+  getMyShareCode: () => api.get("/sharing/my-code"),
+  regenerateShareCode: () => api.post("/sharing/regenerate-code"),
+  resolveShareCode: (share_code) =>
+    api.post("/sharing/resolve-code", { share_code }),
   getUserSources: () => api.get("/sharing/sources"),
 };
 

@@ -2,29 +2,90 @@ const SharingPermission = require("../models/SharingPermission");
 const User = require("../models/User");
 const db = require("../config/db");
 
-// Create sharing permission
+const normalizePermissionLevel = (permissionLevel) =>
+  permissionLevel === "read_write" ? "readwrite" : permissionLevel;
+
+// Get my share code
+const getMyShareCode = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    res.json({ success: true, data: { share_code: user.share_code } });
+  } catch (err) {
+    console.error("Get share code error:", err.message);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// Regenerate share code
+const regenerateShareCode = async (req, res) => {
+  try {
+    const newCode = await User.regenerateShareCode(req.user.id);
+    if (!newCode) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    res.json({ success: true, data: { share_code: newCode } });
+  } catch (err) {
+    console.error("Regenerate share code error:", err.message);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// Resolve share code to user info (limited: only name, no email)
+const resolveShareCode = async (req, res) => {
+  try {
+    const { share_code } = req.body;
+    if (!share_code) {
+      return res.status(400).json({ message: "Share code is required" });
+    }
+
+    const user = await User.findByShareCode(share_code);
+    if (!user) {
+      return res.status(404).json({ message: "Invalid share code" });
+    }
+
+    if (user.id === req.user.id) {
+      return res.status(400).json({ message: "This is your own share code" });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        id: user.id,
+        first_name: user.first_name,
+        last_name: user.last_name,
+      },
+    });
+  } catch (err) {
+    console.error("Resolve share code error:", err.message);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// Create sharing permission (using share code)
 const createSharingPermission = async (req, res) => {
   try {
-    const { shared_with_user_id, permission_level, source_filter_ids } =
-      req.body;
+    const { share_code, permission_level, source_filter_ids } = req.body;
+
+    // Resolve share code to user
+    const targetUser = await User.findByShareCode(share_code);
+    if (!targetUser) {
+      return res.status(404).json({ message: "Invalid share code" });
+    }
 
     // Validate that we're not sharing with ourselves
-    if (req.user.id === shared_with_user_id) {
+    if (req.user.id === targetUser.id) {
       return res
         .status(400)
         .json({ message: "You cannot share data with yourself" });
     }
 
-    // Validate that the user exists
-    const user = await User.findById(shared_with_user_id);
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
     // Check if sharing permission already exists (by owner + recipient)
     const existingRes = await db.query(
       "SELECT 1 FROM sharing_permissions WHERE owner_user_id = $1 AND shared_with_user_id = $2",
-      [req.user.id, shared_with_user_id],
+      [req.user.id, targetUser.id],
     );
     if (existingRes.rows.length > 0) {
       return res
@@ -65,8 +126,8 @@ const createSharingPermission = async (req, res) => {
     // Create the sharing permission
     const sharingPermission = await SharingPermission.create(
       req.user.id,
-      shared_with_user_id,
-      permission_level || "read",
+      targetUser.id,
+      normalizePermissionLevel(permission_level || "read"),
       // can_view_* deprecated; always viewable when source is shared
       true,
       true,
@@ -159,7 +220,13 @@ const getSharedWithMe = async (req, res) => {
 const updateSharingPermission = async (req, res) => {
   try {
     const { id } = req.params;
-    const updates = req.body;
+    const updates = { ...req.body };
+
+    if (updates.permission_level) {
+      updates.permission_level = normalizePermissionLevel(
+        updates.permission_level,
+      );
+    }
 
     // Verify ownership of the sharing permission
     const permission = await SharingPermission.findById(id);
@@ -333,7 +400,7 @@ const getUserSources = async (req, res) => {
         JOIN sources s ON s.user_id = sp.owner_user_id
         JOIN users u ON u.id = sp.owner_user_id
         WHERE sp.shared_with_user_id = $1
-          AND LOWER(TRIM(sp.permission_level)) IN ('read','read_write')
+          AND LOWER(TRIM(sp.permission_level)) IN ('read','readwrite','read_write')
           AND (
             sp.source_filter IS NULL
             OR s.id = ANY (
@@ -359,12 +426,14 @@ const getUserSources = async (req, res) => {
 };
 
 module.exports = {
+  getMyShareCode,
+  regenerateShareCode,
+  resolveShareCode,
   createSharingPermission,
   getMySharingPermissions,
   getSharedWithMe,
   updateSharingPermission,
   deleteSharingPermission,
   getSharedTransactions,
-  getAllUsers,
   getUserSources,
 };

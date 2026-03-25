@@ -489,6 +489,17 @@ export default {
   sourceToShareDescription:
     "Optional: Beschränke die Freigabe auf eine bestimmte Quelle. Lass leer, um alle Quellen zu teilen.",
 
+  // Freigabecode
+  myShareCode: "Mein Freigabecode",
+  shareCodeHint: "Teile diesen Code mit anderen, damit sie Daten mit dir teilen können.",
+  enterShareCode: "Freigabecode eingeben",
+  invalidShareCode: "Ungültiger Freigabecode",
+  shareCodeRequired: "Bitte einen gültigen Freigabecode eingeben",
+  shareCodeRegenerated: "Freigabecode erneuert",
+  regenerateShareCode: "Erneuern",
+  copied: "Kopiert!",
+  copy: "Kopieren",
+
   // User Management
   userManagement: "Benutzerverwaltung",
   manageUsers: "Benutzer verwalten",

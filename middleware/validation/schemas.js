@@ -215,16 +215,17 @@ const changePasswordSchema = z.object({
 // Sharing Schemas
 // ============================================
 
-const permissionLevelSchema = z.enum(['read', 'read_write']);
+const permissionLevelSchema = z.enum(['read', 'readwrite', 'read_write']);
 
 const createSharingSchema = z.object({
-  shared_with_email: emailSchema,
+  share_code: z.string().min(1, 'Share code is required').max(10),
   permission_level: permissionLevelSchema.default('read'),
-  source_filter: z.array(z.number().int().positive()).optional().nullable(),
+  source_filter_ids: z.array(z.number().int().positive()).optional().nullable(),
 });
 
 const updateSharingSchema = z.object({
   permission_level: permissionLevelSchema.optional(),
+  source_filter_ids: z.array(z.number().int().positive()).optional().nullable(),
   source_filter: z.array(z.number().int().positive()).optional().nullable(),
 }).refine(
   data => Object.keys(data).length > 0,

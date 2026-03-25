@@ -368,6 +368,18 @@ export default {
     permissions: "Permessi",
     sourceToShare: "Fonte da condividere",
     sourceToShareDescription: "Limita la condivisione a una fonte specifica.",
+
+    // Codice di condivisione
+    myShareCode: "Il Mio Codice",
+    shareCodeHint: "Condividi questo codice con altri per condividere dati con te.",
+    enterShareCode: "Inserisci codice",
+    invalidShareCode: "Codice non valido",
+    shareCodeRequired: "Inserisci un codice valido",
+    shareCodeRegenerated: "Codice rigenerato",
+    regenerateShareCode: "Rigenera",
+    copied: "Copiato!",
+    copy: "Copia",
+
     userManagement: "Gestione Utenti",
     manageUsers: "Gestisci Utenti",
     manageUsersDescription: "Aggiungi, rimuovi e gestisci utenti",

@@ -1,14 +1,15 @@
 import { useState, useMemo } from "react";
 import { useTranslation } from "../hooks/useTranslation";
-import { 
-  useSharingPermissions, 
-  useSharedWithMe, 
-  useSharingUsers, 
+import {
+  useSharingPermissions,
+  useSharedWithMe,
+  useMyShareCode,
   useSharingSources,
   useCreateSharingPermission,
-  useDeleteSharingPermission 
+  useDeleteSharingPermission
 } from "../hooks/useQueries";
 import { useNavigate } from "react-router-dom";
+import { sharingAPI } from "../services/api";
 import DropdownWithInput from "../components/DropdownWithInput.jsx";
 import Button from "../components/Button";
 import Icon from "../components/Icon.jsx";
@@ -20,7 +21,7 @@ const ShareData = () => {
   // React Query hooks for sharing data
   const { data: myPermissions = [], isLoading: permissionsLoading } = useSharingPermissions();
   const { data: sharedWithMe = [], isLoading: sharedWithMeLoading } = useSharedWithMe();
-  const { data: usersData = [], isLoading: usersLoading } = useSharingUsers();
+  const { data: myShareCode = "", isLoading: shareCodeLoading, refetch: refetchShareCode } = useMyShareCode();
   const { data: sourcesData = [], isLoading: sourcesLoading } = useSharingSources();
   
   // Mutation hooks
@@ -31,21 +32,18 @@ const ShareData = () => {
   const navigate = useNavigate();
 
   // Derive loading state
-  const loading = permissionsLoading || sharedWithMeLoading || usersLoading || sourcesLoading;
+  const loading = permissionsLoading || sharedWithMeLoading || shareCodeLoading || sourcesLoading;
   const submitting = createPermissionMutation.isPending || deletePermissionMutation.isPending;
 
   // Form state
-  const [selectedUser, setSelectedUser] = useState("");
+  const [shareCodeInput, setShareCodeInput] = useState("");
+  const [resolvedUser, setResolvedUser] = useState(null);
   const [selectedSource, setSelectedSource] = useState("");
   const [permissionLevel, setPermissionLevel] = useState("read");
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [permissionToDelete, setPermissionToDelete] = useState(null);
+  const [resolving, setResolving] = useState(false);
 
-  // Process users to array
-  const users = useMemo(() => {
-    return Array.isArray(usersData) ? usersData : [];
-  }, [usersData]);
-  
   // Process sources to add display names for shared sources
   const sources = useMemo(() => {
     const arr = Array.isArray(sourcesData) ? sourcesData : [];
@@ -75,13 +73,36 @@ const ShareData = () => {
     return Array.isArray(sharedWithMe) ? sharedWithMe : [];
   }, [sharedWithMe]);
 
+  // Resolve share code when it reaches 8 chars
+  const handleShareCodeChange = async (value) => {
+    const code = value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8);
+    setShareCodeInput(code);
+    setResolvedUser(null);
+
+    if (code.length === 8) {
+      setResolving(true);
+      try {
+        const res = await sharingAPI.resolveShareCode(code);
+        setResolvedUser(res.data?.data || null);
+      } catch {
+        setResolvedUser(null);
+      } finally {
+        setResolving(false);
+      }
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    if (!shareCodeInput || shareCodeInput.length !== 8) {
+      window.toastWithHaptic.error(t("shareCodeRequired"));
+      return;
+    }
+
     try {
-      // Build payload for ID-only sharing
       const payload = {
-        shared_with_user_id: Number(selectedUser),
+        share_code: shareCodeInput,
         permission_level: permissionLevel,
       };
       if (selectedSource) {
@@ -92,7 +113,8 @@ const ShareData = () => {
       window.toastWithHaptic.success(t("shareCreatedSuccessfully"));
 
       // Reset form
-      setSelectedUser("");
+      setShareCodeInput("");
+      setResolvedUser(null);
       setSelectedSource("");
       setPermissionLevel("read");
     } catch (err) {
@@ -192,32 +214,77 @@ const ShareData = () => {
         {/* Left column: Add Share */}
         <div className="card h-full">
           <div className="card-body">
+            {/* My Share Code display */}
+            <div className="mb-6 p-4 rounded-lg bg-accent/10 border border-accent/20">
+              <h3 className="text-sm font-semibold mb-1">{t("myShareCode")}</h3>
+              <div className="flex items-center gap-3">
+                <span className="text-2xl font-mono font-bold tracking-widest select-all">
+                  {myShareCode || "—"}
+                </span>
+                <button
+                  type="button"
+                  className="text-xs underline opacity-70 hover:opacity-100"
+                  onClick={async () => {
+                    if (navigator.clipboard && myShareCode) {
+                      await navigator.clipboard.writeText(myShareCode);
+                      window.toastWithHaptic.success(t("copied"));
+                    }
+                  }}
+                >
+                  {t("copy") || "Copy"}
+                </button>
+                <button
+                  type="button"
+                  className="text-xs underline opacity-70 hover:opacity-100 text-red-500"
+                  onClick={async () => {
+                    try {
+                      await sharingAPI.regenerateShareCode();
+                      refetchShareCode();
+                      window.toastWithHaptic.success(t("shareCodeRegenerated") || "Share code regenerated");
+                    } catch {
+                      window.toastWithHaptic.error(t("error"));
+                    }
+                  }}
+                >
+                  {t("regenerateShareCode")}
+                </button>
+              </div>
+              <p className="text-xs opacity-60 mt-1">
+                {t("shareCodeHint")}
+              </p>
+            </div>
+
             <h2 className="text-xl font-semibold mb-4">
               {t("addShare") || "Add Share"}
             </h2>
             <form onSubmit={handleSubmit}>
               <div className="mb-6">
-                <DropdownWithInput
-                  id="user"
-                  name="user"
-                  label={t("selectUserToShareWith")}
-                  required={true}
-                  options={users.map((user) => user.full_name || user.email)}
-                  value={
-                    selectedUser
-                      ? users.find((u) => u.id == selectedUser)?.full_name ||
-                        users.find((u) => u.id == selectedUser)?.email ||
-                        ""
-                      : ""
-                  }
-                  onChange={(e) => {
-                    const user = users.find(
-                      (u) => (u.full_name || u.email) === e.target.value,
-                    );
-                    setSelectedUser(user ? user.id : "");
-                  }}
-                  placeholder={t("selectUser")}
+                <label className="form-label" htmlFor="shareCode">
+                  {t("enterShareCode")}
+                </label>
+                <input
+                  id="shareCode"
+                  type="text"
+                  className="form-control font-mono tracking-widest text-center text-lg uppercase"
+                  maxLength={8}
+                  value={shareCodeInput}
+                  onChange={(e) => handleShareCodeChange(e.target.value)}
+                  placeholder="ABCD1234"
+                  required
                 />
+                {resolving && (
+                  <p className="text-sm text-gray-500 mt-1">{t("loading")}...</p>
+                )}
+                {resolvedUser && (
+                  <p className="text-sm text-green-600 dark:text-green-400 mt-1">
+                    {resolvedUser.first_name} {resolvedUser.last_name}
+                  </p>
+                )}
+                {shareCodeInput.length === 8 && !resolving && !resolvedUser && (
+                  <p className="text-sm text-red-500 mt-1">
+                    {t("invalidShareCode") || "Invalid share code"}
+                  </p>
+                )}
               </div>
 
               <div className="mb-6">
@@ -286,7 +353,7 @@ const ShareData = () => {
                 <Button
                   type="submit"
                   variant="primary"
-                  disabled={submitting || !selectedUser}
+                  disabled={submitting || shareCodeInput.length !== 8 || !resolvedUser}
                   icon={
                     !submitting && (
                       <Icon

@@ -98,14 +98,37 @@ export const SharingProvider = ({ children }) => {
     }
   };
 
-  // Get all users for selection
-  const getAllUsers = async () => {
+  // Get my share code
+  const getMyShareCode = async () => {
     try {
-      const res = await offlineAPI.get("/sharing/users");
+      const res = await offlineAPI.get("/sharing/my-code");
+      return res.data?.share_code || "";
+    } catch (err) {
+      setError("Failed to load share code");
+      console.error("Error loading share code:", err);
+      throw err;
+    }
+  };
+
+  // Regenerate share code
+  const regenerateShareCodeFn = async () => {
+    try {
+      const res = await offlineAPI.post("/sharing/regenerate-code");
+      return res.data?.share_code || "";
+    } catch (err) {
+      setError("Failed to regenerate share code");
+      console.error("Error regenerating share code:", err);
+      throw err;
+    }
+  };
+
+  // Resolve a share code to user info
+  const resolveShareCode = async (share_code) => {
+    try {
+      const res = await offlineAPI.post("/sharing/resolve-code", { share_code });
       return res.data;
     } catch (err) {
-      setError("Failed to load users");
-      console.error("Error loading users:", err);
+      console.error("Error resolving share code:", err);
       throw err;
     }
   };
@@ -139,7 +162,10 @@ export const SharingProvider = ({ children }) => {
     createPermission,
     updatePermission,
     deletePermission,
-    getAllUsers,
+    getAllUsers: undefined, // Removed — use share codes instead
+    getMyShareCode,
+    regenerateShareCode: regenerateShareCodeFn,
+    resolveShareCode,
     getUserSources,
   };
 
