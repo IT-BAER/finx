@@ -173,7 +173,7 @@ export const authAPI = {
   getCurrentUser: () => api.get("/auth/me"),
   updateUser: (data) => api.put("/auth/me", data),
   changePassword: (data) => api.post("/auth/change-password", data),
-  deleteAccount: () => api.delete("/auth/me"),
+  deleteAccount: (password) => api.delete("/auth/me", { data: { password } }),
 };
 
 // Category endpoints with caching

@@ -3,6 +3,7 @@ const { v4: uuidv4 } = require("uuid");
 function createEventBroadcaster() {
   /** @type {Map<string, {id:string,res:import('http').ServerResponse,userId:number|null}>} */
   const clients = new Map();
+  const MAX_CONNECTIONS_PER_USER = 5;
 
   function write(res, data) {
     try {
@@ -12,9 +13,33 @@ function createEventBroadcaster() {
     }
   }
 
+  function countUserConnections(userId) {
+    if (userId == null) return 0;
+    const uid = Number(userId);
+    let count = 0;
+    for (const c of clients.values()) {
+      if (c.userId != null && Number(c.userId) === uid) count++;
+    }
+    return count;
+  }
+
   function addClient(res, userId = null) {
+    const uid = userId != null ? Number(userId) : null;
+
+    // Enforce per-user connection limit
+    if (uid != null && countUserConnections(uid) >= MAX_CONNECTIONS_PER_USER) {
+      // Close oldest connection for this user
+      for (const [key, c] of clients.entries()) {
+        if (c.userId != null && Number(c.userId) === uid) {
+          try { c.res.end(); } catch {}
+          clients.delete(key);
+          break;
+        }
+      }
+    }
+
     const id = uuidv4();
-    const client = { id, res, userId: userId != null ? Number(userId) : null };
+    const client = { id, res, userId: uid };
     clients.set(id, client);
     // Keep-alive pings every 25s to prevent proxies from closing the connection
     const pingInterval = setInterval(() => {

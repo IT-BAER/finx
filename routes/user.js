@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const auth = require("../middleware/auth");
+const isAdmin = require("../middleware/isAdmin");
 const {
   getAllUsers,
   createUser,
@@ -8,8 +9,8 @@ const {
   updateUser,
 } = require("../controllers/userController");
 
-// All routes require authentication
-router.use(auth);
+// All routes require authentication + admin
+router.use(auth, isAdmin);
 
 // User management routes (admin only)
 router.get("/", getAllUsers);

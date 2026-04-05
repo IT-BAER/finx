@@ -74,6 +74,8 @@ const login = async (req, res) => {
     // Check if user exists
     const user = await User.findByEmail(email);
     if (!user) {
+      // Perform dummy bcrypt compare to prevent timing-based user enumeration
+      await bcrypt.compare(password, "$2b$10$0000000000000000000000000000000000000000000000000000");
       return res.status(400).json({ message: "Invalid credentials" });
     }
 
@@ -291,10 +293,10 @@ const changePassword = async (req, res) => {
         .json({ message: "Current password and new password are required" });
     }
 
-    if (newPassword.length < 6) {
+    if (newPassword.length < 8) {
       return res
         .status(400)
-        .json({ message: "New password must be at least 6 characters long" });
+        .json({ message: "New password must be at least 8 characters long" });
     }
 
     // Get current user
@@ -318,6 +320,10 @@ const changePassword = async (req, res) => {
       req.user.id,
     ]);
 
+    // Revoke all refresh tokens so other sessions must re-authenticate
+    const { revokeRefreshToken } = require("../utils/refreshToken");
+    await revokeRefreshToken(req.user.id);
+
     res.json({ success: true, message: "Password updated successfully" });
   } catch (err) {
     console.error("Change password error:", err.message);
@@ -325,9 +331,32 @@ const changePassword = async (req, res) => {
   }
 };
 
-// Delete account
+// Delete account (requires password confirmation)
 const deleteAccount = async (req, res) => {
   try {
+    const { password } = req.body;
+
+    if (!password) {
+      return res
+        .status(400)
+        .json({ message: "Password is required to delete your account" });
+    }
+
+    // Verify password before destructive action
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const isMatch = await user.comparePassword(password);
+    if (!isMatch) {
+      return res.status(400).json({ message: "Invalid credentials" });
+    }
+
+    // Revoke all refresh tokens before deletion
+    const { revokeRefreshToken } = require("../utils/refreshToken");
+    await revokeRefreshToken(req.user.id);
+
     // Delete user from database
     const result = await db.query(
       "DELETE FROM users WHERE id = $1 RETURNING *",

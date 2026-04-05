@@ -37,6 +37,7 @@ const Settings = () => {
     confirmPassword: "",
   });
   const [showDeleteAccountModal, setShowDeleteAccountModal] = useState(false);
+  const [deleteAccountPassword, setDeleteAccountPassword] = useState("");
   const [showRemoveSampleDataModal, setShowRemoveSampleDataModal] =
     useState(false);
   const isCurrentPage = useRef(true);
@@ -172,15 +173,22 @@ const Settings = () => {
   const { logout } = useAuth();
 
   const handleDeleteAccount = async () => {
+    if (!deleteAccountPassword) {
+      window.toastWithHaptic.error(t("passwordRequired") || "Password is required");
+      return;
+    }
     try {
-      await (await import("../services/api.jsx")).authAPI.deleteAccount();
+      await (await import("../services/api.jsx")).authAPI.deleteAccount(deleteAccountPassword);
       await logout();
       navigate("/login");
     } catch (err) {
-      window.toastWithHaptic.error(t("failedToDeleteAccount"));
+      window.toastWithHaptic.error(
+        err.response?.data?.message || t("failedToDeleteAccount"),
+      );
       console.error("Account deletion failed:", err);
     } finally {
       setShowDeleteAccountModal(false);
+      setDeleteAccountPassword("");
     }
   };
 
@@ -237,12 +245,21 @@ const Settings = () => {
 
         <Modal
           show={showDeleteAccountModal}
-          onClose={() => setShowDeleteAccountModal(false)}
+          onClose={() => {
+            setShowDeleteAccountModal(false);
+            setDeleteAccountPassword("");
+          }}
           title={t("pleaseConfirm")}
           onConfirm={handleDeleteAccount}
           confirmText={t("deleteAccount")}
         >
-          <p>{t("areYouSureYouWantToDeleteYourAccount")}</p>
+          <p className="mb-4">{t("areYouSureYouWantToDeleteYourAccount")}</p>
+          <Input
+            type="password"
+            placeholder={t("password") || "Password"}
+            value={deleteAccountPassword}
+            onChange={(e) => setDeleteAccountPassword(e.target.value)}
+          />
         </Modal>
 
         <Modal
