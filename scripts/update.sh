@@ -1,6 +1,9 @@
 #!/bin/bash
 set -e
 
+# Ensure PATH includes common binary locations (systemd services may have minimal PATH)
+export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:$PATH"
+
 # FinX Self-Hosted — Auto-Update Script
 # Called by services/autoUpdate.js when a new release tag is detected.
 # Usage: ./scripts/update.sh <tag>
