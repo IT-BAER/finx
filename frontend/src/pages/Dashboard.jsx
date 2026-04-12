@@ -8,10 +8,10 @@ import SourceCategoryBarChart from "../components/SourceCategoryBarChart.jsx";
 import MultiCheckboxDropdown from "../components/MultiCheckboxDropdown.jsx";
 
 import {
-  LazyBar as Bar,
-  LazyLine as Line,
   LazyPie as Pie,
 } from "../components/LazyChart.jsx";
+import AnimatedBarChart from "../components/AnimatedBarChart.jsx";
+import AnimatedAreaChart from "../components/AnimatedAreaChart.jsx";
 import { useTranslation } from "../hooks/useTranslation";
 import { getLocaleString } from "../utils/locale";
 import { useAuth } from "../contexts/AuthContext";
@@ -20,6 +20,7 @@ import { motion } from "framer-motion";
 import ChartLegend from "../components/ChartLegend.jsx";
 import { AnimatedPage, AnimatedSection, AnimatedStagger, AnimatedItem } from "../components/AnimatedPage.jsx";
 
+import Card from "../components/Card";
 // Helper function to get YYYY-MM-DD from a date object in local timezone
 const parseLocalDate = (value) => {
   if (typeof value === "string" && /\d{4}-\d{2}-\d{2}/.test(value)) {
@@ -721,65 +722,6 @@ const Dashboard = () => {
 
   // Income vs Expenses chart removed from dashboard
 
-  const dailyExpensesChartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    animation: {
-      duration: 0, // Disable animation to prevent datalabels from jumping
-    },
-    plugins: {
-      legend: {
-        display: false,
-      },
-      title: {
-        display: false,
-      },
-      tooltip: {
-        callbacks: {
-          label: function (context) {
-            return `${context.dataset.label}: ${formatCurrency(context.parsed.y)}`;
-          },
-        },
-      },
-      datalabels: {
-        anchor: "center",
-        align: "center",
-        formatter: (value) =>
-          value !== 0 ? formatCurrency(value) : "",
-        color: "#FFFFFF",
-        font: {
-          weight: "bold",
-          size: 10,
-        },
-        display: (context) =>
-          context.dataset.data[context.dataIndex] !== 0,
-      },
-    },
-    scales: {
-      y: {
-        display: false, // Hide y-axis to make bars wider and maintain consistency
-        beginAtZero: true,
-        grid: {
-          color: "rgba(0, 0, 0, 0.05)",
-        },
-        ticks: {
-          color: "#6b7280",
-          callback: function (value) {
-            return formatCurrency(value);
-          },
-        },
-      },
-      x: {
-        grid: {
-          display: false,
-        },
-        ticks: {
-          color: "#6b7280",
-        },
-      },
-    },
-  };
-
   const pieChartOptions = {
     responsive: true,
     maintainAspectRatio: false,
@@ -827,83 +769,6 @@ const Dashboard = () => {
       },
     },
     cutout: "60%",
-  };
-
-  const lineChartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: {
-        display: false,
-      },
-      title: {
-        display: false,
-      },
-      tooltip: {
-        mode: "index",
-        intersect: false,
-        callbacks: {
-          label: function (context) {
-            return `${context.dataset.label}: ${formatCurrency(context.parsed.y)}`;
-          },
-        },
-      },
-      datalabels: {
-        display: false,
-      },
-    },
-    scales: {
-      y: {
-        display: true, // Show y-axis for better context
-        beginAtZero: false,
-        grid: {
-          color: "rgba(0, 0, 0, 0.05)",
-        },
-        ticks: {
-          color: "#6b7280",
-          callback: function (value) {
-            return formatCurrency(value);
-          },
-          stepSize: function (context) {
-            // Dynamically calculate step size based on data range to reduce number of ticks
-            const chart = context.chart;
-            const min = chart.scales.y.min;
-            const max = chart.scales.y.max;
-            const range = max - min;
-            // Aim for 4-5 ticks by rounding to nice numbers
-            const roughStep = range / 4;
-            // Round to nearest significant value (10, 50, 100, 500, 1000, etc.)
-            const magnitude = Math.pow(10, Math.floor(Math.log10(roughStep)));
-            const normalized = roughStep / magnitude;
-            let niceStep;
-            if (normalized < 1.5) {
-              niceStep = 1 * magnitude;
-            } else if (normalized < 3) {
-              niceStep = 2 * magnitude;
-            } else if (normalized < 7.5) {
-              niceStep = 5 * magnitude;
-            } else {
-              niceStep = 10 * magnitude;
-            }
-            return niceStep;
-          },
-        },
-      },
-      x: {
-        grid: {
-          display: false,
-        },
-        ticks: {
-          color: "#6b7280",
-        },
-      },
-    },
-    interaction: {
-      mode: "nearest",
-      axis: "x",
-      intersect: false,
-    },
-    tension: 0.4, // Smoother curves
   };
 
   if (loading) {
@@ -1055,21 +920,20 @@ const Dashboard = () => {
 
       {/* Summary Cards */}
       <AnimatedStagger 
-        className={`grid grid-cols-1 md:grid-cols-2 ${isIncomeTrackingDisabled ? "lg:grid-cols-2" : "lg:grid-cols-4"} gap-6 mb-8`}
+        className={`grid grid-cols-2 md:grid-cols-4 gap-4 mb-6`}
         staggerDelay={0.08}
         initialDelay={0}
       >
         {!isIncomeTrackingDisabled && (
           <AnimatedItem>
-          <div
-            className="card"
+          <Card
             style={{ borderColor: "rgba(52, 211, 153, 0.5)" }}
           >
-            <div className="card-body">
+            <div className="px-4 py-3">
               <div className="flex items-center">
-                <div className="p-3 rounded-full bg-green-100 dark:bg-green-900/30 mr-4">
+                <div className="p-2 rounded-full bg-green-100 dark:bg-green-900/30 mr-3">
                   <svg
-                    className="w-6 h-6 text-green-500"
+                    className="w-4 h-4 text-green-500"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -1084,10 +948,10 @@ const Dashboard = () => {
                   </svg>
                 </div>
                 <div>
-                  <h2 className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                  <h2 className="text-xs font-medium text-gray-500 dark:text-gray-400">
                     {t("totalIncome")}
                   </h2>
-                  <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+                  <p className="text-lg font-semibold text-green-600 dark:text-green-400">
                     {formatCurrency(
                       shouldFilter && filteredSummary
                         ? filteredSummary.total_income
@@ -1097,20 +961,19 @@ const Dashboard = () => {
                 </div>
               </div>
             </div>
-          </div>
+          </Card>
           </AnimatedItem>
         )}
 
         <AnimatedItem>
-        <div
-          className="card"
+        <Card
           style={{ borderColor: "rgba(248, 113, 113, 0.5)" }}
         >
-          <div className="card-body">
+          <div className="px-4 py-3">
             <div className="flex items-center">
-              <div className="p-3 rounded-full bg-red-100 dark:bg-red-900/30 mr-4">
+              <div className="p-2 rounded-full bg-red-100 dark:bg-red-900/30 mr-3">
                 <svg
-                  className="w-6 h-6 text-red-500"
+                  className="w-4 h-4 text-red-500"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -1125,10 +988,10 @@ const Dashboard = () => {
                 </svg>
               </div>
               <div>
-                <h2 className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                <h2 className="text-xs font-medium text-gray-500 dark:text-gray-400">
                   {t("totalExpenses")}
                 </h2>
-                <p className="text-2xl font-bold text-red-600 dark:text-red-400">
+                <p className="text-lg font-semibold text-red-600 dark:text-red-400">
                   {formatCurrency(
                     shouldFilter && filteredSummary
                       ? filteredSummary.total_expenses
@@ -1138,20 +1001,19 @@ const Dashboard = () => {
               </div>
             </div>
           </div>
-        </div>
+        </Card>
         </AnimatedItem>
 
         {!isIncomeTrackingDisabled && (
           <AnimatedItem>
-          <div
-            className="card"
+          <Card
             style={{ borderColor: "rgba(168, 85, 247, 0.5)" }}
           >
-            <div className="card-body">
+            <div className="px-4 py-3">
               <div className="flex items-center">
-                <div className="p-3 rounded-full bg-purple-100 dark:bg-purple-900/30 mr-4">
+                <div className="p-2 rounded-full bg-purple-100 dark:bg-purple-900/30 mr-3">
                   <svg
-                    className="w-6 h-6 text-purple-500"
+                    className="w-4 h-4 text-purple-500"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -1166,10 +1028,10 @@ const Dashboard = () => {
                   </svg>
                 </div>
                 <div>
-                  <h2 className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                  <h2 className="text-xs font-medium text-gray-500 dark:text-gray-400">
                     {t("netSavings")}
                   </h2>
-                  <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">
+                  <p className="text-lg font-semibold text-purple-600 dark:text-purple-400">
                     {formatCurrency(
                       shouldFilter && filteredSummary
                         ? filteredSummary.balance
@@ -1180,20 +1042,19 @@ const Dashboard = () => {
                 </div>
               </div>
             </div>
-          </div>
+          </Card>
           </AnimatedItem>
         )}
 
         <AnimatedItem>
-        <div
-          className="card"
+        <Card
           style={{ borderColor: "rgba(249, 115, 22, 0.5)" }}
         >
-          <div className="card-body">
+          <div className="px-4 py-3">
             <div className="flex items-center">
-              <div className="p-3 rounded-full bg-orange-100 dark:bg-orange-900/30 mr-4">
+              <div className="p-2 rounded-full bg-orange-100 dark:bg-orange-900/30 mr-3">
                 <svg
-                  className="w-6 h-6 text-orange-500"
+                  className="w-4 h-4 text-orange-500"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -1208,12 +1069,12 @@ const Dashboard = () => {
                 </svg>
               </div>
               <div>
-                <h2 className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                <h2 className="text-xs font-medium text-gray-500 dark:text-gray-400">
                   {isIncomeTrackingDisabled
                     ? "Ø " + t("dailyExpenses")
                     : "Ø " + t("dailyExpenses")}
                 </h2>
-                <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">
+                <p className="text-lg font-semibold text-orange-600 dark:text-orange-400">
                   {(() => {
                     // Use filtered data if sources are selected, otherwise use dashboardData
                     const dailyExpensesData = shouldFilter && filteredDailyExpenses.length > 0 
@@ -1253,7 +1114,7 @@ const Dashboard = () => {
               </div>
             </div>
           </div>
-        </div>
+        </Card>
         </AnimatedItem>
       </AnimatedStagger>
 
@@ -1261,7 +1122,7 @@ const Dashboard = () => {
       <AnimatedSection delay={0.3} scrollTriggered={false}>
       <div className="card md:h-[250px] mb-8">
         <div className="card-body h-full flex flex-col min-h-0">
-          <h2 className="text-xl font-semibold mb-6">{t("dailyExpenses")}</h2>
+          <h2 className="text-xl font-semibold mb-3">{t("dailyExpenses")}</h2>
           {(() => {
             // Use filtered data if sources are selected, otherwise use dashboardData
             const dailyExpensesData = shouldFilter && filteredDailyExpenses.length > 0 
@@ -1276,21 +1137,15 @@ const Dashboard = () => {
                 className="w-full h-full flex-1"
                 style={{ minHeight: 0 }}
               >
-                <Bar
-                  data={{
-                    labels: dailyExpensesData.map((item) => formatShortWeekday(item.date)),
-                    datasets: [
-                      {
-                        label: t("expenses"),
-                        data: dailyExpensesData.map((item) => parseFloat(item.total || 0)),
-                        backgroundColor: "rgba(248, 113, 113, 0.7)",
-                        borderColor: "rgba(248, 113, 113, 1)",
-                        borderWidth: 2,
-                        borderRadius: 6,
-                      },
-                    ],
-                  }}
-                  options={dailyExpensesChartOptions}
+                <AnimatedBarChart
+                  labels={dailyExpensesData.map((item) => formatShortWeekday(item.date))}
+                  datasets={[
+                    {
+                      label: t("expenses"),
+                      data: dailyExpensesData.map((item) => parseFloat(item.total || 0)),
+                    },
+                  ]}
+                  formatValue={formatCurrency}
                 />
               </motion.div>
             ) : (
@@ -1314,7 +1169,7 @@ const Dashboard = () => {
         {/* Source Spending by Category Chart */}
         <div className="card md:h-[370px] mb-8">
           <div className="card-body h-full flex flex-col min-h-0">
-            <h2 className="text-xl font-semibold mb-6">{t("sourceCategoryBreakdown")}</h2>
+            <h2 className="text-xl font-semibold mb-3">{t("sourceCategoryBreakdown")}</h2>
             <SourceCategoryBarChart
               selectedSources={shouldFilter ? selectedSources : []}
               sources={sources}
@@ -1323,7 +1178,7 @@ const Dashboard = () => {
         </div>
         <div className="card md:h-[370px]">
           <div className="card-body h-full flex flex-col min-h-0">
-            <h2 className="text-xl font-semibold mb-6">
+            <h2 className="text-xl font-semibold mb-3">
               {t("expensesByCategory")}
             </h2>
             {(() => {
@@ -1526,13 +1381,17 @@ const Dashboard = () => {
 
         <div className="card md:h-[370px] lg:col-span-2">
           <div className="card-body h-full flex flex-col min-h-0">
-            <h2 className="text-xl font-semibold mb-6">{t("balanceTrend")}</h2>
+            <h2 className="text-xl font-semibold mb-3">{t("balanceTrend")}</h2>
             {trendPerSourceChartData && trendPerSourceChartData.labels.length > 0 ? (
               <>
                 {/* Mobile: compact chart + legend list */}
                 <div className="md:hidden">
                   <div className="w-full h-44">
-                    <Line data={trendPerSourceChartData} options={{ ...lineChartOptions, plugins: { ...lineChartOptions.plugins, legend: { display: false } } }} />
+                    <AnimatedAreaChart
+                      labels={trendPerSourceChartData.labels}
+                      datasets={trendPerSourceChartData.datasets}
+                      formatValue={formatCurrency}
+                    />
                   </div>
                   {trendPerSourceLegend && trendPerSourceLegend.length > 0 && (
                     <ChartLegend
@@ -1546,7 +1405,12 @@ const Dashboard = () => {
                 {/* Desktop: full-height chart + compact chips */}
                 <div className="hidden md:flex flex-col w-full h-full flex-1 min-h-0">
                   <div className="flex-1 min-h-0 w-full">
-                    <Line data={trendPerSourceChartData} options={lineChartOptions} style={{ height: "100%", width: "100%" }} />
+                    <AnimatedAreaChart
+                      labels={trendPerSourceChartData.labels}
+                      datasets={trendPerSourceChartData.datasets}
+                      formatValue={formatCurrency}
+                      showLegend={false}
+                    />
                   </div>
                   {trendPerSourceLegend && trendPerSourceLegend.length > 0 && (
                     <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2">
@@ -1583,15 +1447,16 @@ const Dashboard = () => {
     <AnimatedSection delay={0.5} scrollTriggered={false}>
       <div className="card md:h-[370px] mb-8">
         <div className="card-body h-full flex flex-col min-h-0">
-      <h2 className="text-xl font-semibold mb-6">{t("expensesBySource")}</h2>
+      <h2 className="text-xl font-semibold mb-3">{t("expensesBySource")}</h2>
   {perSourceChartData ? (
       <>
         {/* Mobile: compact chart + legend list */}
         <div className="md:hidden">
           <div className="w-full h-44">
-            <Line
-              data={perSourceChartData}
-              options={{ ...lineChartOptions, responsive: true, maintainAspectRatio: false, plugins: { ...lineChartOptions.plugins, legend: { display: false } } }}
+            <AnimatedAreaChart
+              labels={perSourceChartData.labels}
+              datasets={perSourceChartData.datasets}
+              formatValue={formatCurrency}
             />
           </div>
           {perSourceLegend && perSourceLegend.length > 0 && (
@@ -1607,7 +1472,12 @@ const Dashboard = () => {
         {/* Desktop: full-height chart + compact chips */}
         <div className="hidden md:flex flex-col w-full h-full flex-1 min-h-0">
           <div className="flex-1 min-h-0 w-full">
-            <Line data={perSourceChartData} options={lineChartOptions} style={{ height: "100%", width: "100%" }} />
+            <AnimatedAreaChart
+              labels={perSourceChartData.labels}
+              datasets={perSourceChartData.datasets}
+              formatValue={formatCurrency}
+              showLegend={false}
+            />
           </div>
           {perSourceLegend && perSourceLegend.length > 0 && (
             <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2">
@@ -1640,9 +1510,9 @@ const Dashboard = () => {
       {/* Largest + Recent: side-by-side on desktop, stacked on mobile */}
       <AnimatedSection delay={0.6} scrollTriggered={false}>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-        <div className="card">
-          <div className="card-body">
-          <div className="flex justify-between items-center mb-6">
+        <Card>
+          <div className="card-body !p-4">
+          <div className="flex justify-between items-center mb-3">
             <h2 className="text-xl font-semibold">{t("largestExpenses")}</h2>
           </div>
           {topExpenses && topExpenses.length > 0 ? (
@@ -1677,7 +1547,7 @@ const Dashboard = () => {
               </div>
 
               {/* Desktop view - Table */}
-              <div className="hidden md:block">
+              <div className="hidden md:block [&_th]:py-2 [&_td]:py-2">
                 <table className="table w-full divide-y divide-gray-200 dark:divide-gray-700">
                   <thead>
                     <tr>
@@ -1755,12 +1625,12 @@ const Dashboard = () => {
             </div>
           )}
   </div>
-  </div>
+  </Card>
 
   {/* Recent Transactions */}
-  <div className="card">
-        <div className="card-body">
-          <div className="flex justify-between items-center mb-6">
+  <Card>
+        <div className="card-body !p-4">
+          <div className="flex justify-between items-center mb-3">
             <h2 className="text-xl font-semibold">{t("recentTransactions")}</h2>
             <motion.div
               whileHover={{ scale: 1.05 }}
@@ -1878,7 +1748,7 @@ const Dashboard = () => {
                   </div>
 
                   {/* Desktop view - Table */}
-                  <div className="hidden md:block">
+                  <div className="hidden md:block [&_th]:py-2 [&_td]:py-2">
                     <table className="table w-full divide-y divide-gray-200 dark:divide-gray-700">
                       <thead>
                         <tr>
@@ -1941,7 +1811,7 @@ const Dashboard = () => {
             );
           })()}
         </div>
-      </div>
+      </Card>
       </div>
       </AnimatedSection>
   </div>

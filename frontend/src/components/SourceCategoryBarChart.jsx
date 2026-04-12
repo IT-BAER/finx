@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import offlineAPI from "../services/offlineAPI";
-import { LazyBar as Bar } from "./LazyChart.jsx";
+import AnimatedBarChart from "./AnimatedBarChart.jsx";
 import { useTranslation } from "../hooks/useTranslation";
 import { useTheme } from "../contexts/ThemeContext.jsx";
 
@@ -116,100 +116,15 @@ export default function SourceCategoryBarChart({ selectedSources, sources }) {
   });
 
   return (
-    <Bar
-      data={chartData}
-      options={{
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { 
-            position: "top",
-            labels: {
-              font: {
-                size: 12
-              },
-              color: dark ? "#d1d5db" : "#374151",
-              usePointStyle: true,
-              padding: 12
-            }
-          },
-          title: { display: false },
-          tooltip: {
-            callbacks: {
-              label: function (context) {
-                const value = context.parsed.y;
-                const categoryIndex = context.dataIndex;
-                const categoryTotal = categoryTotals[categoryIndex];
-                const percentage = categoryTotal > 0 ? ((value / categoryTotal) * 100).toFixed(1) : 0;
-                
-                if (chartData.hasMultipleSources) {
-                  return `${context.dataset.label}: ${formatCurrency(value)} (${percentage}%)`;
-                }
-                return `${context.dataset.label}: ${formatCurrency(value)}`;
-              },
-            },
-          },
-          datalabels: {
-            display: chartData.hasMultipleSources,
-            color: '#fff',
-            font: {
-              weight: 'bold',
-              size: 9
-            },
-            formatter: function(value, context) {
-              if (value === 0) return '';
-              
-              const categoryIndex = context.dataIndex;
-              const categoryTotal = categoryTotals[categoryIndex];
-              const percentage = categoryTotal > 0 ? ((value / categoryTotal) * 100).toFixed(0) : 0;
-              
-              // Only show percentage if it's 8% or more to avoid clutter
-              return percentage >= 8 ? `${percentage}%` : '';
-            },
-            anchor: 'center',
-            align: 'center',
-            clip: true
-          },
-        },
-        scales: {
-          x: { 
-            stacked: true,
-            grid: {
-              display: false,
-            },
-            ticks: {
-              color: "#6b7280",
-              maxRotation: 0,
-              minRotation: 0,
-              font: {
-                size: 11
-              },
-              padding: 5,
-              callback: function(value, index, ticks) {
-                // Truncate long labels to fit better
-                const label = this.getLabelForValue(value);
-                return label.length > 8 ? label.substring(0, 8) + '...' : label;
-              }
-            },
-            offset: true,
-            categoryPercentage: 1.0,
-            barPercentage: 0.9,
-          },
-          y: { 
-            stacked: true, 
-            beginAtZero: true,
-            grid: {
-              color: "rgba(0, 0, 0, 0.05)",
-            },
-            ticks: {
-              color: "#6b7280",
-              callback: function (value) {
-                return formatCurrency(value);
-              },
-            },
-          },
-        },
-      }}
+    <AnimatedBarChart
+      labels={chartData.labels}
+      datasets={chartData.datasets.map((ds) => ({
+        label: ds.label,
+        data: ds.data,
+      }))}
+      stacked={true}
+      showLegend={chartData.hasMultipleSources}
+      formatValue={formatCurrency}
     />
   );
 }

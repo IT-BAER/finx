@@ -13,6 +13,7 @@ import Input from "../components/Input.jsx";
 import { motion } from "framer-motion";
 import { AnimatedPage, AnimatedSection } from "../components/AnimatedPage";
 
+import Card from "../components/Card";
 const AddTransaction = () => {
   // React Query hooks for reference data
   const { data: categoriesData = [] } = useCategories();
@@ -337,7 +338,7 @@ const AddTransaction = () => {
       {/* Error alerts removed - using toast notifications instead */}
 
       <AnimatedSection delay={0.2}>
-      <div className="card">
+      <Card>
         <div className="card-body">
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -747,7 +748,7 @@ const AddTransaction = () => {
             </div>
           </form>
         </div>
-      </div>
+      </Card>
       </AnimatedSection>
     </div>
     </AnimatedPage>

@@ -439,11 +439,7 @@ ontent-based sizing for pages */
   min-height: 0 !important;
 }
 
-/* Ensure cards don't expand unnecessarily */
-.card {
-  height: auto;
-  min-height: auto;
-}
+/* Cards use content-based sizing by default; Tailwind h-[] / md:h-[] overrides remain valid. */
 
 /* Mobile-specific content sizing */
 @media (max-width: 768px) {

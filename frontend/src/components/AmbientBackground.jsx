@@ -1,317 +1,330 @@
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState, useCallback } from "react";
 import { useTheme } from "../contexts/ThemeContext";
+
+const themeConfig = {
+  default: {
+    dark: {
+      gradient: "linear-gradient(135deg, #0a0f1e 0%, #000 40%, #0c1425 100%)",
+      bg: "#030712",
+      glow1: "rgba(37,99,235,0.15)",
+      glow2: "rgba(124,58,237,0.01)",
+      grid: "rgba(100,116,139,0.07)",
+      accent: "rgba(148,163,184,0.08)",
+      dot: "rgba(203,213,225,0.6)",
+      hues: [220, 260],
+      mouseGlow: "radial-gradient(circle, rgba(37,99,235,0.10) 0%, rgba(124,58,237,0.05) 40%, transparent 70%)",
+    },
+    light: {
+      gradient: "linear-gradient(135deg, #f9fafb 0%, #ffffff 40%, #f3f4f6 100%)",
+      bg: "#f9fafb",
+      glow1: "rgba(37,99,235,0.04)",
+      glow2: "rgba(124,58,237,0.02)",
+      grid: "rgba(100,116,139,0.06)",
+      accent: "rgba(100,116,139,0.06)",
+      dot: "rgba(100,116,139,0.3)",
+      hues: [220, 260],
+      mouseGlow: "radial-gradient(circle, rgba(37,99,235,0.06) 0%, rgba(124,58,237,0.03) 40%, transparent 70%)",
+    },
+  },
+  ocean: {
+    dark: {
+      gradient: "linear-gradient(135deg, #051a2e 0%, #000 40%, #071a26 100%)",
+      bg: "#071a26",
+      glow1: "rgba(2,132,199,0.15)",
+      glow2: "rgba(56,189,248,0.01)",
+      grid: "rgba(56,189,248,0.05)",
+      accent: "rgba(56,189,248,0.08)",
+      dot: "rgba(125,211,252,0.6)",
+      hues: [195, 210],
+      mouseGlow: "radial-gradient(circle, rgba(2,132,199,0.10) 0%, rgba(56,189,248,0.05) 40%, transparent 70%)",
+    },
+    light: {
+      gradient: "linear-gradient(135deg, #f0f9ff 0%, #ffffff 40%, #e0f2fe 100%)",
+      bg: "#f0f9ff",
+      glow1: "rgba(2,132,199,0.04)",
+      glow2: "rgba(56,189,248,0.02)",
+      grid: "rgba(56,189,248,0.05)",
+      accent: "rgba(56,189,248,0.06)",
+      dot: "rgba(56,189,248,0.3)",
+      hues: [195, 210],
+      mouseGlow: "radial-gradient(circle, rgba(2,132,199,0.06) 0%, rgba(56,189,248,0.03) 40%, transparent 70%)",
+    },
+  },
+  forest: {
+    dark: {
+      gradient: "linear-gradient(135deg, #061a0c 0%, #000 40%, #0a1a10 100%)",
+      bg: "#0a1a10",
+      glow1: "rgba(22,163,74,0.15)",
+      glow2: "rgba(52,211,153,0.01)",
+      grid: "rgba(74,222,128,0.05)",
+      accent: "rgba(74,222,128,0.08)",
+      dot: "rgba(134,239,172,0.6)",
+      hues: [140, 160],
+      mouseGlow: "radial-gradient(circle, rgba(22,163,74,0.10) 0%, rgba(52,211,153,0.05) 40%, transparent 70%)",
+    },
+    light: {
+      gradient: "linear-gradient(135deg, #f7fee7 0%, #ffffff 40%, #ecfccb 100%)",
+      bg: "#f7fee7",
+      glow1: "rgba(22,163,74,0.04)",
+      glow2: "rgba(52,211,153,0.02)",
+      grid: "rgba(74,222,128,0.05)",
+      accent: "rgba(74,222,128,0.06)",
+      dot: "rgba(74,222,128,0.3)",
+      hues: [140, 160],
+      mouseGlow: "radial-gradient(circle, rgba(22,163,74,0.06) 0%, rgba(52,211,153,0.03) 40%, transparent 70%)",
+    },
+  },
+  rose: {
+    dark: {
+      gradient: "linear-gradient(135deg, #1a060e 0%, #000 40%, #1a0b10 100%)",
+      bg: "#1a0b10",
+      glow1: "rgba(225,29,72,0.15)",
+      glow2: "rgba(251,113,133,0.01)",
+      grid: "rgba(251,113,133,0.05)",
+      accent: "rgba(251,113,133,0.08)",
+      dot: "rgba(253,164,175,0.6)",
+      hues: [340, 350],
+      mouseGlow: "radial-gradient(circle, rgba(225,29,72,0.10) 0%, rgba(251,113,133,0.05) 40%, transparent 70%)",
+    },
+    light: {
+      gradient: "linear-gradient(135deg, #fff1f2 0%, #ffffff 40%, #ffe4e6 100%)",
+      bg: "#fff1f2",
+      glow1: "rgba(225,29,72,0.04)",
+      glow2: "rgba(251,113,133,0.02)",
+      grid: "rgba(251,113,133,0.05)",
+      accent: "rgba(251,113,133,0.06)",
+      dot: "rgba(251,113,133,0.3)",
+      hues: [340, 350],
+      mouseGlow: "radial-gradient(circle, rgba(225,29,72,0.06) 0%, rgba(251,113,133,0.03) 40%, transparent 70%)",
+    },
+  },
+  wednesday: {
+    dark: {
+      gradient: "linear-gradient(135deg, #0d0819 0%, #000 40%, #0f0b1a 100%)",
+      bg: "#0f0b1a",
+      glow1: "rgba(124,58,237,0.15)",
+      glow2: "rgba(79,70,229,0.01)",
+      grid: "rgba(167,139,250,0.05)",
+      accent: "rgba(167,139,250,0.08)",
+      dot: "rgba(196,181,253,0.6)",
+      hues: [260, 275],
+      mouseGlow: "radial-gradient(circle, rgba(124,58,237,0.10) 0%, rgba(79,70,229,0.05) 40%, transparent 70%)",
+    },
+    light: {
+      gradient: "linear-gradient(135deg, #f5f3ff 0%, #ffffff 40%, #ede9fe 100%)",
+      bg: "#f5f3ff",
+      glow1: "rgba(124,58,237,0.04)",
+      glow2: "rgba(79,70,229,0.02)",
+      grid: "rgba(167,139,250,0.05)",
+      accent: "rgba(167,139,250,0.06)",
+      dot: "rgba(167,139,250,0.3)",
+      hues: [260, 275],
+      mouseGlow: "radial-gradient(circle, rgba(124,58,237,0.06) 0%, rgba(79,70,229,0.03) 40%, transparent 70%)",
+    },
+  },
+};
 
 const AmbientBackground = () => {
   const canvasRef = useRef(null);
   const { theme, dark } = useTheme();
-  const particles = useRef([]);
+  const particlesRef = useRef([]);
   const animationId = useRef(null);
-  const frameCount = useRef(0);
-  const lastTime = useRef(0);
-  const particleSprites = useRef({});
+  const mouseRef = useRef({ x: 0, y: 0, active: false });
 
-  // Enhanced theme-based color schemes with gradient colors
-  const colorSchemes = {
-    default: {
-      dark: {
-        background: "#1a2237",
-        particles: [
-          "rgba(173,216,230,0.5)",
-          "rgba(0,255,255,0.4)",
-          "rgba(0,128,255,0.3)",
-        ],
-        gradientColors: ["#0b1220", "#1a2237", "#111827"], // Dark blue shades
-      },
-      light: {
-        background: "#f5f7fa",
-        particles: [
-          "rgba(0, 84, 166, 0.45)",
-          "rgba(83, 207, 255, 0.4)",
-          "rgba(255,255,255,0.23)",
-        ],
-        gradientColors: ["#ffffff", "#f3f4f6", "#e5e7eb"], // White (brightest) -> gray-100 (brighter) -> gray-200 (darker)
-      },
-    },
-    ocean: {
-      dark: {
-        background: "#071a26",
-        particles: [
-          "rgba(2,132,199,0.5)",
-          "rgba(56,189,248,0.4)",
-          "rgba(125,211,252,0.3)",
-        ],
-        gradientColors: ["#05121f", "#071a26", "#0b2533"], // Deep ocean shades
-      },
-      light: {
-        background: "#f0f9ff",
-        particles: [
-          "rgba(2,132,199,0.4)",
-          "rgba(56,189,248,0.3)",
-          "rgba(191,219,254,0.2)",
-        ],
-        gradientColors: ["#ffffff", "#e0f2fe", "#dbeafe"], // White (brightest) -> sky-100 (brighter) -> indigo-100 (darker)
-      },
-    },
-    forest: {
-      dark: {
-        background: "#0a1a10",
-        particles: [
-          "rgba(22,163,74,0.5)",
-          "rgba(74,222,128,0.4)",
-          "rgba(134,239,172,0.3)",
-        ],
-        gradientColors: ["#08190d", "#0a1a10", "#0f2417"], // Deep forest shades
-      },
-      light: {
-        background: "#f7fee7",
-        particles: [
-          "rgba(22,163,74,0.4)",
-          "rgba(74,222,128,0.3)",
-          "rgba(187,247,208,0.2)",
-        ],
-        gradientColors: ["#ffffff", "#f7fee7", "#ecfccb"], // White (brightest) -> lime-50 (brighter) -> lime-100 (darker)
-      },
-    },
-    rose: {
-      dark: {
-        background: "#1a0b10",
-        particles: [
-          "rgba(225,29,72,0.5)",
-          "rgba(251,113,133,0.4)",
-          "rgba(253,164,175,0.3)",
-        ],
-        gradientColors: ["#140a0f", "#1a0b10", "#2a0f19"], // Deep rose shades
-      },
-      light: {
-        background: "#fff1f2",
-        particles: [
-          "rgba(225,29,72,0.4)",
-          "rgba(251,113,133,0.3)",
-          "rgba(254,205,211,0.2)",
-        ],
-        gradientColors: ["#ffffff", "#fff1f2", "#ffe4e6"], // White (brightest) -> rose-50 (brighter) -> rose-100 (darker)
-      },
-    },
-    wednesday: {
-      dark: {
-        background: "#16132a",
-        particles: [
-          "rgba(124,58,237,0.45)",
-          "rgba(167,139,250,0.35)",
-          "rgba(79,70,229,0.25)",
-        ],
-        gradientColors: ["#0f0b1a", "#16132a", "#1f1a3a"], // Deep violet shades
-      },
-      light: {
-        background: "#f5f3ff",
-        particles: [
-          "rgba(124,58,237,0.35)",
-          "rgba(167,139,250,0.30)",
-          "rgba(221,214,254,0.25)",
-        ],
-        gradientColors: ["#ffffff", "#ede9fe", "#ddd6fe"], // White -> violet-100 -> violet-200
-      },
-    },
-  };
+  const cfg = (themeConfig[theme] || themeConfig.default)[dark ? "dark" : "light"];
 
-  const getCurrentScheme = () => {
-    const scheme = colorSchemes[theme] || colorSchemes.default;
-    return dark ? scheme.dark : scheme.light;
-  };
+  // Mouse-following glow (direct DOM for smooth tracking)
+  const glowRef = useRef(null);
+  const onMouseMove = useCallback((e) => {
+    mouseRef.current = { x: e.clientX, y: e.clientY, active: true };
+    if (glowRef.current) {
+      glowRef.current.style.left = `${e.clientX}px`;
+      glowRef.current.style.top = `${e.clientY}px`;
+      glowRef.current.style.opacity = "0.5";
+    }
+  }, []);
+  const onMouseLeave = useCallback(() => {
+    mouseRef.current.active = false;
+    if (glowRef.current) {
+      glowRef.current.style.opacity = "0";
+    }
+  }, []);
 
-  // Pre-render blurred particle sprites for better performance
-  const createParticleSprites = (scheme) => {
-    const sizes = [20, 30, 40]; // Different particle sizes
-    const blurLevel = 7; // Increased blur level for better visual effect
-
-    particleSprites.current = {};
-
-    sizes.forEach((size) => {
-      // Create offscreen canvas for each particle sprite
-      const spriteCanvas = document.createElement("canvas");
-      const spriteCtx = spriteCanvas.getContext("2d");
-      const spriteSize = size + blurLevel * 2;
-
-      spriteCanvas.width = spriteSize * 2; // Double size for padding
-      spriteCanvas.height = spriteSize * 2;
-
-      // Draw blurred particle
-      spriteCtx.beginPath();
-      spriteCtx.arc(spriteSize, spriteSize, size, 0, Math.PI * 2);
-      spriteCtx.fillStyle = scheme.particles[0]; // Use first color as base
-      spriteCtx.filter = `blur(${blurLevel}px)`;
-      spriteCtx.fill();
-
-      particleSprites.current[size] = spriteCanvas;
-    });
-  };
-
-  const createParticle = (width, height) => {
-    return {
-      x: Math.random() * width,
-      y: Math.random() * height,
-      radius: 20 + Math.random() * 20, // Slightly larger range
-      color: getCurrentScheme().particles[Math.floor(Math.random() * 3)],
-      alpha: 0,
-      targetAlpha: 0.02 + Math.random() * 0.05,
-      spawning: true,
-      despawning: false,
-      velocity: {
-        x: -0.5 + Math.random() * 1.0,
-        y: -0.2 + Math.random() * 0.4,
-      },
+  useEffect(() => {
+    document.addEventListener("mousemove", onMouseMove);
+    document.addEventListener("mouseleave", onMouseLeave);
+    return () => {
+      document.removeEventListener("mousemove", onMouseMove);
+      document.removeEventListener("mouseleave", onMouseLeave);
     };
-  };
+  }, [onMouseMove, onMouseLeave]);
 
+  // Click ripples
+  const [ripples, setRipples] = useState([]);
+  useEffect(() => {
+    const handler = (e) => {
+      const id = Date.now();
+      setRipples((r) => [...r, { id, x: e.clientX, y: e.clientY }]);
+      setTimeout(() => setRipples((r) => r.filter((r2) => r2.id !== id)), 900);
+    };
+    document.addEventListener("click", handler);
+    return () => document.removeEventListener("click", handler);
+  }, []);
+
+  // Canvas particle system with mouse repulsion
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-
     const ctx = canvas.getContext("2d");
-    let width = window.innerWidth;
-    let height = window.innerHeight;
+    let w = window.innerWidth;
+    let h = window.innerHeight;
+    const MOUSE_RADIUS = 100;
+    const MOUSE_FORCE = 0.08;
 
-    const handleResize = () => {
-      width = window.innerWidth;
-      height = window.innerHeight;
-      canvas.width = width;
-      canvas.height = height;
+    const resize = () => { w = window.innerWidth; h = window.innerHeight; canvas.width = w; canvas.height = h; };
+    window.addEventListener("resize", resize);
+    resize();
 
-      // Recreate particle sprites on resize
-      createParticleSprites(getCurrentScheme());
-    };
+    particlesRef.current = Array.from({ length: 20 }, (_, i) => {
+      // Distribute across a 5x4 grid with jitter for even coverage
+      const col = i % 5;
+      const row = Math.floor(i / 5);
+      return {
+        x: (col + 0.5) * (w / 5) + (Math.random() - 0.5) * (w / 7),
+        y: (row + 0.5) * (h / 4) + (Math.random() - 0.5) * (h / 6),
+        r: 1 + Math.random() * 2,
+        hue: cfg.hues[Math.random() > 0.5 ? 0 : 1],
+        alpha: 0.08 + Math.random() * 0.18,
+        angle: Math.random() * Math.PI * 2,
+        drift: 0.0005 + Math.random() * 0.001,
+        vx: (Math.random() - 0.5) * 0.05,
+        vy: (Math.random() - 0.5) * 0.05,
+      };
+    });
 
-    window.addEventListener("resize", handleResize);
-    handleResize();
+    let lastTime = 0;
+    const tick = (ts) => {
+      if (ts - lastTime < 16) { animationId.current = requestAnimationFrame(tick); return; }
+      lastTime = ts;
 
-    // Create particle sprites
-    createParticleSprites(getCurrentScheme());
+      ctx.clearRect(0, 0, w, h);
+      const m = mouseRef.current;
 
-    // Initialize particles (reduced from 30 to 15 for better performance)
-    particles.current = Array.from({ length: 15 }, () =>
-      createParticle(width, height),
-    );
+      particlesRef.current.forEach((p) => {
+        p.angle += p.drift;
+        p.vx += Math.cos(p.angle) * 0.001;
+        p.vy += Math.sin(p.angle) * 0.001;
 
-    const animate = (timestamp) => {
-      // Throttle animation to 60fps max
-      if (timestamp - lastTime.current < 16) {
-        animationId.current = requestAnimationFrame(animate);
-        return;
-      }
-      lastTime.current = timestamp;
-
-      frameCount.current++;
-
-      // Create animated gradient background with slower movement
-      const scheme = getCurrentScheme();
-      const isMobile = width <= 640;
-      const speedFactor = isMobile ? 0.3 : 0.7; // 70% slower than original
-      const gradient = ctx.createLinearGradient(
-        0,
-        Math.sin(frameCount.current * speedFactor * 0.003) * height,
-        width,
-        Math.cos(frameCount.current * speedFactor * 0.002) * height,
-      );
-
-      gradient.addColorStop(0, scheme.gradientColors[0]);
-      gradient.addColorStop(0.5, scheme.gradientColors[1]);
-      gradient.addColorStop(1, scheme.gradientColors[2]);
-
-      ctx.fillStyle = gradient;
-      ctx.fillRect(0, 0, width, height);
-
-      // Draw particles with pre-rendered blurred sprites
-      particles.current.forEach((particle) => {
-        if (particle.despawning) {
-          particle.alpha = Math.max(particle.alpha - 0.002, 0);
-          if (particle.alpha <= 0) {
-            Object.assign(particle, createParticle(width, height));
-          }
-        } else if (particle.spawning) {
-          particle.alpha = Math.min(
-            particle.alpha + 0.0005,
-            particle.targetAlpha,
-          );
-          if (particle.alpha >= particle.targetAlpha) {
-            particle.spawning = false;
+        // Mouse repulsion
+        if (m.active) {
+          const dx = p.x - m.x;
+          const dy = p.y - m.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < MOUSE_RADIUS && dist > 0) {
+            const force = (1 - dist / MOUSE_RADIUS) * MOUSE_FORCE;
+            p.vx += (dx / dist) * force;
+            p.vy += (dy / dist) * force;
           }
         }
 
-        // Use pre-rendered particle sprites instead of real-time blur
-        const sizeKey = Math.min(
-          Object.keys(particleSprites.current)
-            .map(Number)
-            .filter((s) => s >= particle.radius)[0] || 40,
-          40,
-        );
+        p.vx *= 0.997; p.vy *= 0.997;
+        const spd = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
+        if (spd > 0.6) { p.vx *= 0.6 / spd; p.vy *= 0.6 / spd; }
+        p.x += p.vx; p.y += p.vy;
+        if (p.x < 5) { p.x = 5; p.vx = Math.abs(p.vx) * 0.5; }
+        if (p.x > w - 5) { p.x = w - 5; p.vx = -Math.abs(p.vx) * 0.5; }
+        if (p.y < 5) { p.y = 5; p.vy = Math.abs(p.vy) * 0.5; }
+        if (p.y > h - 5) { p.y = h - 5; p.vy = -Math.abs(p.vy) * 0.5; }
 
-        if (particleSprites.current[sizeKey]) {
-          const sprite = particleSprites.current[sizeKey];
-          const spriteSize = sprite.width / 2;
-
-          // Use integer positions for better performance
-          const x = Math.floor(particle.x - spriteSize);
-          const y = Math.floor(particle.y - spriteSize);
-
-          ctx.globalAlpha = particle.alpha;
-          ctx.drawImage(sprite, x, y);
-        } else {
-          // Fallback to direct drawing if sprite not available
-          ctx.beginPath();
-          ctx.arc(
-            Math.floor(particle.x),
-            Math.floor(particle.y),
-            particle.radius,
-            0,
-            Math.PI * 2,
-          );
-          ctx.fillStyle = particle.color;
-          ctx.globalAlpha = particle.alpha;
-          ctx.fill();
-        }
-
-        particle.x += particle.velocity.x;
-        particle.y += particle.velocity.y;
-
-        // Reset particles with smooth transition
-        if (
-          !particle.despawning &&
-          (particle.x < -50 ||
-            particle.x > width + 50 ||
-            particle.y < -50 ||
-            particle.y > height + 50)
-        ) {
-          particle.despawning = true;
-        }
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fillStyle = `hsla(${p.hue}, 70%, ${dark ? 70 : 45}%, ${p.alpha})`;
+        ctx.fill();
       });
 
-      // Reset global alpha
-      ctx.globalAlpha = 1.0;
-
-      animationId.current = requestAnimationFrame(animate);
+      animationId.current = requestAnimationFrame(tick);
     };
 
-    animationId.current = requestAnimationFrame(animate);
-
-    return () => {
-      cancelAnimationFrame(animationId.current);
-      window.removeEventListener("resize", handleResize);
-    };
+    animationId.current = requestAnimationFrame(tick);
+    return () => { cancelAnimationFrame(animationId.current); window.removeEventListener("resize", resize); };
   }, [theme, dark]);
 
   return (
-    <canvas
-      ref={canvasRef}
-      style={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        width: "100vw",
-        height: "100vh",
-        zIndex: -1,
-        pointerEvents: "none",
-      }}
-    />
+    <>
+      {/* Full-screen gradient background matching landing page */}
+      <div style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", background: cfg.gradient, zIndex: -2, pointerEvents: "none" }} />
+
+      {/* Particle canvas */}
+      <canvas ref={canvasRef} style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", zIndex: -1, pointerEvents: "none" }} />
+
+      {/* Ambient gradient glows */}
+      <div style={{ position: "fixed", top: "-15%", left: "-10%", width: "70%", height: "70%", background: `radial-gradient(ellipse at center, ${cfg.glow1} 0%, transparent 70%)`, filter: "blur(80px)", pointerEvents: "none", zIndex: -1 }} />
+      <div style={{ position: "fixed", bottom: "-10%", right: "-5%", width: "50%", height: "50%", background: `radial-gradient(ellipse at center, ${cfg.glow2} 0%, transparent 70%)`, filter: "blur(80px)", pointerEvents: "none", zIndex: -1 }} />
+
+      {/* SVG grid with accent lines and pulsing dots */}
+      <svg style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", pointerEvents: "none", zIndex: -1 }} xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <defs>
+          <pattern id="appGrid" width="60" height="60" patternUnits="userSpaceOnUse">
+            <path d="M 60 0 L 0 0 0 60" fill="none" stroke={cfg.grid} strokeWidth="0.5" />
+          </pattern>
+        </defs>
+        <rect width="100%" height="100%" fill="url(#appGrid)" />
+        {/* Accent grid lines */}removed — canvas particles handle ambient movement */}
+        {/* Grid intersection dots removed — canvas particles handle ambient movement */}
+      </svg>
+
+      {/* Mouse-following gradient */}
+      <div
+        ref={glowRef}
+        style={{
+          position: "fixed",
+          width: "500px",
+          height: "500px",
+          left: "0px",
+          top: "0px",
+          opacity: 0,
+          transform: "translate(-50%, -50%)",
+          background: cfg.mouseGlow,
+          filter: "blur(60px)",
+          transition: "opacity 200ms ease-out",
+          willChange: "left, top, opacity",
+          pointerEvents: "none",
+          zIndex: -1,
+        }}
+      />
+
+      {/* Click ripples */}
+      {ripples.map((r) => (
+        <div
+          key={r.id}
+          style={{
+            position: "fixed",
+            width: "4px",
+            height: "4px",
+            borderRadius: "50%",
+            left: `${r.x}px`,
+            top: `${r.y}px`,
+            transform: "translate(-50%, -50%)",
+            background: cfg.dot,
+            animation: "ambientRipple 0.8s ease-out forwards",
+            pointerEvents: "none",
+            zIndex: 9999,
+          }}
+        />
+      ))}
+
+      {/* Keyframe animations */}
+      <style>{`
+        @keyframes ambientPulse {
+          0%, 100% { opacity: 0.15; transform: scale(1); }
+          50% { opacity: 0.45; transform: scale(1.2); }
+        }
+        @keyframes ambientRipple {
+          0% { width: 4px; height: 4px; opacity: 0.6; }
+          100% { width: 40px; height: 40px; opacity: 0; }
+        }
+      `}</style>
+    </>
   );
 };
 

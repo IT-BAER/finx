@@ -6,7 +6,7 @@ const OfflineModal = ({ isOpen, onClose, title, message }) => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md">
+      <div className="rounded-lg shadow-xl w-full max-w-md" style={{ backgroundColor: 'color-mix(in srgb, var(--surface) 85%, transparent)', border: '1px solid var(--border)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
         <div className="p-6">
           <h3 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">
             {title || "Offline Mode"}

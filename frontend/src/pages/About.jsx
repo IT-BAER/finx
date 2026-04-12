@@ -42,8 +42,8 @@ const About = () => {
     },
     {
       icon: "/icons/settings.svg",
-      title: getText("aboutFeatureSelfHosted", "Self-Hosted & Private"),
-      description: getText("aboutFeatureSelfHostedDesc", "Host on your own server with full control over your data. No third-party access, complete privacy.")
+      title: getText("aboutFeatureSelfHosted", "Secure & Private"),
+      description: getText("aboutFeatureSelfHostedDesc", "Your financial data is securely hosted and encrypted. No third-party access, no ads, complete privacy.")
     },
   ];
 
@@ -75,17 +75,17 @@ const About = () => {
             <h1 className="display-1 leading-none">FinX</h1>
           </div>
           <p className="text-xl text-gray-600 dark:text-gray-400">
-            {getText("aboutTagline", "Modern, self-hosted personal finance tracking")}
+            {getText("aboutTagline", "Modern, cloud-hosted personal finance tracking")}
           </p>
           <div className="flex items-center justify-center gap-3 mt-4 flex-wrap">
             <span className="px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
-              {getText("aboutBadgeFree", "Free Forever")}
+              {getText("aboutBadgeFree", "FinX Pro")}
             </span>
             <span className="px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
-              {getText("aboutBadgeOpenSource", "Open Source")}
+              {getText("aboutBadgeOpenSource", "Privacy-First")}
             </span>
             <span className="px-3 py-1 rounded-full text-sm font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400">
-              {getText("aboutBadgeSelfHosted", "Self-Hosted")}
+              {getText("aboutBadgeSelfHosted", "Cloud-Hosted")}
             </span>
           </div>
         </motion.div>
@@ -97,7 +97,7 @@ const About = () => {
               {getText("aboutMissionTitle", "Your Data, Your Control")}
             </h2>
             <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
-              {getText("aboutMissionText", "FinX is built with privacy and ownership in mind. As a self-hosted application, all your financial data stays on your own server. No third-party tracking, no data selling, no subscriptions — just a powerful finance tool that respects your privacy.")}
+              {getText("aboutMissionText", "FinX is built with privacy in mind. Your financial data is securely hosted in the EU with encryption at rest and in transit. No third-party tracking, no data selling — just a powerful finance tool that respects your privacy.")}
             </p>
           </div>
         </AnimatedSection>
@@ -111,7 +111,7 @@ const About = () => {
             {features.map((feature, index) => (
               <motion.div
                 key={feature.title}
-                className="p-5 rounded-xl bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-shadow"
+                className="card p-5"
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3, delay: 0.1 * index }}
@@ -157,8 +157,37 @@ const About = () => {
           </div>
         </AnimatedSection>
 
-        {/* License & Links */}
+        {/* FAQ Section */}
         <AnimatedSection delay={0.5}>
+          <h2 className="text-xl font-semibold mb-6 text-gray-900 dark:text-white">
+            {getText("faqTitle", "Frequently Asked Questions")}
+          </h2>
+          <div className="space-y-4 mb-8">
+            {[
+              { q: getText("faqQ1", "Is my financial data secure?"), a: getText("faqA1", "Yes. Your data is stored on servers in the European Union with encryption at rest and in transit. We are fully GDPR/DSGVO compliant. No third parties have access to your financial information.") },
+              { q: getText("faqQ2", "Can I access FinX from multiple devices?"), a: getText("faqA2", "Yes. All your devices stay in sync in real-time. Changes made on one device appear instantly on all others.") },
+              { q: getText("faqQ3", "How do I back up my data?"), a: getText("faqA3", "Go to Settings > Import/Export. You can export your data as a JSON file for safekeeping at any time.") },
+              { q: getText("faqQ4", "Can I share my financial data with others?"), a: getText("faqA4", "Yes. Use the Data Sharing feature in Settings to grant read or write access to other FinX users with fine-grained permissions.") },
+              { q: getText("faqQ5", "What happens if I cancel my subscription?"), a: getText("faqA5", "You can export all your data before cancellation. After your subscription ends, your account data is retained for 30 days before deletion.") },
+              { q: getText("faqQ6", "How does Bank Sync work?"), a: getText("faqA6", "Bank Sync uses SimpleFIN, a third-party service, to automatically import transactions from your bank. You can configure it in Settings > Bank Sync.") },
+              { q: getText("faqQ7", "Who has access to my data?"), a: getText("faqA7", "Only you and anyone you explicitly share with. We do not use analytics, tracking, or advertising. Your financial data is never shared with third parties.") },
+            ].map((item, i) => (
+              <motion.div
+                key={i}
+                className="p-5 rounded-xl bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, delay: 0.05 * i }}
+              >
+                <h3 className="font-medium text-gray-900 dark:text-white mb-2">{item.q}</h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400">{item.a}</p>
+              </motion.div>
+            ))}
+          </div>
+        </AnimatedSection>
+
+        {/* License & Links */}
+        <AnimatedSection delay={0.6}>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* License Info */}
             <div className="p-5 rounded-xl bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700">
@@ -167,47 +196,64 @@ const About = () => {
                 {getText("aboutLicenseTitle", "License")}
               </h3>
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                {getText("aboutLicenseText", "FinX is licensed under Apache 2.0 with Commons Clause. Free to use, modify, and self-host. Not for commercial resale.")}
+                {getText("aboutLicenseText", "FinX Pro is a managed service provided by IT-BAER. Your subscription includes secure cloud hosting, automatic updates, and priority support.")}
               </p>
-              <a
-                href="https://github.com/IT-BAER/finx/blob/main/LICENSE"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 dark:text-blue-400 hover:underline text-sm inline-flex items-center gap-1"
-              >
-                {getText("aboutViewLicense", "View Full License")}
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                </svg>
-              </a>
             </div>
 
             {/* GitHub & Community */}
             <div className="p-5 rounded-xl bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700">
               <h3 className="font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
                 <img src="/logos/logo-32.png" alt="" className="w-5 h-5" />
-                {getText("aboutCommunityTitle", "Community & Source")}
+                {getText("aboutCommunityTitle", "Support & Contact")}
               </h3>
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                {getText("aboutCommunityText", "Contribute, report issues, or star the project on GitHub. Your feedback helps make FinX better!")}
+                {getText("aboutCommunityText", "Need help or have feedback? Reach out to our support team. We're here to make your FinX experience great!")}
               </p>
               <a
-                href="https://github.com/IT-BAER/finx"
-                target="_blank"
-                rel="noopener noreferrer"
+                href="mailto:admin@it-baer.net"
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-900 dark:bg-gray-700 text-white text-sm font-medium hover:bg-gray-800 dark:hover:bg-gray-600 transition-colors"
               >
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                 </svg>
-                {getText("aboutViewGitHub", "View on GitHub")}
+                {getText("aboutViewGitHub", "Contact Support")}
               </a>
             </div>
+          </div>
+
+          {/* Legal Links */}
+          <div className="flex items-center justify-center gap-6 mt-6">
+            <a
+              href="/legal/privacy"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+            >
+              {t("privacyPolicy") || "Privacy Policy"}
+            </a>
+            <span className="text-gray-300 dark:text-gray-600">•</span>
+            <a
+              href="/legal/terms"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+            >
+              {t("termsOfUse") || "Terms of Use"}
+            </a>
+            <span className="text-gray-300 dark:text-gray-600">•</span>
+            <a
+              href="/legal/imprint"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+            >
+              {t("imprint") || "Imprint"}
+            </a>
           </div>
         </AnimatedSection>
 
         {/* Version Info */}
-        <AnimatedSection delay={0.6}>
+        <AnimatedSection delay={0.7}>
           <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700 text-center">
             <p className="text-sm text-gray-500 dark:text-gray-400">
               {getText("aboutVersion", "Version")} <span className="font-mono font-medium">{APP_VERSION}</span>

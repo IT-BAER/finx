@@ -6,6 +6,7 @@ import Button from "../components/Button";
 import Input from "../components/Input";
 import { motion } from "framer-motion";
 
+import Card from "../components/Card";
 const Register = () => {
   // Check if registration is disabled
   const isRegistrationDisabled =
@@ -60,7 +61,7 @@ const Register = () => {
             <h2 className="display-2 text-center mb-6">{t("createAccount")}</h2>
           </div>
 
-          <div className="card">
+          <Card>
             <div className="card-body text-center">
               <p className="text-gray-600 dark:text-gray-300 py-8">
                 {t("registrationDisabled")}
@@ -71,7 +72,7 @@ const Register = () => {
                 </Button>
               </div>
             </div>
-          </div>
+          </Card>
         </div>
       </div>
     );
@@ -87,7 +88,7 @@ const Register = () => {
           </p>
         </div>
 
-        <div className="card">
+        <Card>
           <div className="card-body">
             {/* Error alerts removed - using toast notifications instead */}
 
@@ -171,7 +172,7 @@ const Register = () => {
               </motion.span>
             </p>
           </div>
-        </div>
+        </Card>
       </div>
     </div>
   );

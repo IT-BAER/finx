@@ -12,6 +12,7 @@ import Input from "../components/Input.jsx";
 import { AnimatedPage, AnimatedSection } from "../components/AnimatedPage";
 import { useInfiniteTransactions, useDeleteTransaction } from "../hooks/useQueries";
 
+import Card from "../components/Card";
 const Transactions = () => {
   const navigate = useNavigate();
   const { isDarkMode, language, user } = useAuth();
@@ -615,7 +616,7 @@ const Transactions = () => {
 
         <AnimatedSection delay={0.2}>
           {isSearching && filteredTransactions.length === 0 ? (
-            <div className="card">
+            <Card>
               <div className="card-body py-10 text-center">
                 <Icon src="/icons/search.svg" size="lg" variant="default" aria-hidden={true} className="mx-auto opacity-60" />
                 <h3 className="mt-4 text-lg font-medium text-gray-900 dark:text-gray-200">
@@ -625,7 +626,7 @@ const Transactions = () => {
                   {t("tryDifferentSearch") || "Try a different keyword or clear the search."}
                 </p>
               </div>
-            </div>
+            </Card>
           ) : transactions.length > 0 ? (
             <>
               {/* Mobile view - Grouped by date */}

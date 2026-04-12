@@ -14,6 +14,7 @@ import Modal from "../components/Modal";
 import { motion } from "framer-motion";
 import { AnimatedPage, AnimatedSection } from "../components/AnimatedPage";
 
+import Card from "../components/Card";
 const EditTransaction = () => {
   const { id } = useParams();
   
@@ -349,7 +350,7 @@ const EditTransaction = () => {
       {error && <div className="alert alert-error mb-6">{error}</div>}
 
       <AnimatedSection delay={0.2}>
-      <div className="card">
+      <Card>
         <div className="card-body">
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -771,7 +772,7 @@ const EditTransaction = () => {
             </div>
           </form>
         </div>
-      </div>
+      </Card>
       <Modal
         show={showDeleteModal}
         onClose={() => setShowDeleteModal(false)}

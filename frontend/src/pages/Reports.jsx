@@ -1,7 +1,5 @@
 import { useState, useEffect, useRef } from "react";
 import {
-  LazyBar as Bar,
-  LazyLine as Line,
   LazyPie as Pie,
 } from "../components/LazyChart.jsx";
 import { useTranslation } from "../hooks/useTranslation";
@@ -21,6 +19,7 @@ import DailyExpensesChart from "../components/DailyExpensesChart.jsx";
 import SummaryCards from "../components/SummaryCards.jsx";
 import { AnimatedPage, AnimatedSection, AnimatedStagger, AnimatedItem } from "../components/AnimatedPage";
 
+import Card from "../components/Card";
 // Helper function to process filtered transactions into API-like format
 const processFilteredTransactions = (transactions, timeRange, startDate, endDate) => {
   // Group expenses by date
@@ -1874,7 +1873,7 @@ const Reports = () => {
           </div>
         </div>
 
-        <div className="card">
+        <Card>
           <div className="card-body">
             <h3 className="text-xl font-semibold mb-6">{t("largestExpenses")}</h3>
             {topExpenses && topExpenses.length > 0 ? (
@@ -1942,7 +1941,7 @@ const Reports = () => {
               <div className="text-center py-8 text-gray-500">{t("noDataAvailable")}</div>
             )}
           </div>
-        </div>
+        </Card>
       </div>
       </AnimatedItem>
       </AnimatedStagger>

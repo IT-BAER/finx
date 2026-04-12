@@ -191,7 +191,8 @@ const Navbar = () => {
                             animate={{ opacity: 1, y: 0, scale: 1 }}
                             exit={{ opacity: 0, y: -10, scale: 0.95 }}
                             transition={{ duration: 0.2, ease: "easeOut" }}
-                            className="absolute right-0 mt-2 w-48 rounded-lg shadow-2xl max-h-60 overflow-auto scrollbar-thin-modern border border-gray-200 dark:border-gray-700 ring-1 ring-black/5 dark:ring-white/10 py-2 z-50 bg-white/95 dark:bg-gray-800/95 origin-top-right"
+                            className="absolute right-0 mt-2 w-48 rounded-lg shadow-2xl max-h-60 overflow-auto scrollbar-thin-modern ring-1 ring-black/5 dark:ring-white/10 py-2 z-50 origin-top-right"
+                            style={{ backgroundColor: 'color-mix(in srgb, var(--surface) 85%, transparent)', border: '1px solid var(--border)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}
                             onMouseLeave={closeDropdown}
                           >
                             <NavDropdownItem
@@ -208,6 +209,22 @@ const Navbar = () => {
                                 <span>{t("settings")}</span>
                               </div>
                             </NavDropdownItem>
+                            {user?.is_admin && (
+                              <NavDropdownItem
+                                to="/admin-dashboard"
+                                icon="/icons/reports.svg"
+                                onClick={() => {
+                                  closeDropdown();
+                                  if (location.pathname !== "/admin-dashboard") {
+                                    navigate("/admin-dashboard");
+                                  }
+                                }}
+                              >
+                                <div className="flex items-center">
+                                  <span>{t("adminDashboard") || "Admin"}</span>
+                                </div>
+                              </NavDropdownItem>
+                            )}
                             <NavDropdownItem
                               to="/about"
                               icon="/icons/info.svg"
@@ -338,7 +355,8 @@ const Navbar = () => {
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: -10, scale: 0.95 }}
                         transition={{ duration: 0.2, ease: "easeOut" }}
-                        className="absolute right-0 mt-2 w-48 rounded-lg shadow-2xl max-h-60 overflow-auto scrollbar-thin-modern border border-gray-200 dark:border-gray-700 ring-1 ring-black/5 dark:ring-white/10 py-2 z-50 bg-white/95 dark:bg-gray-800/95"
+                        className="absolute right-0 mt-2 w-48 rounded-lg shadow-2xl max-h-60 overflow-auto scrollbar-thin-modern ring-1 ring-black/5 dark:ring-white/10 py-2 z-50"
+                        style={{ backgroundColor: 'color-mix(in srgb, var(--surface) 85%, transparent)', border: '1px solid var(--border)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}
                         onMouseLeave={closeDropdown}
                       >
                         <NavDropdownItem
@@ -354,6 +372,21 @@ const Navbar = () => {
                             <span>{t("settings")}</span>
                           </div>
                         </NavDropdownItem>
+                        {user?.is_admin && (
+                          <NavDropdownItem
+                            to="/admin-dashboard"
+                            icon="/icons/reports.svg"
+                            onClick={() => {
+                              closeDropdown();
+                              if (location.pathname !== "/admin-dashboard")
+                                navigate("/admin-dashboard");
+                            }}
+                          >
+                            <div className="flex items-center">
+                              <span>{t("adminDashboard") || "Admin"}</span>
+                            </div>
+                          </NavDropdownItem>
+                        )}
                         <NavDropdownItem
                           to="/about"
                           icon="/icons/info.svg"

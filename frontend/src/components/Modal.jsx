@@ -88,7 +88,8 @@ const Modal = ({ show, onClose, title, children, onConfirm, confirmText }) => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ backgroundColor: "rgba(0,0,0,0.4)", backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)" }}
           onClick={onClose}
         >
           <motion.div
@@ -96,7 +97,8 @@ const Modal = ({ show, onClose, title, children, onConfirm, confirmText }) => {
             initial={{ y: -50, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: -50, opacity: 0 }}
-            className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 w-[92%] max-w-md"
+            className="rounded-lg shadow-lg p-6 w-[92%] max-w-md"
+            style={{ backgroundColor: "color-mix(in srgb, var(--surface) 85%, transparent)", border: "1px solid var(--border)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)" }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex justify-between items-center mb-4">

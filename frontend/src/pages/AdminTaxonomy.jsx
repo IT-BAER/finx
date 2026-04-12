@@ -8,6 +8,7 @@ import Modal from "../components/Modal";
 import { motion, AnimatePresence } from "framer-motion";
 import { AnimatedPage, AnimatedSection } from "../components/AnimatedPage";
 
+import Card from "../components/Card";
 const AdminTaxonomy = () => {
   const { t } = useTranslation();
   const { user } = useAuth();
@@ -335,7 +336,7 @@ const AdminTaxonomy = () => {
       </div>
 
       {/* Items List */}
-      <div className="card">
+      <Card>
         <div className="card-body">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-4">
@@ -480,7 +481,7 @@ const AdminTaxonomy = () => {
             </div>
           </div>
         </div>
-      </div>
+      </Card>
 
       {/* Delete Modal */}
       <Modal
@@ -512,7 +513,8 @@ const AdminTaxonomy = () => {
             }}
           >
             <motion.div
-              className="bg-white/95 dark:bg-gray-800/95 rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl"
+              className="rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl"
+              style={{ backgroundColor: 'color-mix(in srgb, var(--surface) 85%, transparent)', border: '1px solid var(--border)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
@@ -568,7 +570,8 @@ const AdminTaxonomy = () => {
             }}
           >
             <motion.div
-              className="bg-white/95 dark:bg-gray-800/95 rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl"
+              className="rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl"
+              style={{ backgroundColor: 'color-mix(in srgb, var(--surface) 85%, transparent)', border: '1px solid var(--border)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}

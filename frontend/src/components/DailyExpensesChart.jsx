@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import offlineAPI from "../services/offlineAPI";
-import { LazyBar as Bar } from "./LazyChart.jsx";
+import AnimatedBarChart from "./AnimatedBarChart.jsx";
 import { useTranslation } from "../hooks/useTranslation";
 import { getLocaleString } from "../utils/locale";
 
@@ -109,41 +109,19 @@ export default function DailyExpensesChart({ startDate, endDate, timeRange }) {
     return series.map((d) => toDate(d.date).toLocaleDateString(locale, { month: "short" }));
   }, [series, timeRange, language, locale, t]);
 
-  const data = useMemo(() => ({
-    labels,
-    datasets: [{
-      label: t("expenses"),
-      data: (series || []).map((d) => Number(d.total || 0)),
-      backgroundColor: "rgba(248, 113, 113, 0.7)",
-      borderColor: "rgba(248, 113, 113, 1)",
-      borderWidth: 2,
-      borderRadius: 6,
-    }],
-  }), [labels, series, t]);
-
-  const options = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: { display: false },
-      title: { display: false },
-      tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${formatCurrency(ctx.parsed.y)}` } },
-      datalabels: {
-        anchor: "center",
-        align: "center",
-        formatter: (value) => (value !== 0 ? formatCurrency(value) : ""),
-        color: "#FFFFFF",
-        font: { weight: "bold", size: 10 },
-        display: (context) => context.dataset.data[context.dataIndex] !== 0,
-      },
-    },
-    scales: { y: { display: false, beginAtZero: true }, x: { grid: { display: false } } },
-  };
+  const chartDatasets = useMemo(() => [{
+    label: t("expenses"),
+    data: (series || []).map((d) => Number(d.total || 0)),
+  }], [series, t]);
 
   return (
     <div className="w-full h-full flex-1" style={{ minHeight: 0 }}>
       {labels.length > 0 ? (
-        <Bar data={data} options={options} />
+        <AnimatedBarChart
+          labels={labels}
+          datasets={chartDatasets}
+          formatValue={formatCurrency}
+        />
       ) : (
         <div className="text-center py-8 text-gray-500">{t("noDataAvailable")}</div>
       )}

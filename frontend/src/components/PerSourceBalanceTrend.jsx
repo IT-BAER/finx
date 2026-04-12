@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import offlineAPI from "../services/offlineAPI";
-import { LazyLine as Line } from "./LazyChart.jsx";
+import AnimatedAreaChart from "./AnimatedAreaChart.jsx";
 import ChartLegend from "./ChartLegend.jsx";
 import { useTranslation } from "../hooks/useTranslation";
 import { getLocaleString } from "../utils/locale";
@@ -298,27 +298,17 @@ export default function PerSourceBalanceTrend({
     })();
   }, [startDate, endDate, timeRange, selectedSources, sources, incomeTrackingDisabled, language, t]);
 
-  const lineChartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: { display: false },
-      title: { display: false },
-      tooltip: { mode: "index", intersect: false, callbacks: { label: (ctx) => `${ctx.dataset.label}: ${formatCurrency(ctx.parsed.y)}` } },
-      datalabels: { display: false },
-    },
-    scales: { y: { display: true, beginAtZero: false }, x: { grid: { display: false } } },
-    interaction: { mode: "nearest", axis: "x", intersect: false },
-    tension: 0.4,
-  };
-
   return (
     <div className="h-full flex flex-col min-h-0">
       {chartData && chartData.labels?.length > 0 ? (
         <>
           <div className="md:hidden">
             <div className="w-full h-44">
-              <Line data={chartData} options={{ ...lineChartOptions, plugins: { ...lineChartOptions.plugins, legend: { display: false } } }} />
+              <AnimatedAreaChart
+                labels={chartData.labels}
+                datasets={chartData.datasets}
+                formatValue={formatCurrency}
+              />
             </div>
             {legend && legend.length > 0 && (
               <ChartLegend
@@ -331,7 +321,12 @@ export default function PerSourceBalanceTrend({
           </div>
           <div className="hidden md:flex flex-col w-full h-full flex-1 min-h-0">
             <div className="flex-1 min-h-0 w-full">
-              <Line data={chartData} options={lineChartOptions} />
+              <AnimatedAreaChart
+                labels={chartData.labels}
+                datasets={chartData.datasets}
+                formatValue={formatCurrency}
+                showLegend={false}
+              />
             </div>
             {legend && legend.length > 0 && (
               <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2">

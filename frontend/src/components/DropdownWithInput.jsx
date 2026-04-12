@@ -264,8 +264,10 @@ const DropdownWithInput = ({
                   width: "240px",
                   maxHeight: "270px", // 6 items × 45px = 270px max height
                   WebkitOverflowScrolling: "touch",
-                  backgroundColor: "color-mix(in srgb, var(--surface) 95%, transparent)",
+                  backgroundColor: "color-mix(in srgb, var(--surface) 85%, transparent)",
                   border: "1px solid var(--border)",
+                  backdropFilter: "blur(12px)",
+                  WebkitBackdropFilter: "blur(12px)",
                 }}
                 onTouchStart={(e) => {
                   interactingWithMenuRef.current = true;

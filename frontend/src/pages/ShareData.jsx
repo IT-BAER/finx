@@ -17,6 +17,7 @@ import Modal from "../components/Modal";
 import { motion } from "framer-motion";
 import { AnimatedPage, AnimatedSection } from "../components/AnimatedPage";
 
+import Card from "../components/Card";
 const ShareData = () => {
   // React Query hooks for sharing data
   const { data: myPermissions = [], isLoading: permissionsLoading } = useSharingPermissions();
@@ -212,7 +213,7 @@ const ShareData = () => {
       {/* Two-column layout: Left = Add Share, Right = lists */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Left column: Add Share */}
-        <div className="card h-full">
+        <Card className="h-full">
           <div className="card-body">
             {/* My Share Code display */}
             <div className="mb-6 p-4 rounded-lg bg-accent/10 border border-accent/20">
@@ -370,12 +371,12 @@ const ShareData = () => {
               </div>
             </form>
           </div>
-        </div>
+        </Card>
 
         {/* Right column: two stacked lists */}
         <div className="flex flex-col gap-6">
           {/* Shared with others */}
-          <div className="card">
+          <Card>
             <div className="card-body">
               <h2 className="text-xl font-semibold mb-4">
                 {t("sharedWithOthers")}
@@ -456,10 +457,10 @@ const ShareData = () => {
                 </ul>
               )}
             </div>
-          </div>
+          </Card>
 
           {/* Shared with me */}
-          <div className="card">
+          <Card>
             <div className="card-body">
               <h2 className="text-xl font-semibold mb-4">
                 {t("sharedWithMe")}
@@ -507,7 +508,7 @@ const ShareData = () => {
                 </ul>
               )}
             </div>
-          </div>
+          </Card>
         </div>
       </div>
       

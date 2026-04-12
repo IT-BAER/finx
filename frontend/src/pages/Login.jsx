@@ -7,6 +7,7 @@ import Button from "../components/Button";
 import Input from "../components/Input";
 import { motion } from "framer-motion";
 
+import Card from "../components/Card";
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -72,7 +73,7 @@ const Login = () => {
           <h2 className="display-2 text-center mb-6">{t("login")}</h2>
         </div>
 
-        <div className="card">
+        <Card>
           <div className="card-body">
             {/* Error alerts removed - using toast notifications instead */}
 
@@ -211,7 +212,7 @@ const Login = () => {
               </motion.span>
             </p>
           </div>
-        </div>
+        </Card>
       </div>
     </div>
   );

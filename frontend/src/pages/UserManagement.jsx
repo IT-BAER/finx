@@ -9,6 +9,7 @@ import Icon from "../components/Icon.jsx";
 import { motion } from "framer-motion";
 import { AnimatedPage, AnimatedSection } from "../components/AnimatedPage";
 
+import Card from "../components/Card";
 // Simple toggle switch component (same style used in Settings)
 const SimpleToggle = ({ checked, onChange, disabled = false }) => {
   return (
@@ -143,7 +144,7 @@ const UserManagement = () => {
       </motion.div>
 
       <AnimatedSection delay={0.2}>
-      <div className="card">
+      <Card>
         <div className="card-body">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-xl font-semibold">{t("manageUsers")}</h2>
@@ -314,7 +315,7 @@ const UserManagement = () => {
             </div>
           )}
         </div>
-      </div>
+      </Card>
 
       <Modal
         show={showDeleteModal}

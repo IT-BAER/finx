@@ -226,9 +226,11 @@ export default function MultiCheckboxDropdown({
                 left: menuPos.left,
                 top: menuPos.top,
                 width: menuPos.width,
-                backgroundColor: 'color-mix(in srgb, var(--surface) 95%, transparent)',
+                backgroundColor: 'color-mix(in srgb, var(--surface) 85%, transparent)',
                 border: '1px solid var(--border)',
-                WebkitOverflowScrolling: 'touch'
+                WebkitOverflowScrolling: 'touch',
+                backdropFilter: 'blur(12px)',
+                WebkitBackdropFilter: 'blur(12px)',
               }}
             >
               <div
