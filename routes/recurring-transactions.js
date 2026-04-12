@@ -6,8 +6,12 @@ const {
   getRecurringTransactionById,
   updateRecurringTransaction,
   deleteRecurringTransaction,
+  getUpcomingBills,
 } = require("../controllers/recurringTransactionController");
 const auth = require("../middleware/auth");
+
+// Get upcoming bills (for dashboard widget)
+router.get("/upcoming", auth, getUpcomingBills);
 
 router.post("/", auth, createRecurringTransaction);
 router.get("/", auth, getAllRecurringTransactions);

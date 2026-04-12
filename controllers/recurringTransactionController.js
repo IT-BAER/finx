@@ -485,10 +485,132 @@ const deleteRecurringTransaction = async (req, res) => {
   }
 };
 
+/**
+ * Calculate the next occurrence date for a recurring transaction
+ * @param {Object} rt - Recurring transaction object
+ * @param {Date} fromDate - Calculate next occurrence after this date
+ * @returns {Date|null} - Next occurrence date or null if no more occurrences
+ */
+function calculateNextOccurrence(rt, fromDate) {
+  const startDate = new Date(rt.start_date);
+  const endDate = rt.end_date ? new Date(rt.end_date) : null;
+  const interval = rt.recurrence_interval || 1;
+  const type = rt.recurrence_type?.toLowerCase();
+  
+  // Start from the most recent runnable date
+  let nextDate = new Date(startDate);
+  
+  // If start date is in the future, that's the next occurrence
+  if (startDate > fromDate) {
+    if (endDate && startDate > endDate) return null;
+    return startDate;
+  }
+  
+  // Calculate next occurrence based on recurrence type
+  while (nextDate <= fromDate) {
+    switch (type) {
+      case 'daily':
+        nextDate.setDate(nextDate.getDate() + interval);
+        break;
+      case 'weekly':
+        nextDate.setDate(nextDate.getDate() + (7 * interval));
+        break;
+      case 'monthly':
+        nextDate.setMonth(nextDate.getMonth() + interval);
+        break;
+      case 'yearly':
+        nextDate.setFullYear(nextDate.getFullYear() + interval);
+        break;
+      default:
+        // Unknown recurrence type, treat as monthly
+        nextDate.setMonth(nextDate.getMonth() + interval);
+    }
+  }
+  
+  // Check if past end date
+  if (endDate && nextDate > endDate) return null;
+  
+  // Check max occurrences
+  if (rt.max_occurrences && rt.occurrences_created >= rt.max_occurrences) return null;
+  
+  return nextDate;
+}
+
+/**
+ * Get upcoming bills (recurring transactions due in the next N days)
+ * Returns bills sorted by due date, suitable for dashboard widget
+ */
+const getUpcomingBills = async (req, res) => {
+  try {
+    const days = parseInt(req.query.days, 10) || 7;
+    const limit = parseInt(req.query.limit, 10) || 5;
+    
+    // Get all recurring transactions for this user
+    const recurringTransactions = await RecurringTransaction.findAllByUserId(req.user.id);
+    
+    const now = new Date();
+    now.setHours(0, 0, 0, 0); // Start of today
+    
+    const endWindow = new Date(now);
+    endWindow.setDate(endWindow.getDate() + days);
+    
+    // Calculate next occurrence for each and filter those within the window
+    const upcomingBills = [];
+    
+    for (const rt of recurringTransactions) {
+      const nextOccurrence = calculateNextOccurrence(rt, new Date(now.getTime() - 24 * 60 * 60 * 1000)); // From yesterday to include today
+      
+      if (nextOccurrence && nextOccurrence >= now && nextOccurrence <= endWindow) {
+        upcomingBills.push({
+          id: rt.id,
+          title: rt.title,
+          amount: parseFloat(rt.amount),
+          type: rt.type,
+          category_id: rt.category_id,
+          source: rt.source,
+          target: rt.target,
+          description: rt.description,
+          due_date: toYMD(nextOccurrence),
+          days_until: Math.ceil((nextOccurrence - now) / (24 * 60 * 60 * 1000)),
+          recurrence_type: rt.recurrence_type,
+          recurrence_interval: rt.recurrence_interval
+        });
+      }
+    }
+    
+    // Sort by due date (soonest first)
+    upcomingBills.sort((a, b) => new Date(a.due_date) - new Date(b.due_date));
+    
+    // Calculate totals
+    const totalExpenses = upcomingBills
+      .filter(b => b.type === 'expense')
+      .reduce((sum, b) => sum + b.amount, 0);
+      
+    const totalIncome = upcomingBills
+      .filter(b => b.type === 'income')
+      .reduce((sum, b) => sum + b.amount, 0);
+    
+    res.json({
+      success: true,
+      data: {
+        bills: upcomingBills.slice(0, limit),
+        totalCount: upcomingBills.length,
+        totalExpenses,
+        totalIncome,
+        windowDays: days
+      }
+    });
+  } catch (err) {
+    console.error("Get upcoming bills error:", err.message);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
 module.exports = {
   createRecurringTransaction,
   getAllRecurringTransactions,
   getRecurringTransactionById,
   updateRecurringTransaction,
   deleteRecurringTransaction,
+  getUpcomingBills,
 };

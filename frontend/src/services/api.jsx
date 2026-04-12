@@ -209,6 +209,22 @@ export const categoryAPI = {
     cache.remove(cacheKeys.CATEGORIES);
     return response;
   },
+  getBudgetProgress: async () => {
+    try {
+      const response = await api.get("/categories/budget-progress");
+      if (response.data?.data) {
+        setCachedData("budget_progress", response.data.data);
+        offlineStorage.cacheAPIResponse("budget_progress", response.data.data);
+      }
+      return response;
+    } catch (error) {
+      const cached = getCachedData("budget_progress");
+      if (cached) return { data: { success: true, data: cached } };
+      const persistent = await offlineStorage.getCachedResponse("budget_progress");
+      if (persistent) return { data: { success: true, data: persistent } };
+      throw error;
+    }
+  },
 };
 
 // Source endpoints with caching
@@ -494,6 +510,100 @@ export const transactionAPI = {
     // Return results so the caller can handle success/failure
     return results;
   },
+  getNetWorth: async (params) => {
+    const cacheKey = `net_worth_${JSON.stringify(params || {})}`;
+
+    // In-memory cache first
+    const cached = getCachedData(cacheKey);
+    if (cached) {
+      return Promise.resolve({ data: { data: cached } });
+    }
+
+    // Persistent cache key
+    const usp = new URLSearchParams(params || {});
+    const persistentKey = `/api/transactions/net-worth${usp.toString() ? `?${usp.toString()}` : ""}`;
+
+    // If offline, try persistent cache
+    if (typeof window !== "undefined" && !getIsOnline()) {
+      const persisted = await offlineStorage.getCachedAPIResponse(persistentKey);
+      if (persisted) {
+        try { setCachedData(cacheKey, persisted.data, 5 * 60 * 1000); } catch { }
+        return { data: persisted };
+      }
+    }
+
+    // Try network with fallback
+    try {
+      const response = await api.get("/transactions/net-worth", { params });
+      // Cache for 5 minutes (net worth changes less frequently)
+      setCachedData(cacheKey, response.data.data, 5 * 60 * 1000);
+      try {
+        await offlineStorage.cacheAPIResponse(persistentKey, response.data);
+      } catch { }
+      return response;
+    } catch (err) {
+      try {
+        const persisted = await offlineStorage.getCachedAPIResponse(persistentKey);
+        if (persisted) {
+          try { setCachedData(cacheKey, persisted.data, 5 * 60 * 1000); } catch { }
+          return { data: persisted };
+        }
+      } catch { }
+      throw err;
+    }
+  },
+  getSafeToSpend: async () => {
+    const cacheKey = "safe_to_spend";
+
+    const cached = getCachedData(cacheKey);
+    if (cached) {
+      return Promise.resolve({ data: { data: cached } });
+    }
+
+    const persistentKey = "/api/transactions/safe-to-spend";
+
+    if (typeof window !== "undefined" && !getIsOnline()) {
+      const persisted = await offlineStorage.getCachedAPIResponse(persistentKey);
+      if (persisted) {
+        try { setCachedData(cacheKey, persisted.data, 5 * 60 * 1000); } catch { }
+        return { data: persisted };
+      }
+    }
+
+    try {
+      const response = await api.get("/transactions/safe-to-spend");
+      setCachedData(cacheKey, response.data.data, 5 * 60 * 1000);
+      try {
+        await offlineStorage.cacheAPIResponse(persistentKey, response.data);
+      } catch { }
+      return response;
+    } catch (err) {
+      try {
+        const persisted = await offlineStorage.getCachedAPIResponse(persistentKey);
+        if (persisted) {
+          try { setCachedData(cacheKey, persisted.data, 5 * 60 * 1000); } catch { }
+          return { data: persisted };
+        }
+      } catch { }
+      throw err;
+    }
+  },
+  getSpendingPace: async () => {
+    try {
+      const response = await api.get("/transactions/spending-pace");
+      if (response.data?.data) {
+        setCachedData("spending_pace", response.data.data);
+        offlineStorage.cacheAPIResponse("spending_pace", response.data.data);
+      }
+      return response;
+    } catch (error) {
+      const cached = getCachedData("spending_pace");
+      if (cached) return { data: { success: true, data: cached } };
+      const persistent = await offlineStorage.getCachedResponse("spending_pace");
+      if (persistent) return { data: { success: true, data: persistent } };
+      throw error;
+    }
+  },
 };
 
 // Sharing endpoints
@@ -565,6 +675,48 @@ export const recurringTransactionAPI = {
   getById: (id) => api.get(`/recurring-transactions/${id}`),
   update: (id, data) => api.put(`/recurring-transactions/${id}`, data),
   delete: (id) => api.delete(`/recurring-transactions/${id}`),
+  getUpcomingBills: async (params = {}) => {
+    const cacheKey = `upcoming_bills_${JSON.stringify(params)}`;
+    
+    // In-memory cache first
+    const cached = getCachedData(cacheKey);
+    if (cached) {
+      return Promise.resolve({ data: { data: cached } });
+    }
+    
+    // Persistent cache key
+    const usp = new URLSearchParams(params);
+    const persistentKey = `/api/recurring-transactions/upcoming${usp.toString() ? `?${usp.toString()}` : ""}`;
+    
+    // If offline, try persistent cache
+    if (typeof window !== "undefined" && !getIsOnline()) {
+      const persisted = await offlineStorage.getCachedAPIResponse(persistentKey);
+      if (persisted) {
+        try { setCachedData(cacheKey, persisted.data, 5 * 60 * 1000); } catch { }
+        return { data: persisted };
+      }
+    }
+    
+    // Try network with fallback
+    try {
+      const response = await api.get("/recurring-transactions/upcoming", { params });
+      // Cache for 5 minutes
+      setCachedData(cacheKey, response.data.data, 5 * 60 * 1000);
+      try {
+        await offlineStorage.cacheAPIResponse(persistentKey, response.data);
+      } catch { }
+      return response;
+    } catch (err) {
+      try {
+        const persisted = await offlineStorage.getCachedAPIResponse(persistentKey);
+        if (persisted) {
+          try { setCachedData(cacheKey, persisted.data, 5 * 60 * 1000); } catch { }
+          return { data: persisted };
+        }
+      } catch { }
+      throw err;
+    }
+  },
 };
 
 // Goals endpoints

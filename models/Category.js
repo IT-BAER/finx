@@ -5,12 +5,13 @@ class Category {
     this.id = data.id;
     this.name = data.name;
     this.user_id = data.user_id;
+    this.budget_limit = data.budget_limit != null ? parseFloat(data.budget_limit) : null;
   }
 
   // Create a new category for a user
   static async createForUser(user_id, name) {
     const result = await db.query(
-      `INSERT INTO categories (user_id, name) VALUES ($1, $2) RETURNING id, user_id, name`,
+      `INSERT INTO categories (user_id, name) VALUES ($1, $2) RETURNING id, user_id, name, budget_limit`,
   [user_id, String(name).trim()],
     );
     return result.rows.length ? new Category(result.rows[0]) : null;
@@ -19,7 +20,7 @@ class Category {
   // Find category by ID
   static async findById(id) {
     const result = await db.query(
-      "SELECT id, user_id, name FROM categories WHERE id = $1",
+      "SELECT id, user_id, name, budget_limit FROM categories WHERE id = $1",
       [id],
     );
     return result.rows.length ? new Category(result.rows[0]) : null;
@@ -28,7 +29,7 @@ class Category {
   // Find category by ID for a specific user (ownership enforced)
   static async findByIdForUser(id, user_id) {
     const result = await db.query(
-      "SELECT id, user_id, name FROM categories WHERE id = $1 AND user_id = $2",
+      "SELECT id, user_id, name, budget_limit FROM categories WHERE id = $1 AND user_id = $2",
       [id, user_id],
     );
     return result.rows.length ? new Category(result.rows[0]) : null;
@@ -36,7 +37,7 @@ class Category {
 
   static async findByNameForUser(user_id, name) {
     const result = await db.query(
-  `SELECT id, user_id, name FROM categories WHERE user_id = $1 AND LOWER(TRIM(name)) = LOWER(TRIM($2)) LIMIT 1`,
+  `SELECT id, user_id, name, budget_limit FROM categories WHERE user_id = $1 AND LOWER(TRIM(name)) = LOWER(TRIM($2)) LIMIT 1`,
   [user_id, name],
     );
     return result.rows.length ? new Category(result.rows[0]) : null;
@@ -45,7 +46,7 @@ class Category {
   // Find category by name globally (ignore user ownership)
   static async findByNameGlobal(name) {
     const result = await db.query(
-  `SELECT id, user_id, name FROM categories WHERE LOWER(TRIM(name)) = LOWER(TRIM($1)) ORDER BY id ASC LIMIT 1`,
+  `SELECT id, user_id, name, budget_limit FROM categories WHERE LOWER(TRIM(name)) = LOWER(TRIM($1)) ORDER BY id ASC LIMIT 1`,
   [name],
     );
     return result.rows.length ? new Category(result.rows[0]) : null;
@@ -54,18 +55,23 @@ class Category {
   // Delete category for a specific user (ownership enforced)
   static async deleteByUser(id, user_id) {
     const result = await db.query(
-      "DELETE FROM categories WHERE id = $1 AND user_id = $2 RETURNING id, user_id, name",
+      "DELETE FROM categories WHERE id = $1 AND user_id = $2 RETURNING id, user_id, name, budget_limit",
       [id, user_id],
     );
     return result.rows.length ? new Category(result.rows[0]) : null;
   }
 
   // Update category for user
-  static async updateForUser(id, user_id, name) {
-    const result = await db.query(
-      `UPDATE categories SET name = $3 WHERE id = $1 AND user_id = $2 RETURNING id, user_id, name`,
-  [id, user_id, String(name).trim()],
-    );
+  static async updateForUser(id, user_id, name, budget_limit) {
+    let query, values;
+    if (budget_limit !== undefined) {
+      query = `UPDATE categories SET name = $3, budget_limit = $4 WHERE id = $1 AND user_id = $2 RETURNING id, user_id, name, budget_limit`;
+      values = [id, user_id, String(name).trim(), budget_limit];
+    } else {
+      query = `UPDATE categories SET name = $3 WHERE id = $1 AND user_id = $2 RETURNING id, user_id, name, budget_limit`;
+      values = [id, user_id, String(name).trim()];
+    }
+    const result = await db.query(query, values);
     return result.rows.length ? new Category(result.rows[0]) : null;
   }
 

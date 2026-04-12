@@ -6,6 +6,9 @@ const {
   updateTransaction,
   deleteTransaction,
   getDashboardData,
+  getNetWorth,
+  getSafeToSpend,
+  getSpendingPace,
 } = require("../controllers/transactionController");
 const auth = require("../middleware/auth");
 const { validateBody, validateQuery } = require("../middleware/validation");
@@ -23,6 +26,15 @@ router.use(auth);
 
 // Get dashboard data
 router.get("/dashboard", validateQuery(dashboardQuerySchema), getDashboardData);
+
+// Get net worth data (all-time income - expenses with trend)
+router.get("/net-worth", getNetWorth);
+
+// Get safe to spend (remaining budget for the month)
+router.get("/safe-to-spend", getSafeToSpend);
+
+// Get spending pace (daily spending rate vs last month)
+router.get("/spending-pace", getSpendingPace);
 
 // Create transaction
 router.post("/", validateBody(createTransactionSchema), createTransaction);

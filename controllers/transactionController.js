@@ -2,6 +2,7 @@ const Transaction = require("../models/Transaction");
 const RecurringTransaction = require("../models/RecurringTransaction");
 const Category = require("../models/Category");
 const User = require("../models/User");
+const Goal = require("../models/Goal");
 const db = require("../config/db");
 const cache = require("../services/cache");
 const { getAccessibleUserIds, validateAsUserId, getSharingPermissionMeta, getUsersSharedWithOwner } = require("../utils/access");
@@ -983,6 +984,308 @@ const getDashboardData = async (req, res) => {
   }
 };
 
+/**
+ * Get net worth data (all-time income - expenses with monthly trend)
+ * Used for the Net Worth dashboard card
+ */
+const getNetWorth = async (req, res) => {
+  try {
+    const { asUserId } = req.query;
+
+    // Optional single-user view if accessible
+    const singleUserId = await validateAsUserId(req.user.id, asUserId, "all");
+    const userIds = singleUserId
+      ? [singleUserId]
+      : await getAccessibleUserIds(req.user.id, "all");
+
+    // Get all-time totals
+    const allTimeTotals = await db.query(
+      `SELECT 
+        COALESCE(SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END), 0) as total_income,
+        COALESCE(SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END), 0) as total_expenses
+      FROM transactions 
+      WHERE user_id = ANY($1::int[])`,
+      [userIds]
+    );
+
+    const totalIncome = parseFloat(allTimeTotals.rows[0]?.total_income || 0);
+    const totalExpenses = parseFloat(allTimeTotals.rows[0]?.total_expenses || 0);
+    const netWorth = totalIncome - totalExpenses;
+
+    // Get monthly trend for last 6 months
+    const now = new Date();
+    const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+    const sixMonthsAgoStr = `${sixMonthsAgo.getFullYear()}-${String(sixMonthsAgo.getMonth() + 1).padStart(2, "0")}-01`;
+
+    const monthlyTrend = await db.query(
+      `SELECT 
+        TO_CHAR(date, 'YYYY-MM') as month,
+        COALESCE(SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END), 0) as income,
+        COALESCE(SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END), 0) as expenses
+      FROM transactions 
+      WHERE user_id = ANY($1::int[])
+        AND date >= $2::date
+      GROUP BY TO_CHAR(date, 'YYYY-MM')
+      ORDER BY month ASC`,
+      [userIds, sixMonthsAgoStr]
+    );
+
+    // Calculate cumulative net worth per month
+    let cumulativeNetWorth = 0;
+    
+    // First get all transactions before the 6-month window to establish baseline
+    const baselineTotals = await db.query(
+      `SELECT 
+        COALESCE(SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END), 0) as total_income,
+        COALESCE(SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END), 0) as total_expenses
+      FROM transactions 
+      WHERE user_id = ANY($1::int[])
+        AND date < $2::date`,
+      [userIds, sixMonthsAgoStr]
+    );
+    
+    cumulativeNetWorth = parseFloat(baselineTotals.rows[0]?.total_income || 0) - 
+                         parseFloat(baselineTotals.rows[0]?.total_expenses || 0);
+
+    // Build trend array with cumulative values
+    const trend = monthlyTrend.rows.map(row => {
+      const monthIncome = parseFloat(row.income || 0);
+      const monthExpenses = parseFloat(row.expenses || 0);
+      cumulativeNetWorth += (monthIncome - monthExpenses);
+      
+      return {
+        month: row.month,
+        income: monthIncome,
+        expenses: monthExpenses,
+        netWorth: cumulativeNetWorth
+      };
+    });
+
+    // Calculate change vs previous month
+    const currentMonth = trend.length > 0 ? trend[trend.length - 1] : null;
+    const previousMonth = trend.length > 1 ? trend[trend.length - 2] : null;
+    
+    let changeAmount = 0;
+    let changePercent = 0;
+    
+    if (currentMonth && previousMonth && previousMonth.netWorth !== 0) {
+      changeAmount = currentMonth.netWorth - previousMonth.netWorth;
+      changePercent = (changeAmount / Math.abs(previousMonth.netWorth)) * 100;
+    } else if (currentMonth) {
+      changeAmount = currentMonth.income - currentMonth.expenses;
+    }
+
+    res.json({
+      success: true,
+      data: {
+        totalIncome,
+        totalExpenses,
+        netWorth,
+        trend,
+        change: {
+          amount: changeAmount,
+          percent: changePercent
+        }
+      }
+    });
+  } catch (err) {
+    console.error("Get net worth error:", err.message);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+/**
+ * Calculate next occurrence of a recurring transaction after fromDate
+ */
+function calcNextOccurrence(rt, fromDate) {
+  const startDate = new Date(rt.start_date);
+  const endDate = rt.end_date ? new Date(rt.end_date) : null;
+  const interval = rt.recurrence_interval || 1;
+  const type = rt.recurrence_type?.toLowerCase();
+
+  if (startDate > fromDate) {
+    if (endDate && startDate > endDate) return null;
+    return startDate;
+  }
+
+  let nextDate = new Date(startDate);
+  while (nextDate <= fromDate) {
+    switch (type) {
+      case 'daily': nextDate.setDate(nextDate.getDate() + interval); break;
+      case 'weekly': nextDate.setDate(nextDate.getDate() + (7 * interval)); break;
+      case 'monthly': nextDate.setMonth(nextDate.getMonth() + interval); break;
+      case 'yearly': nextDate.setFullYear(nextDate.getFullYear() + interval); break;
+      default: nextDate.setMonth(nextDate.getMonth() + interval);
+    }
+  }
+
+  if (endDate && nextDate > endDate) return null;
+  if (rt.max_occurrences && rt.occurrences_created >= rt.max_occurrences) return null;
+  return nextDate;
+}
+
+/**
+ * Safe to Spend - How much is "safe" to spend the rest of this month
+ * = Monthly Income - Monthly Expenses So Far - Upcoming Recurring Expenses (rest of month)
+ * Also shows daily budget (safe to spend / remaining days)
+ */
+const getSafeToSpend = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+    const monthStartStr = `${monthStart.getFullYear()}-${String(monthStart.getMonth() + 1).padStart(2, "0")}-01`;
+    const monthEndStr = `${monthEnd.getFullYear()}-${String(monthEnd.getMonth() + 1).padStart(2, "0")}-${String(monthEnd.getDate()).padStart(2, "0")}`;
+
+    // 1. Get current month income and expenses
+    const summaryResult = await db.query(
+      `SELECT
+        COALESCE(SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END), 0) AS monthly_income,
+        COALESCE(SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END), 0) AS monthly_expenses
+      FROM transactions
+      WHERE user_id = $1 AND date >= $2 AND date <= $3`,
+      [userId, monthStartStr, monthEndStr]
+    );
+    const monthlyIncome = parseFloat(summaryResult.rows[0].monthly_income);
+    const monthlyExpenses = parseFloat(summaryResult.rows[0].monthly_expenses);
+
+    // 2. Get upcoming recurring expenses for the rest of the month
+    const recurringTransactions = await RecurringTransaction.findAllByUserId(userId);
+    let upcomingRecurringExpenses = 0;
+    let upcomingRecurringIncome = 0;
+    const upcomingItems = [];
+    const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    yesterday.setHours(0, 0, 0, 0);
+
+    for (const rt of recurringTransactions) {
+      // Find all occurrences between now and end of month
+      let checkDate = new Date(yesterday);
+      while (true) {
+        const nextOcc = calcNextOccurrence(rt, checkDate);
+        if (!nextOcc || nextOcc > monthEnd) break;
+        if (nextOcc >= now) {
+          const amount = parseFloat(rt.amount);
+          if (rt.type === 'expense') {
+            upcomingRecurringExpenses += amount;
+          } else {
+            upcomingRecurringIncome += amount;
+          }
+          upcomingItems.push({
+            title: rt.title,
+            amount,
+            type: rt.type,
+            due_date: `${nextOcc.getFullYear()}-${String(nextOcc.getMonth() + 1).padStart(2, "0")}-${String(nextOcc.getDate()).padStart(2, "0")}`,
+          });
+        }
+        // Move past this occurrence to find the next one
+        checkDate = new Date(nextOcc);
+      }
+    }
+
+    // 3. Calculate safe to spend
+    const safeToSpend = monthlyIncome - monthlyExpenses - upcomingRecurringExpenses;
+
+    // 4. Calculate daily budget
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const daysRemainingInMonth = Math.max(1, Math.ceil((monthEnd - today) / (24 * 60 * 60 * 1000)));
+    const dailyBudget = safeToSpend / daysRemainingInMonth;
+
+    // 5. Determine health status
+    let status = 'healthy'; // green
+    if (safeToSpend < 0) {
+      status = 'overspent'; // red
+    } else if (dailyBudget < (monthlyIncome / 30) * 0.2) {
+      status = 'caution'; // yellow - less than 20% of average daily income
+    }
+
+    res.json({
+      success: true,
+      data: {
+        safeToSpend: Math.round(safeToSpend * 100) / 100,
+        dailyBudget: Math.round(dailyBudget * 100) / 100,
+        daysRemaining: daysRemainingInMonth,
+        monthlyIncome,
+        monthlyExpenses,
+        upcomingRecurringExpenses,
+        upcomingRecurringIncome,
+        status,
+        month: monthStartStr.substring(0, 7),
+      }
+    });
+  } catch (err) {
+    console.error("Get safe to spend error:", err.message);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// GET /api/transactions/spending-pace
+const getSpendingPace = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const now = new Date();
+    const dayOfMonth = now.getDate();
+    const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+
+    // Current month start
+    const currentMonthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(dayOfMonth).padStart(2, "0")}`;
+
+    // Previous month range
+    const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const prevMonthStart = `${prevMonth.getFullYear()}-${String(prevMonth.getMonth() + 1).padStart(2, "0")}-01`;
+    const prevMonthEnd = new Date(prevMonth.getFullYear(), prevMonth.getMonth() + 1, 0);
+    const prevMonthEndStr = `${prevMonthEnd.getFullYear()}-${String(prevMonthEnd.getMonth() + 1).padStart(2, "0")}-${String(prevMonthEnd.getDate()).padStart(2, "0")}`;
+
+    const result = await db.query(
+      `SELECT
+        COALESCE(SUM(CASE WHEN date >= $2 AND date <= $3 AND type = 'expense' THEN amount ELSE 0 END), 0) AS current_spent,
+        COALESCE(SUM(CASE WHEN date >= $4 AND date <= $5 AND type = 'expense' THEN amount ELSE 0 END), 0) AS prev_spent
+      FROM transactions WHERE user_id = $1`,
+      [userId, currentMonthStart, today, prevMonthStart, prevMonthEndStr]
+    );
+
+    const currentSpent = parseFloat(result.rows[0].current_spent);
+    const prevSpent = parseFloat(result.rows[0].prev_spent);
+    const prevDaysInMonth = prevMonthEnd.getDate();
+
+    // Daily averages
+    const currentDailyAvg = dayOfMonth > 0 ? currentSpent / dayOfMonth : 0;
+    const prevDailyAvg = prevDaysInMonth > 0 ? prevSpent / prevDaysInMonth : 0;
+
+    // Pace comparison
+    const expectedPace = daysInMonth > 0 ? (dayOfMonth / daysInMonth) * 100 : 0;
+    const projectedTotal = currentDailyAvg * daysInMonth;
+    const pacePercent = prevDailyAvg > 0 ? Math.round(((currentDailyAvg - prevDailyAvg) / prevDailyAvg) * 100) : 0;
+
+    let status = "normal";
+    if (pacePercent > 15) status = "fast";
+    else if (pacePercent > 5) status = "slightly_fast";
+    else if (pacePercent < -15) status = "slow";
+    else if (pacePercent < -5) status = "slightly_slow";
+
+    res.json({
+      success: true,
+      data: {
+        currentSpent,
+        prevMonthTotal: prevSpent,
+        currentDailyAvg,
+        prevDailyAvg,
+        projectedTotal,
+        pacePercent,
+        dayOfMonth,
+        daysInMonth,
+        daysRemaining: daysInMonth - dayOfMonth,
+        expectedPace: Math.round(expectedPace),
+        status,
+      }
+    });
+  } catch (err) {
+    console.error("Get spending pace error:", err.message);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
 module.exports = {
   createTransaction,
   getTransactions,
@@ -990,4 +1293,7 @@ module.exports = {
   updateTransaction,
   deleteTransaction,
   getDashboardData,
+  getNetWorth,
+  getSafeToSpend,
+  getSpendingPace,
 };
