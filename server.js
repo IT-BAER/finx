@@ -198,6 +198,10 @@ app.use((err, req, res, next) => {
 const scheduler = require("./services/scheduler");
 scheduler.start();
 
+// Auto-update checker
+const autoUpdate = require("./services/autoUpdate");
+autoUpdate.start();
+
 // Recurring Processor
 try {
   const recurringProcessor = require("./services/recurringProcessor");
@@ -242,6 +246,7 @@ const { runAutoMigrations } = require("./utils/autoMigrate");
     logger.info(`Received ${signal}. Shutting down...`);
     try {
       scheduler.stop();
+      autoUpdate.stop();
     } catch (e) {
       logger.error("Error stopping scheduler", e);
     }
