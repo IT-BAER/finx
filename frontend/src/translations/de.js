@@ -163,7 +163,6 @@ export default {
   safeToSpendOverspent: "Über Budget",
   overBudget: "über Budget",
   perDay: "pro Tag",
-  daysLeft: "Tage übrig",
   spent: "Ausgegeben",
   income: "Einnahmen",
   upcomingRecurring: "Anstehende Rechnungen",
@@ -180,7 +179,6 @@ export default {
   onTrack: "Im Plan mit letztem Monat",
   lastMonth: "letzter Monat",
   projected: "Hochrechnung",
-  daysOverdue: "Tage überfällig",
   recentTransactions: "Letzte Transaktionen",
   viewAll: "Alle anzeigen",
   noRecentTransactions: "Keine kürzlichen Transaktionen",
@@ -228,7 +226,6 @@ export default {
   category: "Kategorie",
   amount: "Betrag",
   type: "Typ",
-  income: "Einnahme",
   expense: "Ausgabe",
   expenses: "Ausgaben",
   actions: "Aktionen",
@@ -523,7 +520,6 @@ export default {
   totalTransactions: "Transaktionen gesamt",
   totalCategories: "Kategorien gesamt",
   totalGoals: "Ziele gesamt",
-  recurringTransactions: "Wiederkehrende Transaktionen",
   newUsersLast30Days: "Neue Benutzer (30T)",
   activeUsersLast7Days: "Aktive Benutzer (7T)",
   databaseSize: "Datenbankgröße",
@@ -537,7 +533,6 @@ export default {
   noAuditLogs: "Noch keine Audit-Protokolle",
   action: "Aktion",
   ipAddress: "IP-Adresse",
-  success: "Erfolgreich",
   failed: "Fehlgeschlagen",
   timestamp: "Zeitstempel",
   transactionsPerDay: "Transaktionen pro Tag",
@@ -630,7 +625,6 @@ export default {
   someTransactionsFailedToImport: "Einige Transaktionen konnten nicht importiert werden",
   filterSources: "Quellen filtern",
   successful: "erfolgreich",
-  failed: "fehlgeschlagen",
   processed: "verarbeitet",
   mapColumns: "CSV-Spalten zuordnen",
 
@@ -639,7 +633,6 @@ export default {
   noExpenseData: "Keine Ausgabendaten für diesen Zeitraum",
   topExpenses: "Top Ausgaben",
   statistics: "Statistiken",
-  totalTransactions: "Transaktionen gesamt",
   avgDailyExpense: "Ø Tägliche Ausgaben",
 
   // Transaction/Goal details
@@ -768,8 +761,6 @@ export default {
 
   // Status labels (used in various contexts)
   status: "Status",
-  active: "Aktiv",
-  inactive: "Inaktiv",
   trial: "Testphase",
   trialing: "Testphase",
   pastDue: "Überfällig",
@@ -777,7 +768,6 @@ export default {
   unknown: "Unbekannt",
   calendarWeekShort: "KW",
   duration: "Dauer",
-  days: "Tage",
   activate: "Aktivieren",
 
   // Website Specific Keys (English Fallback)

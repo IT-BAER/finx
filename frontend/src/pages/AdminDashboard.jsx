@@ -206,6 +206,7 @@ const AdminDashboard = () => {
   const renderStats = () => {
     if (!stats) return null;
     return (
+      <>
       <AnimatedStagger className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4" staggerDelay={0.06}>
         <AnimatedItem><StatCard label={t("totalUsers")} value={stats.users} accent /></AnimatedItem>
         <AnimatedItem><StatCard
@@ -230,7 +231,6 @@ const AdminDashboard = () => {
           value={formatBytes(stats.databaseSizeBytes)}
         /></AnimatedItem>
       </AnimatedStagger>
-    );
 
       {/* Remove Sample Data */}
       <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
@@ -274,6 +274,8 @@ const AdminDashboard = () => {
       >
         <p>{t("removeSampleDataDescription") || "This will remove all sample transactions and categories."}</p>
       </Modal>
+      </>
+    );
   };
 
   const renderUsers = () => {

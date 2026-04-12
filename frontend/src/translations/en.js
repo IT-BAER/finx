@@ -186,7 +186,6 @@ export default {
   category: "Category",
   amount: "Amount",
   type: "Type",
-  income: "Income",
   expense: "Expense",
   expenses: "Expenses",
   actions: "Actions",
@@ -467,7 +466,6 @@ export default {
   totalTransactions: "Total Transactions",
   totalCategories: "Total Categories",
   totalGoals: "Total Goals",
-  recurringTransactions: "Recurring Transactions",
   newUsersLast30Days: "New Users (30d)",
   activeUsersLast7Days: "Active Users (7d)",
   databaseSize: "Database Size",
@@ -481,7 +479,6 @@ export default {
   noAuditLogs: "No audit logs yet",
   action: "Action",
   ipAddress: "IP Address",
-  success: "Success",
   failed: "Failed",
   timestamp: "Timestamp",
   transactionsPerDay: "Transactions per Day",
@@ -574,7 +571,6 @@ export default {
   someTransactionsFailedToImport: "Some transactions failed to import",
   filterSources: "Filter Sources",
   successful: "successful",
-  failed: "failed",
   processed: "processed",
   mapColumns: "Map CSV columns",
 
@@ -598,9 +594,7 @@ export default {
   activeGoals: "Active Goals",
   overallProgress: "Overall Progress",
   showCompleted: "Show completed",
-  daysOverdue: "days overdue",
   dueToday: "Due today",
-  daysLeft: "days left",
   complete: "complete",
   remaining: "remaining",
   goalCompleted: "Goal completed! 🎉",
@@ -625,7 +619,6 @@ export default {
   noExpenseData: "No expense data for this period",
   topExpenses: "Top Expenses",
   statistics: "Statistics",
-  totalTransactions: "Total Transactions",
   avgDailyExpense: "Avg. Daily Expense",
 
   // Transaction/Goal details
@@ -754,8 +747,6 @@ export default {
 
   // Status labels (used in various contexts)
   status: "Status",
-  active: "Active",
-  inactive: "Inactive",
   trial: "Trial",
   trialing: "Trialing",
   pastDue: "Past Due",
@@ -763,7 +754,6 @@ export default {
   unknown: "Unknown",
   calendarWeekShort: "CW",
   duration: "Duration",
-  days: "days",
   activate: "Activate",
 
   // Website Specific Keys (Recovered)

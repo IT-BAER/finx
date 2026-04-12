@@ -269,8 +269,7 @@ const AmbientBackground = () => {
           </pattern>
         </defs>
         <rect width="100%" height="100%" fill="url(#appGrid)" />
-        {/* Accent grid lines */}removed — canvas particles handle ambient movement */}
-        {/* Grid intersection dots removed — canvas particles handle ambient movement */}
+        {/* Accent grid lines and intersection dots removed — canvas particles handle ambient movement */}
       </svg>
 
       {/* Mouse-following gradient */}
