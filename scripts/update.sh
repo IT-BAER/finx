@@ -73,6 +73,10 @@ rm -f "$MAINTENANCE_FLAG"
 
 # ── 7. Restart via systemd ──────────────────────────────────────────────────
 log "Restarting $FINX_SERVICE via systemd..."
-systemctl restart "$FINX_SERVICE" 2>&1 || fail "systemctl restart failed"
+if [ "$(id -u)" -eq 0 ]; then
+  systemctl restart "$FINX_SERVICE" 2>&1 || fail "systemctl restart failed"
+else
+  sudo systemctl restart "$FINX_SERVICE" 2>&1 || fail "systemctl restart failed (need sudo)"
+fi
 
 log "Update to $TAG completed successfully!"
