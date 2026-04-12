@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useMemo, useCallback, useLayoutEffect, useId } from "react";
-import { motion, AnimatePresence, useSpring } from "framer-motion";
+import { motion } from "framer-motion";
 import { useTheme } from "../contexts/ThemeContext.jsx";
 
 /* ─── Color palette ───────────────────────────────────────────────── */
@@ -74,24 +74,16 @@ function buildAreaPath(pts, baselineY) {
   return `${buildCurvePath(pts)} L${pts[pts.length - 1].x},${baselineY} L${pts[0].x},${baselineY} Z`;
 }
 
-/* ─── Spring-animated dot ─────────────────────────────────────────── */
+/* ─── Dot ───────────────────────────────────────────────────────────── */
 function AnimatedDot({ x, y, color, strokeColor, visible }) {
-  const springConf = { stiffness: 300, damping: 30 };
-  const ax = useSpring(x, springConf);
-  const ay = useSpring(y, springConf);
-  useEffect(() => { ax.set(x); }, [x, ax]);
-  useEffect(() => { ay.set(y); }, [y, ay]);
   if (!visible) return null;
   return (
-    <motion.circle cx={ax} cy={ay} r={5} fill={color} stroke={strokeColor} strokeWidth={2} />
+    <circle cx={x} cy={y} r={5} fill={color} stroke={strokeColor} strokeWidth={2} />
   );
 }
 
-/* ─── Spring-animated crosshair ───────────────────────────────────── */
+/* ─── Crosshair ─────────────────────────────────────────────────────── */
 function AnimatedCrosshair({ x, height, color, visible, uid }) {
-  const springConf = { stiffness: 300, damping: 30 };
-  const ax = useSpring(x, springConf);
-  useEffect(() => { ax.set(x); }, [x, ax]);
   if (!visible) return null;
   const gradId = `${uid}-crosshair-fade`;
   return (
@@ -104,16 +96,13 @@ function AnimatedCrosshair({ x, height, color, visible, uid }) {
           <stop offset="100%" style={{ stopColor: color, stopOpacity: 0 }} />
         </linearGradient>
       </defs>
-      <motion.rect x={ax} y={0} width={1} height={height} fill={`url(#${gradId})`} />
+      <rect x={x} y={0} width={1} height={height} fill={`url(#${gradId})`} />
     </>
   );
 }
 
-/* ─── Spring-animated highlight spotlight mask ────────────────────── */
+/* ─── Highlight spotlight mask ────────────────────────────────────── */
 function HighlightSpotlight({ cx, innerW, innerH, uid }) {
-  const springConf = { stiffness: 300, damping: 30 };
-  const animCx = useSpring(cx, springConf);
-  useEffect(() => { animCx.set(cx); }, [cx, animCx]);
   const hw = Math.max(30, innerW * 0.1);
   const filterId = `${uid}-hl-blur`;
   const maskId = `${uid}-hl-mask`;
@@ -123,13 +112,13 @@ function HighlightSpotlight({ cx, innerW, innerH, uid }) {
         <feGaussianBlur stdDeviation="18" />
       </filter>
       <mask id={maskId}>
-        <motion.rect
+        <rect
+          x={cx - hw}
           y={-10}
           width={hw * 2}
           height={innerH + 20}
           fill="white"
           rx={hw}
-          style={{ x: animCx, translateX: `-${hw}px` }}
           filter={`url(#${filterId})`}
         />
       </mask>
@@ -140,29 +129,22 @@ function HighlightSpotlight({ cx, innerW, innerH, uid }) {
 /* ─── Date ticker pill (bottom) ───────────────────────────────────── */
 function DatePill({ label, x, parentRef, dark: isDark }) {
   const c = colors(isDark);
-  const springConf = { stiffness: 400, damping: 35 };
-  const ax = useSpring(x, springConf);
-  useEffect(() => { ax.set(x); }, [x, ax]);
   return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.85 }}
-      animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.85 }}
-      transition={{ type: "spring", stiffness: 400, damping: 30 }}
+    <div
       style={{
-        position: "absolute", bottom: 0, left: 0, pointerEvents: "none", zIndex: 50,
-        x: ax, translateX: "-50%",
+        position: "absolute", bottom: 0, left: x, pointerEvents: "none", zIndex: 50,
+        transform: "translateX(-50%)",
       }}
     >
       <div style={{
         background: c.pillBg, color: c.pillText,
         borderRadius: 999, padding: "3px 14px",
         fontSize: 12, fontWeight: 500, whiteSpace: "nowrap",
-        boxShadow: "0 4px 12px rgba(0,0,0,0.25)",
+        boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
       }}>
         {label}
       </div>
-    </motion.div>
+    </div>
   );
 }
 
@@ -188,34 +170,23 @@ function Tooltip({ index, label, series, formatValue, dark: isDark, containerRef
   const targetX = shouldFlip ? xInContainer - tooltipSize.w - offset : xInContainer + offset;
   const targetY = Math.max(8, 8);
 
-  const springConf = { stiffness: 200, damping: 25 };
-  const animLeft = useSpring(targetX, springConf);
-  const animTop = useSpring(targetY, springConf);
-  useEffect(() => { animLeft.set(targetX); }, [targetX, animLeft]);
-  useEffect(() => { animTop.set(targetY); }, [targetY, animTop]);
-
   const rows = series.map((s) => {
     const pt = s.pts[index];
     return pt ? { label: s.label, value: pt.value, color: s.lineColor } : null;
   }).filter(Boolean);
 
   return (
-    <motion.div
+    <div
       ref={tooltipRef}
-      initial={{ opacity: 0, scale: 0.85 }}
-      animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.85 }}
-      transition={{ type: "spring", stiffness: 300, damping: 25 }}
       style={{
-        position: "absolute", left: animLeft, top: animTop,
+        position: "absolute", left: targetX, top: targetY,
         pointerEvents: "none", zIndex: 50, minWidth: 140,
-        transformOrigin: shouldFlip ? "right top" : "left top",
       }}
     >
       <div style={{
-        borderRadius: 12, padding: "10px 14px",
-        background: c.tooltipBg, backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)",
-        border: `1px solid ${c.tooltipBorder}`, boxShadow: c.tooltipShadow,
+        borderRadius: 8, padding: "10px 14px",
+        background: isDark ? "#1e293b" : "#ffffff",
+        border: `1px solid ${c.tooltipBorder}`, boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
       }}>
         {label && (
           <div style={{ fontSize: 11, fontWeight: 500, color: c.tooltipTitle, marginBottom: 8 }}>{label}</div>
@@ -234,7 +205,7 @@ function Tooltip({ index, label, series, formatValue, dark: isDark, containerRef
           ))}
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 }
 
@@ -490,23 +461,18 @@ export default function AnimatedAreaChart({
       </svg>
 
       {/* Date ticker pill */}
-      <AnimatePresence>
         {isHovering && isLoaded && labels[hoveredIndex] && (
           <DatePill
-            key="pill"
             label={labels[hoveredIndex]}
             x={crosshairX + margin.left}
             parentRef={containerRef}
             dark={dark}
           />
         )}
-      </AnimatePresence>
 
       {/* Tooltip */}
-      <AnimatePresence>
         {isHovering && isLoaded && (
           <Tooltip
-            key="tooltip"
             index={hoveredIndex}
             label={labels[hoveredIndex]}
             series={allSeries}
@@ -517,7 +483,6 @@ export default function AnimatedAreaChart({
             paddingLeft={margin.left}
           />
         )}
-      </AnimatePresence>
 
       {/* Legend */}
       {showLegend && allSeries.length > 1 && (

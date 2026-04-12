@@ -18,7 +18,6 @@ import {
 import { LanguageProvider } from "./contexts/LanguageContext";
 import { SharingProvider } from "./contexts/SharingContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
-import AmbientBackground from "./components/AmbientBackground";
 import Navbar from "./components/Navbar.jsx";
 import Footer from "./components/Footer.jsx";
 import VersionBadge from "./components/VersionBadge.jsx";
@@ -49,6 +48,7 @@ const ShareData = lazy(() => import("./pages/ShareData.jsx"));
 const EditSharing = lazy(() => import("./pages/EditSharing.jsx"));
 const UserManagement = lazy(() => import("./pages/UserManagement.jsx"));
 const AdminTaxonomy = lazy(() => import("./pages/AdminTaxonomy.jsx"));
+const AdminDashboard = lazy(() => import("./pages/AdminDashboard.jsx"));
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
 import { hapticTap } from "./utils/haptics.js";
 
@@ -275,7 +275,8 @@ function App() {
               setPageContentReady,
             }}
           >
-            <AmbientBackground />
+            {/* Static dark-blue background — no animated ambient effects */}
+            <div style={{ position: "fixed", inset: 0, zIndex: -1, backgroundColor: "var(--bg)" }} />
             <div className="App">
               <div
                 style={{
@@ -549,6 +550,22 @@ function App() {
                               }
                             >
                               <ComponentWrapper Component={AdminTaxonomy} />
+                            </Suspense>
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="/admin-dashboard"
+                        element={
+                          <ProtectedRoute>
+                            <Suspense
+                              fallback={
+                                <div className="flex items-center justify-center h-full">
+                                  <div className="spinner"></div>
+                                </div>
+                              }
+                            >
+                              <ComponentWrapper Component={AdminDashboard} />
                             </Suspense>
                           </ProtectedRoute>
                         }

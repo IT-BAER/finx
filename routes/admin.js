@@ -4,6 +4,7 @@ const router = express.Router();
 const isAuthenticated = require("../middleware/auth");
 const isAdmin = require("../middleware/isAdmin");
 const admin = require("../controllers/adminController");
+const dashboard = require("../controllers/adminDashboardController");
 
 // All admin routes require auth + admin
 router.use(isAuthenticated, isAdmin);
@@ -27,5 +28,13 @@ router.delete("/targets/:id", admin.deleteTarget);
 // System stats and cleanup
 router.get("/system-stats", admin.getSystemStats);
 router.post("/remove-sample-data", admin.cleanupSampleData);
+
+// Admin Dashboard
+router.get("/dashboard/stats", dashboard.getDashboardStats);
+router.get("/dashboard/users", dashboard.getUsersOverview);
+router.get("/dashboard/health", dashboard.getServerHealth);
+router.get("/dashboard/audit-logs", dashboard.getAuditLogs);
+router.get("/dashboard/error-logs", dashboard.getErrorLogs);
+router.get("/dashboard/activity", dashboard.getActivityOverview);
 
 module.exports = router;

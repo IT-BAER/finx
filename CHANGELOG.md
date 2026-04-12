@@ -2,6 +2,35 @@
 
 All notable changes to this project are documented in this file.
 
+## [v1.0.0] - 2026-06-10
+
+### Added
+- **Admin Dashboard**: Full admin dashboard with stats, user overview, server health, activity, audit logs, and error logs
+  - New backend controller `adminDashboardController.js` with 6 API endpoints
+  - Frontend page `AdminDashboard.jsx` with tabbed interface
+  - Admin routes in `routes/admin.js`
+- **SummaryCards**: Dashboard summary cards component synced from managed version
+- **Translations**: All 10 language files synced with latest keys from managed version (admin dashboard, insight cards, etc.)
+
+### Changed
+- **UI Redesign**: Static, flat design without animations
+  - Replaced animated `AmbientBackground` (canvas particles, grid, glows) with a static dark-blue near-black background (`#030712`)
+  - Dark theme uses solid colors: `#0f172a` surface, `#1e293b` borders (no glassmorphism/transparency/blur)
+  - Cards: flat with `0.5rem` border-radius, no entrance animations, no hover effects
+  - Buttons: no hover lift/scale/glow animations
+  - FAB: flat accent color, no gradient or hover scale
+- **Charts Simplified**:
+  - Tooltips: static solid background, no spring animations, no backdrop blur, no scale transitions
+  - Date pills: static positioning, no spring physics
+  - Bar chart: simple ease-out transitions instead of spring physics
+  - Area chart: static crosshairs, dots, and spotlight (no spring-animated SVG)
+  - Removed unused `AnimatePresence` and `useSpring` framer-motion imports
+
+### Removed
+- **Insight Cards**: Removed NetWorth, SafeToSpend, UpcomingBills, SpendingPace cards from the dashboard
+
+---
+
 ## [v0.8.7] - 2025-01-30
 
 ### Removed (Backend)

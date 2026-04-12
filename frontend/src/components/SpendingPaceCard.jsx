@@ -1,13 +1,8 @@
 import { useState, useEffect } from "react";
 import { transactionAPI } from "../services/api.jsx";
 import { useTranslation } from "../hooks/useTranslation";
-import { AnimatedItem } from "./AnimatedPage.jsx";
-
 import Card from "./Card";
-/**
- * SpendingPaceCard - Compares current month spending rate vs last month
- * Shows if spending faster/slower than usual
- */
+
 export default function SpendingPaceCard({ className = "" }) {
   const { t, formatCurrency } = useTranslation();
   const [data, setData] = useState(null);
@@ -16,7 +11,6 @@ export default function SpendingPaceCard({ className = "" }) {
 
   useEffect(() => {
     let cancelled = false;
-
     const fetchData = async () => {
       try {
         setLoading(true);
@@ -34,90 +28,105 @@ export default function SpendingPaceCard({ className = "" }) {
         if (!cancelled) setLoading(false);
       }
     };
-
     fetchData();
     return () => { cancelled = true; };
   }, []);
 
   const paceConfig = {
     fast: {
-      border: "rgba(239, 68, 68, 0.5)",
-      bg: "bg-red-100 dark:bg-red-900/30",
-      iconColor: "text-red-500",
+      gradient: "linear-gradient(90deg, #ef4444, #f97316)",
+      iconGradient: "linear-gradient(135deg, #ef4444, #dc2626)",
       textColor: "text-red-600 dark:text-red-400",
       icon: "↑↑",
+      barColor: "#ef4444",
     },
     slightly_fast: {
-      border: "rgba(245, 158, 11, 0.5)",
-      bg: "bg-amber-100 dark:bg-amber-900/30",
-      iconColor: "text-amber-500",
+      gradient: "linear-gradient(90deg, #f59e0b, #fbbf24)",
+      iconGradient: "linear-gradient(135deg, #f59e0b, #d97706)",
       textColor: "text-amber-600 dark:text-amber-400",
       icon: "↑",
+      barColor: "#f59e0b",
     },
     normal: {
-      border: "rgba(34, 197, 94, 0.5)",
-      bg: "bg-green-100 dark:bg-green-900/30",
-      iconColor: "text-green-500",
-      textColor: "text-green-600 dark:text-green-400",
+      gradient: "linear-gradient(90deg, #10b981, #34d399)",
+      iconGradient: "linear-gradient(135deg, #10b981, #059669)",
+      textColor: "text-emerald-600 dark:text-emerald-400",
       icon: "→",
+      barColor: "#10b981",
     },
     slightly_slow: {
-      border: "rgba(59, 130, 246, 0.5)",
-      bg: "bg-blue-100 dark:bg-blue-900/30",
-      iconColor: "text-blue-500",
+      gradient: "linear-gradient(90deg, #3b82f6, #60a5fa)",
+      iconGradient: "linear-gradient(135deg, #3b82f6, #2563eb)",
       textColor: "text-blue-600 dark:text-blue-400",
       icon: "↓",
+      barColor: "#3b82f6",
     },
     slow: {
-      border: "rgba(59, 130, 246, 0.5)",
-      bg: "bg-blue-100 dark:bg-blue-900/30",
-      iconColor: "text-blue-500",
+      gradient: "linear-gradient(90deg, #3b82f6, #8b5cf6)",
+      iconGradient: "linear-gradient(135deg, #3b82f6, #2563eb)",
       textColor: "text-blue-600 dark:text-blue-400",
       icon: "↓↓",
+      barColor: "#3b82f6",
     },
   };
 
   if (loading) {
     return (
-      <AnimatedItem className={className}>
-        <Card style={{ borderColor: "rgba(245, 158, 11, 0.5)" }}>
-          <div className="card-body">
-            <div className="animate-pulse">
-              <div className="flex items-center mb-3">
-                <div className="p-3 rounded-full bg-amber-100 dark:bg-amber-900/30 mr-4">
-                  <div className="w-6 h-6 bg-amber-200 dark:bg-amber-800 rounded" />
-                </div>
-                <div className="h-5 bg-gray-200 dark:bg-gray-700 rounded w-32" />
-              </div>
-              <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-48" />
+      <Card variant="insight-card" className={className}>
+        <div className="p-5">
+          <div className="flex items-center gap-4">
+            <div className="insight-skeleton w-11 h-11" />
+            <div className="flex-1 space-y-2">
+              <div className="insight-skeleton h-3 w-28" />
+              <div className="insight-skeleton h-5 w-48" />
             </div>
           </div>
-        </Card>
-      </AnimatedItem>
+        </div>
+      </Card>
     );
   }
 
   if (error) {
     return (
-      <AnimatedItem className={className}>
-        <Card style={{ borderColor: "rgba(239, 68, 68, 0.5)" }}>
-          <div className="card-body">
-            <div className="text-sm text-red-500">{t("errorLoading") || "Error loading data"}</div>
-          </div>
-        </Card>
-      </AnimatedItem>
+      <Card variant="insight-card" className={className}>
+        <div className="p-5">
+          <p className="text-sm text-red-500">{t("errorLoading") || "Error loading data"}</p>
+        </div>
+      </Card>
     );
   }
 
-  // Don't show if no spending data from last month
-  if (!data || data.prevMonthTotal === 0) return null;
+  if (!data || data.prevMonthTotal === 0) {
+    return (
+      <Card variant="insight-card" className={className}
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.15, ease: [0.4, 0, 0.2, 1] }}
+      >
+        <div className="p-5 h-full flex flex-col">
+          <div className="flex items-start gap-3.5">
+            <div className="insight-icon" style={{ background: "linear-gradient(135deg, #10b981, #059669)" }}>
+              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+              </svg>
+            </div>
+            <p className="text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-400 mt-0.5">
+              {t("spendingPace") || "Spending Pace"}
+            </p>
+          </div>
+          <div className="flex-1 flex items-center justify-center">
+            <p className="text-sm text-gray-400 dark:text-gray-500">No previous month data</p>
+          </div>
+        </div>
+      </Card>
+    );
+  }
 
   const status = data.status || "normal";
   const config = paceConfig[status] || paceConfig.normal;
   const pacePercent = data.pacePercent || 0;
   const absPace = Math.abs(pacePercent);
 
-  // Build the pace message
   let paceMessage;
   if (status === "fast" || status === "slightly_fast") {
     paceMessage = `${absPace}% ${t("fasterThanUsual") || "faster than usual"}`;
@@ -127,49 +136,63 @@ export default function SpendingPaceCard({ className = "" }) {
     paceMessage = t("onTrack") || "On track with last month";
   }
 
+  // Comparison bar: current vs previous daily average
+  const maxDaily = Math.max(data.currentDailyAvg || 0, data.prevDailyAvg || 1);
+  const currentBarPct = maxDaily > 0 ? Math.round(((data.currentDailyAvg || 0) / maxDaily) * 100) : 0;
+  const prevBarPct = maxDaily > 0 ? Math.round(((data.prevDailyAvg || 0) / maxDaily) * 100) : 0;
+
   return (
-    <AnimatedItem className={className}>
-      <Card style={{ borderColor: config.border }}>
-        <div className="card-body">
-          <div className="flex items-center">
-            <div className={`p-3 rounded-full ${config.bg} mr-4 shrink-0`}>
-              <svg
-                className={`w-6 h-6 ${config.iconColor}`}
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
-                />
-              </svg>
+    <Card variant="insight-card" className={className}
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, delay: 0.15, ease: [0.4, 0, 0.2, 1] }}
+    >
+      <div className="p-5">
+        <div className="flex items-center gap-3.5 mb-4">
+          <div className="insight-icon" style={{ background: config.iconGradient }}>
+            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+            </svg>
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-400">
+              {t("spendingPace") || "Spending Pace"}
+            </p>
+            <p className={`text-sm font-semibold ${config.textColor}`}>
+              {config.icon} {paceMessage}
+            </p>
+          </div>
+          {/* Projected badge */}
+          <div className="shrink-0 text-right">
+            <p className="text-[11px] text-gray-400 dark:text-gray-400">{t("projected") || "Projected"}</p>
+            <p className="text-sm font-bold text-gray-900 dark:text-white insight-value">
+              {formatCurrency(data.projectedTotal)}
+            </p>
+          </div>
+        </div>
+
+        {/* Comparison bars */}
+        <div className="space-y-3">
+          <div>
+            <div className="flex justify-between text-[11px] mb-1.5">
+              <span className="text-gray-500 dark:text-gray-400">{t("thisMonth") || "This month"}</span>
+              <span className="font-medium text-gray-700 dark:text-gray-300">{formatCurrency(data.currentDailyAvg)}/{t("perDay") || "day"}</span>
             </div>
-            <div className="flex-1 min-w-0">
-              <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                {t("spendingPace") || "Spending Pace"}
-              </h3>
-              <p className={`text-sm font-semibold ${config.textColor}`}>
-                {config.icon} {paceMessage}
-              </p>
-              <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                {formatCurrency(data.currentDailyAvg)}/{t("perDay") || "day"} vs {formatCurrency(data.prevDailyAvg)}/{t("perDay") || "day"} {t("lastMonth") || "last month"}
-              </p>
+            <div className="progress-bar-track" style={{ height: "10px" }}>
+              <div className="progress-bar-fill" style={{ width: `${currentBarPct}%`, background: config.gradient }} />
             </div>
-            {/* Projected total */}
-            <div className="text-right shrink-0 ml-3">
-              <p className="text-xs text-gray-400 dark:text-gray-500">
-                {t("projected") || "Projected"}
-              </p>
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-300">
-                {formatCurrency(data.projectedTotal)}
-              </p>
+          </div>
+          <div>
+            <div className="flex justify-between text-[11px] mb-1.5">
+              <span className="text-gray-500 dark:text-gray-400">{t("lastMonth") || "Last month"}</span>
+              <span className="font-medium text-gray-700 dark:text-gray-300">{formatCurrency(data.prevDailyAvg)}/{t("perDay") || "day"}</span>
+            </div>
+            <div className="progress-bar-track" style={{ height: "10px" }}>
+              <div className="progress-bar-fill" style={{ width: `${prevBarPct}%`, background: "rgba(156,163,175,0.4)" }} />
             </div>
           </div>
         </div>
-      </Card>
-    </AnimatedItem>
+      </div>
+    </Card>
   );
 }

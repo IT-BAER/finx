@@ -1,13 +1,9 @@
 import { useState, useEffect } from "react";
 import { categoryAPI } from "../services/api.jsx";
 import { useTranslation } from "../hooks/useTranslation";
-import { AnimatedItem } from "./AnimatedPage.jsx";
-
+import { motion } from "framer-motion";
 import Card from "./Card";
-/**
- * BudgetProgressCard - Shows spending progress for categories with budget limits
- * Green (<80%), Yellow (80-100%), Red (>100%)
- */
+
 export default function BudgetProgressCard({ className = "" }) {
   const { t, formatCurrency } = useTranslation();
   const [data, setData] = useState(null);
@@ -16,7 +12,6 @@ export default function BudgetProgressCard({ className = "" }) {
 
   useEffect(() => {
     let cancelled = false;
-
     const fetchData = async () => {
       try {
         setLoading(true);
@@ -34,52 +29,45 @@ export default function BudgetProgressCard({ className = "" }) {
         if (!cancelled) setLoading(false);
       }
     };
-
     fetchData();
     return () => { cancelled = true; };
   }, []);
 
-  const statusColor = (status) => {
+  const statusGradient = (status) => {
     switch (status) {
-      case "overspent": return { bar: "bg-red-500", text: "text-red-600 dark:text-red-400" };
-      case "caution": return { bar: "bg-yellow-500", text: "text-yellow-600 dark:text-yellow-400" };
-      default: return { bar: "bg-emerald-500", text: "text-emerald-600 dark:text-emerald-400" };
+      case "overspent": return { bar: "linear-gradient(90deg, #ef4444, #f97316)", text: "text-red-600 dark:text-red-400", dot: "#ef4444" };
+      case "caution": return { bar: "linear-gradient(90deg, #f59e0b, #fbbf24)", text: "text-amber-600 dark:text-amber-400", dot: "#f59e0b" };
+      default: return { bar: "linear-gradient(90deg, #10b981, #34d399)", text: "text-emerald-600 dark:text-emerald-400", dot: "#10b981" };
     }
   };
 
   if (loading) {
     return (
-      <AnimatedItem className={className}>
-        <Card style={{ borderColor: "rgba(139, 92, 246, 0.5)" }}>
-          <div className="card-body">
-            <div className="animate-pulse">
-              <div className="flex items-center mb-4">
-                <div className="p-3 rounded-full bg-violet-100 dark:bg-violet-900/30 mr-4">
-                  <div className="w-6 h-6 bg-violet-200 dark:bg-violet-800 rounded" />
-                </div>
-                <div className="h-5 bg-gray-200 dark:bg-gray-700 rounded w-36" />
-              </div>
-              <div className="space-y-3">
-                <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-full" />
-                <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-full" />
-                <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-3/4" />
-              </div>
+      <Card variant="insight-card" className={className}>
+        <div className="p-5">
+          <div className="flex items-center gap-4 mb-4">
+            <div className="insight-skeleton w-11 h-11" />
+            <div className="flex-1 space-y-2">
+              <div className="insight-skeleton h-3 w-28" />
+              <div className="insight-skeleton h-3 w-20" />
             </div>
           </div>
-        </Card>
-      </AnimatedItem>
+          <div className="space-y-3">
+            <div className="insight-skeleton h-8 w-full" />
+            <div className="insight-skeleton h-8 w-full" />
+          </div>
+        </div>
+      </Card>
     );
   }
 
   if (error) {
     return (
-      <AnimatedItem className={className}>
-        <Card style={{ borderColor: "rgba(239, 68, 68, 0.5)" }}>
-          <div className="card-body">
-            <div className="text-sm text-red-500">{t("errorLoading") || "Error loading data"}</div>
-          </div>
-        </Card>
-      </AnimatedItem>
+      <Card variant="insight-card" className={className}>
+        <div className="p-5">
+          <p className="text-sm text-red-500">{t("errorLoading") || "Error loading data"}</p>
+        </div>
+      </Card>
     );
   }
 
@@ -91,71 +79,68 @@ export default function BudgetProgressCard({ className = "" }) {
   const totalPercent = totalBudget > 0 ? Math.round((totalSpent / totalBudget) * 100) : 0;
 
   return (
-    <AnimatedItem className={className}>
-      <Card style={{ borderColor: "rgba(139, 92, 246, 0.5)" }}>
-        <div className="card-body">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center">
-              <div className="p-3 rounded-full bg-violet-100 dark:bg-violet-900/30 mr-4">
-                <svg
-                  className="w-6 h-6 text-violet-500"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-                  />
-                </svg>
-              </div>
-              <div>
-                <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                  {t("budgetProgress") || "Budget Progress"}
-                </h3>
-                <p className="text-xs text-gray-400 dark:text-gray-500">
-                  {formatCurrency(totalSpent)} / {formatCurrency(totalBudget)} ({totalPercent}%)
-                </p>
-              </div>
+    <Card variant="insight-card" className={className}
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, delay: 0.2, ease: [0.4, 0, 0.2, 1] }}
+    >
+      <div className="p-5">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3.5">
+            <div className="insight-icon" style={{ background: "linear-gradient(135deg, #8b5cf6, #7c3aed)" }}>
+              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+            </div>
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500">
+                {t("budgetProgress") || "Budget Progress"}
+              </p>
+              <p className="text-[11px] text-gray-400 dark:text-gray-500">
+                {formatCurrency(totalSpent)} / {formatCurrency(totalBudget)} ({totalPercent}%)
+              </p>
             </div>
           </div>
+        </div>
 
-          {/* Budget bars */}
-          <div className="space-y-3">
-            {budgets.map((budget) => {
-              const colors = statusColor(budget.status);
-              const barWidth = Math.min(100, budget.percent);
+        {/* Budget bars */}
+        <div className="space-y-3">
+          {budgets.map((budget, i) => {
+            const colors = statusGradient(budget.status);
+            const barWidth = Math.min(100, budget.percent);
 
-              return (
-                <div key={budget.id}>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300 truncate mr-2">
+            return (
+              <motion.div
+                key={budget.id}
+                initial={{ opacity: 0, x: -8 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.25 + i * 0.04 }}
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="w-2 h-2 rounded-full shrink-0" style={{ background: colors.dot }} />
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300 truncate">
                       {budget.name}
                     </span>
-                    <span className={`text-xs font-medium whitespace-nowrap ${colors.text}`}>
-                      {formatCurrency(budget.spent)} / {formatCurrency(budget.budget_limit)}
-                    </span>
                   </div>
-                  <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                    <div
-                      className={`h-2 rounded-full transition-all duration-500 ${colors.bar}`}
-                      style={{ width: `${barWidth}%` }}
-                    />
-                  </div>
-                  {budget.status === "overspent" && (
-                    <p className="text-xs text-red-500 mt-0.5">
-                      {formatCurrency(budget.spent - budget.budget_limit)} {t("overBudget") || "over budget"}
-                    </p>
-                  )}
+                  <span className={`text-xs font-medium whitespace-nowrap ml-2 ${colors.text}`}>
+                    {formatCurrency(budget.spent)} / {formatCurrency(budget.budget_limit)}
+                  </span>
                 </div>
-              );
-            })}
-          </div>
+                <div className="progress-bar-track">
+                  <div className="progress-bar-fill" style={{ width: `${barWidth}%`, background: colors.bar }} />
+                </div>
+                {budget.status === "overspent" && (
+                  <p className="text-[11px] text-red-500 mt-0.5">
+                    {formatCurrency(budget.spent - budget.budget_limit)} {t("overBudget") || "over budget"}
+                  </p>
+                )}
+              </motion.div>
+            );
+          })}
         </div>
-      </Card>
-    </AnimatedItem>
+      </div>
+    </Card>
   );
 }

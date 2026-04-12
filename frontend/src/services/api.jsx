@@ -658,6 +658,14 @@ export const adminAPI = {
   // System stats and cleanup
   getSystemStats: () => api.get("/admin/system-stats"),
   removeSampleData: () => api.post("/admin/remove-sample-data"),
+
+  // Dashboard
+  getDashboardStats: () => api.get("/admin/dashboard/stats"),
+  getUsersOverview: () => api.get("/admin/dashboard/users"),
+  getServerHealth: () => api.get("/admin/dashboard/health"),
+  getAuditLogs: (params = {}) => api.get("/admin/dashboard/audit-logs", { params }),
+  getErrorLogs: (params = {}) => api.get("/admin/dashboard/error-logs", { params }),
+  getActivityOverview: (params = {}) => api.get("/admin/dashboard/activity", { params }),
 };
 
 // User management endpoints

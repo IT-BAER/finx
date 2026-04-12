@@ -1,13 +1,8 @@
 import { useState, useEffect } from "react";
 import { transactionAPI } from "../services/api.jsx";
 import { useTranslation } from "../hooks/useTranslation";
-import { AnimatedItem } from "./AnimatedPage.jsx";
-
 import Card from "./Card";
-/**
- * SafeToSpendCard - Shows how much money is "safe" to spend for the rest of the month
- * Color-coded: green (healthy), yellow (caution), red (overspent)
- */
+
 export default function SafeToSpendCard({ className = "" }) {
   const { t, formatCurrency } = useTranslation();
   const [data, setData] = useState(null);
@@ -16,7 +11,6 @@ export default function SafeToSpendCard({ className = "" }) {
 
   useEffect(() => {
     let cancelled = false;
-
     const fetchData = async () => {
       try {
         setLoading(true);
@@ -34,66 +28,57 @@ export default function SafeToSpendCard({ className = "" }) {
         if (!cancelled) setLoading(false);
       }
     };
-
     fetchData();
     return () => { cancelled = true; };
   }, []);
 
-  // Color and status config
   const statusConfig = {
     healthy: {
-      border: "rgba(34, 197, 94, 0.5)",
-      bg: "bg-green-100 dark:bg-green-900/30",
-      iconColor: "text-green-500",
-      amountColor: "text-green-600 dark:text-green-400",
+      gradient: "linear-gradient(90deg, #10b981, #34d399)",
+      iconGradient: "linear-gradient(135deg, #10b981, #059669)",
       label: t("safeToSpendHealthy") || "Looking good!",
+      ringColor: "#10b981",
     },
     caution: {
-      border: "rgba(234, 179, 8, 0.5)",
-      bg: "bg-yellow-100 dark:bg-yellow-900/30",
-      iconColor: "text-yellow-500",
-      amountColor: "text-yellow-600 dark:text-yellow-400",
+      gradient: "linear-gradient(90deg, #f59e0b, #fbbf24)",
+      iconGradient: "linear-gradient(135deg, #f59e0b, #d97706)",
       label: t("safeToSpendCaution") || "Spend carefully",
+      ringColor: "#f59e0b",
     },
     overspent: {
-      border: "rgba(239, 68, 68, 0.5)",
-      bg: "bg-red-100 dark:bg-red-900/30",
-      iconColor: "text-red-500",
-      amountColor: "text-red-600 dark:text-red-400",
+      gradient: "linear-gradient(90deg, #ef4444, #f97316)",
+      iconGradient: "linear-gradient(135deg, #ef4444, #dc2626)",
       label: t("safeToSpendOverspent") || "Over budget",
+      ringColor: "#ef4444",
     },
   };
 
   if (loading) {
     return (
-      <AnimatedItem className={className}>
-        <Card style={{ borderColor: "rgba(34, 197, 94, 0.5)" }}>
-          <div className="card-body">
-            <div className="animate-pulse">
-              <div className="flex items-center mb-4">
-                <div className="p-3 rounded-full bg-green-100 dark:bg-green-900/30 mr-4">
-                  <div className="w-6 h-6 bg-green-200 dark:bg-green-800 rounded" />
-                </div>
-                <div className="h-5 bg-gray-200 dark:bg-gray-700 rounded w-32" />
-              </div>
-              <div className="h-10 bg-gray-200 dark:bg-gray-700 rounded w-48 mb-3" />
-              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-36" />
+      <Card variant="insight-card" className={className}>
+        <div className="p-5">
+          <div className="flex items-center gap-4">
+            <div className="insight-skeleton w-11 h-11" />
+            <div className="flex-1 space-y-2">
+              <div className="insight-skeleton h-3 w-24" />
+              <div className="insight-skeleton h-7 w-36" />
             </div>
           </div>
-        </Card>
-      </AnimatedItem>
+          <div className="mt-4 space-y-2">
+            <div className="insight-skeleton h-[6px] w-full rounded-full" />
+          </div>
+        </div>
+      </Card>
     );
   }
 
   if (error) {
     return (
-      <AnimatedItem className={className}>
-        <Card style={{ borderColor: "rgba(239, 68, 68, 0.5)" }}>
-          <div className="card-body">
-            <div className="text-sm text-red-500">{t("errorLoading") || "Error loading data"}</div>
-          </div>
-        </Card>
-      </AnimatedItem>
+      <Card variant="insight-card" className={className}>
+        <div className="p-5">
+          <p className="text-sm text-red-500">{t("errorLoading") || "Error loading data"}</p>
+        </div>
+      </Card>
     );
   }
 
@@ -105,79 +90,81 @@ export default function SafeToSpendCard({ className = "" }) {
   const monthlyExpenses = data?.monthlyExpenses || 0;
   const upcomingRecurringExpenses = data?.upcomingRecurringExpenses || 0;
 
-  // Progress bar - how much of income has been spent
   const spentPercent = monthlyIncome > 0
     ? Math.min(100, Math.round(((monthlyExpenses + upcomingRecurringExpenses) / monthlyIncome) * 100))
     : 0;
 
+  const ringRadius = 28;
+  const circumference = 2 * Math.PI * ringRadius;
+  const ringOffset = circumference - (spentPercent / 100) * circumference;
+
   return (
-    <AnimatedItem className={className}>
-      <Card style={{ borderColor: status.border }}>
-        <div className="card-body">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center">
-              <div className={`p-3 rounded-full ${status.bg} mr-4`}>
-                <svg
-                  className={`w-6 h-6 ${status.iconColor}`}
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-              </div>
-              <div>
-                <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                  {t("safeToSpend") || "Safe to Spend"}
-                </h3>
-                <p className="text-xs text-gray-400 dark:text-gray-500">
-                  {status.label}
-                </p>
-              </div>
+    <Card variant="insight-card" className={className}
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, delay: 0.05, ease: [0.4, 0, 0.2, 1] }}
+    >
+      <div className="p-5">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-start gap-3.5 min-w-0 flex-1">
+            <div className="insight-icon mt-0.5" style={{ background: status.iconGradient }}>
+              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-400 mb-0.5">
+                {t("safeToSpend") || "Safe to Spend"}
+              </p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white insight-value">
+                {formatCurrency(Math.abs(safeToSpend))}
+                {safeToSpend < 0 && (
+                  <span className="text-xs font-normal text-red-500 ml-1.5">({t("overBudget") || "over"})</span>
+                )}
+              </p>
+              <p className="text-xs text-gray-400 dark:text-gray-400 mt-0.5">
+                {formatCurrency(dailyBudget)}/{t("perDay") || "day"} · {daysRemaining} {t("daysLeft") || "days left"}
+              </p>
             </div>
           </div>
 
-          {/* Main amount */}
-          <div className="mb-4">
-            <p className={`text-3xl font-bold ${status.amountColor}`}>
-              {formatCurrency(Math.abs(safeToSpend))}
-              {safeToSpend < 0 && <span className="text-sm font-normal ml-1">({t("overBudget") || "over budget"})</span>}
-            </p>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              {formatCurrency(dailyBudget)} / {t("perDay") || "per day"} • {daysRemaining} {t("daysLeft") || "days left"}
-            </p>
+          <div className="shrink-0 relative flex items-center justify-center" style={{ width: 68, height: 68 }}>
+            <svg width="68" height="68" className="transform -rotate-90">
+              <circle cx="34" cy="34" r={ringRadius} fill="none" strokeWidth="5"
+                className="stroke-gray-200 dark:stroke-gray-700" />
+              <circle cx="34" cy="34" r={ringRadius} fill="none" strokeWidth="5"
+                stroke={status.ringColor} strokeLinecap="round"
+                strokeDasharray={circumference} strokeDashoffset={ringOffset}
+                className="progress-ring-circle" />
+            </svg>
+            <span className="absolute text-xs font-bold text-gray-600 dark:text-gray-300">{spentPercent}%</span>
           </div>
-
-          {/* Progress bar */}
-          <div className="mb-3">
-            <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mb-1">
-              <span>{t("spent") || "Spent"}: {formatCurrency(monthlyExpenses)}</span>
-              <span>{t("income") || "Income"}: {formatCurrency(monthlyIncome)}</span>
-            </div>
-            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
-              <div
-                className={`h-2.5 rounded-full transition-all duration-500 ${
-                  spentPercent > 90 ? 'bg-red-500' : spentPercent > 70 ? 'bg-yellow-500' : 'bg-green-500'
-                }`}
-                style={{ width: `${spentPercent}%` }}
-              />
-            </div>
-          </div>
-
-          {/* Upcoming recurring */}
-          {upcomingRecurringExpenses > 0 && (
-            <p className="text-xs text-gray-400 dark:text-gray-500">
-              {t("upcomingRecurring") || "Upcoming bills"}: {formatCurrency(upcomingRecurringExpenses)} {t("thisMonth") || "this month"}
-            </p>
-          )}
         </div>
-      </Card>
-    </AnimatedItem>
+
+        <div className="mt-3">
+          <div className="flex justify-between text-[11px] text-gray-400 dark:text-gray-400 mb-1.5">
+            <span>{t("spent") || "Spent"}: {formatCurrency(monthlyExpenses)}</span>
+            <span>{t("income") || "Income"}: {formatCurrency(monthlyIncome)}</span>
+          </div>
+          <div className="progress-bar-track">
+            <div className="progress-bar-fill" style={{ width: `${spentPercent}%`, background: status.gradient }} />
+          </div>
+        </div>
+
+        {upcomingRecurringExpenses > 0 && (
+          <p className="text-[11px] text-gray-400 dark:text-gray-400 mt-1.5">
+            {t("upcomingRecurring") || "Upcoming bills"}: {formatCurrency(upcomingRecurringExpenses)} {t("thisMonth") || "this month"}
+          </p>
+        )}
+
+        <div className="mt-2">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium"
+            style={{ background: `${status.ringColor}15`, color: status.ringColor }}>
+            <span className="w-1.5 h-1.5 rounded-full" style={{ background: status.ringColor }} />
+            {status.label}
+          </span>
+        </div>
+      </div>
+    </Card>
   );
 }

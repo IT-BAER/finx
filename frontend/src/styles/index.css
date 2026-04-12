@@ -10,13 +10,13 @@
   --surface-muted: #f3f4f6; /* gray-100 */
   --border: #e5e7eb; /* gray-200 */
   --muted: #6b7280; /* gray-500 */
-  --accent: #2563eb; /* blue-600 */
-  --accent-600: #1d4ed8; /* blue-700 */
-  --accent-400: #60a5fa; /* blue-400 */
+  --accent: #3b6bd4; /* blue-600 muted */
+  --accent-600: #3258c0; /* blue-700 muted */
+  --accent-400: #6da1e8; /* blue-400 muted */
   --accent-contrast: #ffffff;
-  --success: #16a34a; /* green-600 */
-  --warning: #ca8a04; /* yellow-600 */
-  --danger: #dc2626; /* red-600 */
+  --success: #259b4e; /* green-600 muted */
+  --warning: #b8891a; /* yellow-600 muted */
+  --danger: #cc3333; /* red-600 muted */
   --button-inner-bg: #ffffff; /* white for light mode */
 }
 
@@ -25,9 +25,9 @@
 :root[data-theme="default"].dark {
   --bg: #030712; /* near-black with cool tint */
   --text: #e5e7eb; /* gray-200 */
-  --surface: rgba(15, 23, 42, 0.6); /* semi-transparent slate-900 */
-  --surface-muted: rgba(30, 41, 59, 0.5); /* semi-transparent slate-800 */
-  --border: rgba(148, 163, 184, 0.08); /* subtle white border */
+  --surface: #0f172a; /* solid slate-900 */
+  --surface-muted: #1e293b; /* solid slate-800 */
+  --border: #1e293b; /* solid border */
   --muted: #94a3b8; /* slate-400 */
 }
 
@@ -35,30 +35,25 @@
 
 /* Default dark theme elements */
 :root[data-theme="default"].dark .card {
-  background: linear-gradient(145deg, rgba(0, 0, 0, 0.82) 0%, rgba(17, 24, 39, 0.75) 100%);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-  border-color: rgba(31, 41, 55, 1);
-  box-shadow: 0 35px 60px -15px rgba(0, 0, 0, 0.5);
+  background: var(--surface);
+  border-color: var(--border);
 }
 :root[data-theme="default"].dark footer {
-  background-color: rgba(15, 23, 42, 0.5);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border-top: 1px solid rgba(148, 163, 184, 0.06);
+  background-color: var(--surface);
+  border-top: 1px solid var(--border);
 }
 :root[data-theme="default"].dark header,
 :root[data-theme="default"].dark nav {
-  background-color: rgba(15, 23, 42, 0.5);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border-bottom: 1px solid rgba(148, 163, 184, 0.06);
+  background-color: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+:root[data-theme="default"].dark nav.nav-scrolled {
+  background-color: var(--surface);
+  border-bottom: 1px solid var(--border);
 }
 :root[data-theme="default"].dark .mobile-menu {
-  background-color: rgba(15, 23, 42, 0.6);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border-top: 1px solid rgba(148, 163, 184, 0.06);
+  background-color: var(--surface);
+  border-top: 1px solid var(--border);
 }
 
 /* Extra themes */
@@ -69,13 +64,13 @@
   --surface-muted: #e0f2fe; /* sky-100 */
   --border: #bae6fd; /* sky-200 */
   --muted: #334155; /* slate-700 */
-  --accent: #0284c7; /* sky-600 */
-  --accent-600: #0369a1; /* sky-700 */
-  --accent-400: #38bdf8; /* sky-400 */
+  --accent: #1a87ba; /* sky-600 muted */
+  --accent-600: #186d98; /* sky-700 muted */
+  --accent-400: #4db8e5; /* sky-400 muted */
   --accent-contrast: #ffffff;
-  --success: #0ea5e9;
-  --warning: #0284c7;
-  --danger: #ef4444;
+  --success: #249fd7;
+  --warning: #1a87ba;
+  --danger: #dd4444;
 }
 /* Ocean dark neutrals */
 :root[data-theme="ocean"].dark {
@@ -94,13 +89,13 @@
   --surface-muted: #ecfccb; /* lime-100 */
   --border: #d9f99d; /* lime-200 */
   --muted: #14532d; /* green-900 */
-  --accent: #16a34a; /* green-600 */
-  --accent-600: #15803d; /* green-700 */
-  --accent-400: #34d399; /* emerald-400 */
+  --accent: #2a9b50; /* green-600 muted */
+  --accent-600: #267d42; /* green-700 muted */
+  --accent-400: #45c994; /* emerald-400 muted */
   --accent-contrast: #ffffff;
-  --success: #16a34a;
-  --warning: #ca8a04;
-  --danger: #b91c1c;
+  --success: #2a9b50;
+  --warning: #b8891a;
+  --danger: #b03030;
 }
 /* Forest dark neutrals */
 :root[data-theme="forest"].dark {
@@ -119,13 +114,13 @@
   --surface-muted: #ffe4e6; /* rose-100 */
   --border: #fecdd3; /* rose-200 */
   --muted: #881337; /* rose-900 */
-  --accent: #e11d48; /* rose-600 */
-  --accent-600: #be123c; /* rose-700 */
-  --accent-400: #fb7185; /* rose-400 */
+  --accent: #d12d50; /* rose-600 muted */
+  --accent-600: #b32442; /* rose-700 muted */
+  --accent-400: #e87a8c; /* rose-400 muted */
   --accent-contrast: #ffffff;
-  --success: #16a34a;
-  --warning: #ca8a04;
-  --danger: #e11d48;
+  --success: #259b4e;
+  --warning: #b8891a;
+  --danger: #d12d50;
 }
 /* Rose dark neutrals */
 :root[data-theme="rose"].dark {
@@ -145,13 +140,13 @@
   --surface-muted: #ede9fe; /* violet-100 */
   --border: #ddd6fe; /* violet-200 */
   --muted: #4c1d95; /* violet-900 */
-  --accent: #7c3aed; /* violet-600 (Wednesday accent) */
-  --accent-600: #6d28d9; /* violet-700 */
-  --accent-400: #a78bfa; /* violet-400 */
+  --accent: #7245d6; /* violet-600 muted */
+  --accent-600: #6635c2; /* violet-700 muted */
+  --accent-400: #9e8ae8; /* violet-400 muted */
   --accent-contrast: #ffffff;
-  --success: #16a34a; /* keep success */
-  --warning: #ca8a04; /* keep warning */
-  --danger: #dc2626; /* keep danger */
+  --success: #259b4e;
+  --warning: #b8891a;
+  --danger: #cc3333;
 }
 /* Wednesday dark neutrals */
 :root[data-theme="wednesday"].dark {
@@ -208,44 +203,58 @@
 /* Themed header/footer/background wrappers */
 header,
 nav {
-  background-color: color-mix(in srgb, var(--surface) 95%, transparent);
+  background-color: transparent;
+  backdrop-filter: blur(0px);
+  -webkit-backdrop-filter: blur(0px);
   color: var(--text);
+  border-bottom: 1px solid transparent;
+}
+
+/* Frosted glass nav when scrolled */
+nav.nav-scrolled {
+  background-color: color-mix(in srgb, var(--surface) 60%, transparent);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   border-bottom: 1px solid var(--border);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+.dark nav.nav-scrolled {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
 }
 footer {
-  background-color: color-mix(in srgb, var(--surface) 95%, transparent);
+  background-color: transparent;
   color: var(--muted);
-  border-top: 1px solid var(--border);
+  border-top: none;
 }
 
 /* Footer palette tweaks */
 :root[data-theme="ocean"] footer {
-  background-color: color-mix(in srgb, var(--surface) 92%, var(--accent));
+  background-color: transparent;
 }
 :root[data-theme="ocean"].dark footer {
-  background-color: color-mix(in srgb, var(--surface) 85%, var(--accent));
+  background-color: transparent;
 }
 
 :root[data-theme="forest"] footer {
-  background-color: color-mix(in srgb, var(--surface) 92%, var(--accent));
+  background-color: transparent;
 }
 :root[data-theme="forest"].dark footer {
-  background-color: color-mix(in srgb, var(--surface) 85%, var(--accent));
+  background-color: transparent;
 }
 
 :root[data-theme="rose"] footer {
-  background-color: color-mix(in srgb, var(--surface) 92%, var(--accent));
+  background-color: transparent;
 }
 :root[data-theme="rose"].dark footer {
-  background-color: color-mix(in srgb, var(--surface) 80%, var(--accent));
+  background-color: transparent;
 }
 
 /* Wednesday footer palette tweaks */
 :root[data-theme="wednesday"] footer {
-  background-color: color-mix(in srgb, var(--surface) 92%, var(--accent));
+  background-color: transparent;
 }
 :root[data-theme="wednesday"].dark footer {
-  background-color: color-mix(in srgb, var(--surface) 85%, var(--accent));
+  background-color: transparent;
 }
 
 /* Ensure buttons align with variables across themes */
@@ -397,7 +406,7 @@ footer {
 }
 
 .icon-circle {
-  @apply p-2 rounded-full bg-gray-100/10 border border-gray-200/30 shadow-sm hover:shadow-md transition-all duration-300;
+  @apply p-2 rounded-full bg-gray-100/10 border border-gray-200/30 shadow-sm;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -439,10 +448,7 @@ footer {
   --tw-ring-color: var(--accent-400);
 }
 
-/* Cards — base theme-variable tint (full styling below) */
-.card {
-  border-color: var(--border);
-}
+/* Cards — header/footer inherit theme border */
 .card-header,
 .card-footer {
   border-color: var(--border);
@@ -481,60 +487,31 @@ footer {
 
 /* Modern Button Styles (performance tuned)
    - Single-layer shadow with reduced blur & opacity
-   - Use transform for hover lift and will-change: transform to hint the compositor
-*/
+/* Button base — flat, no hover animations */
 .btn {
-  @apply inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md transition-transform duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500;
+  @apply inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
-  will-change: transform;
 }
 
 .btn:disabled {
   @apply opacity-75 cursor-not-allowed;
 }
 
-/* Use variable-driven colors for primary (reduced shadow cost)
-   - Keep visual lift but use transform + single-layer shadow on hover
-*/
+/* Use variable-driven colors for primary — no hover lift */
 .btn-primary {
-  @apply transform transition-transform;
-}
-.btn-primary:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.09);
-  will-change: transform;
 }
 
 /* Variable-based secondary uses surface colors already set above */
 .btn-secondary {
 }
 
-/* Use variable-driven danger */
+/* Use variable-driven danger — no hover lift */
 .btn-danger {
-  @apply shadow-lg hover:shadow-xl transform hover:-translate-y-0.5;
 }
 
-/* Outline relies on variables now; keep hover background subtle via surface-muted mix */
+/* Outline relies on variables now */
 .btn-outline {
-  @apply border; /* Reduced border from border-2 to border */
-}
-
-/* Mobile-specific styles for all buttons - disable hover effects on mobile */
-@media (max-width: 768px) {
-  .btn-primary:hover,
-  .btn-secondary:hover,
-  .btn-danger:hover,
-  .btn-outline:hover {
-    transform: none;
-    box-shadow: none;
-    filter: none;
-    background-color: inherit;
-  }
-
-  /* Enhanced tap/click feedback for mobile */
-  .btn:active {
-    transform: scale(0.98);
-  }
+  @apply border;
 }
 
 /* Neon Button Component Styles
@@ -558,7 +535,6 @@ footer {
   font-weight: 600;
   font-size: 14px;
   cursor: pointer;
-  transition: all 120ms ease-out;
   overflow: visible;
   outline: none;
 }
@@ -579,17 +555,16 @@ footer {
   outline-offset: 2px;
 }
 
-/* Hover — background fades to transparent (default / danger) */
+/* Neon button hover — keep subtle color change but no glow animations */
 .neon-btn-primary:hover:not(:disabled),
 .neon-btn-primary:focus:not(:disabled) {
   background-color: transparent;
 }
 
-/* Hover — ghost/secondary: border appears + subtle background */
 .neon-btn-secondary:hover:not(:disabled),
 .neon-btn-secondary:focus:not(:disabled) {
-  border-color: color-mix(in srgb, var(--muted) 40%, transparent);
-  background-color: color-mix(in srgb, var(--text) 10%, transparent);
+  border-color: color-mix(in srgb, var(--muted) 30%, transparent);
+  background-color: color-mix(in srgb, var(--muted) 10%, transparent);
 }
 
 .neon-btn-danger:hover:not(:disabled),
@@ -612,28 +587,17 @@ footer {
     var(--neon, var(--accent)),
     transparent
   );
-  transition: all 150ms ease-out;
 }
 
-/* Top glow — hidden at rest, appears on hover */
 .neon-btn-glow-top {
   top: 0;
   bottom: 0;
   opacity: 0;
 }
 
-.neon-btn:hover:not(:disabled) .neon-btn-glow-top {
-  opacity: 1;
-}
-
-/* Bottom glow — visible at rest (opacity 1), dims on hover */
 .neon-btn-glow-bottom {
   bottom: -1px;
   opacity: 1;
-}
-
-.neon-btn:hover:not(:disabled) .neon-btn-glow-bottom {
-  opacity: 0.3;
 }
 
 /* —— Content layout —— */
@@ -652,23 +616,17 @@ footer {
   text-overflow: ellipsis;
 }
 
-/* Floating Action Button (lighter shadow)
-   - Single soft shadow, transform-based hover (GPU friendly)
-*/
+/* Floating Action Button — flat, no hover scale */
 .fab {
-  @apply fixed bottom-20 right-4 w-14 h-14 rounded-full flex items-center justify-center text-white bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 transition-transform duration-200 z-50;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.10);
-  will-change: transform;
-}
-
-.fab:hover {
-  transform: scale(1.05);
+  @apply fixed bottom-20 right-4 w-14 h-14 rounded-full flex items-center justify-center text-white z-50;
+  background: var(--accent);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 /* Mobile Bottom Menu */
 .mobile-menu {
   @apply fixed bottom-0 left-0 right-0 shadow-lg z-50;
-  background-color: color-mix(in srgb, var(--surface) 95%, transparent);
+  background-color: var(--surface);
   border-top: 1px solid var(--border);
 }
 
@@ -690,45 +648,18 @@ footer {
   @apply w-6 h-6 mb-1;
 }
 
-/* ── Card entrance keyframes ── */
-@keyframes card-enter {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* Modern Card Styles — adapted from 21st.dev showcase-card-1.
-   Glassmorphic backdrop-blur, entrance animation, hover scale + border glow.
-*/
+/* Modern Card Styles — flat, static, no animations */
 .card {
   @apply overflow-hidden;
-  border-radius: 2rem;
-  background: linear-gradient(145deg, color-mix(in srgb, var(--surface) 82%, transparent) 0%, color-mix(in srgb, var(--surface) 72%, transparent) 100%);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
+  border-radius: 0.5rem;
+  background-color: var(--surface);
   border: 1px solid var(--border);
-  box-shadow: 0 35px 60px -15px rgba(0, 0, 0, 0.15);
-  animation: card-enter 0.3s ease-out backwards;
-  will-change: transform;
-  content-visibility: auto;
-  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
-.card:hover,
-.insight-card:hover {
-  transform: scale(1.005) translateY(-2px);
-  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.3);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .card {
-    animation: none;
-  }
+.dark .card {
+  border: 1px solid var(--border);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
 .card-header {
@@ -747,26 +678,18 @@ footer {
    Dashboard Enhancement Cards — Enterprise styling
    ═══════════════════════════════════════════════════ */
 
-/* Insight card — unified with showcase-card-1 style */
+/* Insight card — flat, static */
 .insight-card {
   @apply overflow-hidden relative;
-  border-radius: 2rem;
-  background: linear-gradient(145deg, color-mix(in srgb, var(--surface) 82%, transparent) 0%, color-mix(in srgb, var(--surface) 72%, transparent) 100%);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
+  border-radius: 0.5rem;
+  background-color: var(--surface);
   border: 1px solid var(--border);
-  box-shadow: 0 35px 60px -15px rgba(0, 0, 0, 0.15);
-  animation: card-enter 0.3s ease-out backwards;
-  will-change: transform;
-  content-visibility: auto;
-  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 .dark .insight-card {
-  background: linear-gradient(145deg, rgba(0, 0, 0, 0.82) 0%, rgba(17, 24, 39, 0.75) 100%);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-  border-color: rgba(31, 41, 55, 1);
-  box-shadow: 0 35px 60px -15px rgba(0, 0, 0, 0.5);
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
 /* Icon container — gradient circle */
@@ -777,13 +700,8 @@ footer {
   flex-shrink: 0;
 }
 
-/* Animated count-up numbers */
-@keyframes fadeSlideUp {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
-}
 .insight-value {
-  animation: fadeSlideUp 0.4s cubic-bezier(.4,0,.2,1) both;
+  /* no animation */
 }
 
 /* Progress bar with gradient fill */
@@ -1222,10 +1140,8 @@ body {
 :root[data-theme="forest"].dark .card,
 :root[data-theme="rose"].dark .card,
 :root[data-theme="wednesday"].dark .card {
-  background: linear-gradient(145deg, rgba(0, 0, 0, 0.82) 0%, color-mix(in srgb, var(--surface) 30%, rgba(17, 24, 39, 0.75)) 100%);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-  border-color: color-mix(in srgb, var(--border) 60%, rgba(31, 41, 55, 1));
+  background-color: rgba(0, 0, 0, 0.8);
+  border-color: rgb(31, 41, 55);
 }
 
 /* Rose light mode — softer card */

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useMemo, useCallback, useLayoutEffect, useId } from "react";
-import { motion, AnimatePresence, useSpring } from "framer-motion";
+import { motion } from "framer-motion";
 import { useTheme } from "../contexts/ThemeContext.jsx";
 
 /* ─── Color palette ───────────────────────────────────────────────── */
@@ -58,27 +58,18 @@ function BarTooltip({ bar, datasets, formatValue, dark: isDark, containerRef, ba
   const shouldFlip = xInContainer + tooltipW + offset > cW;
   const targetX = shouldFlip ? xInContainer - tooltipW - offset : xInContainer + offset;
 
-  const springConf = { stiffness: 200, damping: 25 };
-  const animLeft = useSpring(targetX, springConf);
-  useEffect(() => { animLeft.set(targetX); }, [targetX, animLeft]);
-
   return (
-    <motion.div
+    <div
       ref={tooltipRef}
-      initial={{ opacity: 0, scale: 0.85 }}
-      animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.85 }}
-      transition={{ type: "spring", stiffness: 300, damping: 25 }}
       style={{
-        position: "absolute", left: animLeft, top: margin.top + 4,
+        position: "absolute", left: targetX, top: margin.top + 4,
         pointerEvents: "none", zIndex: 50, minWidth: 120,
-        transformOrigin: shouldFlip ? "right top" : "left top",
       }}
     >
       <div style={{
-        borderRadius: 12, padding: "10px 14px",
-        background: c.tooltipBg, backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)",
-        border: `1px solid ${c.tooltipBorder}`, boxShadow: c.tooltipShadow,
+        borderRadius: 8, padding: "10px 14px",
+        background: isDark ? "#1e293b" : "#ffffff",
+        border: `1px solid ${c.tooltipBorder}`, boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
       }}>
         <div style={{ fontSize: 11, fontWeight: 500, color: c.tooltipTitle, marginBottom: 6 }}>{bar.label}</div>
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -107,7 +98,7 @@ function BarTooltip({ bar, datasets, formatValue, dark: isDark, containerRef, ba
           )}
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 }
 
@@ -300,9 +291,9 @@ export default function AnimatedBarChart({
                   opacity: dimmed ? 0.35 : 1,
                 }}
                 transition={{
-                  y: { type: "spring", stiffness: 120, damping: 18, delay: i * 0.02 },
-                  height: { type: "spring", stiffness: 120, damping: 18, delay: i * 0.02 },
-                  opacity: { duration: 0.3 },
+                  y: { duration: 0.4, ease: "easeOut" },
+                  height: { duration: 0.4, ease: "easeOut" },
+                  opacity: { duration: 0.2 },
                 }}
                 onMouseEnter={() => handleBarEnter(bar.barIdx)}
                 onMouseLeave={handleBarLeave}
@@ -335,14 +326,8 @@ export default function AnimatedBarChart({
       </svg>
 
       {/* Date pill at bottom */}
-      <AnimatePresence>
         {isHovering && labels[hoveredBarIdx] && (
-          <motion.div
-            key="bar-pill"
-            initial={{ opacity: 0, scale: 0.85 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.85 }}
-            transition={{ type: "spring", stiffness: 400, damping: 30 }}
+          <div
             style={{
               position: "absolute", bottom: 0, pointerEvents: "none", zIndex: 50,
               left: crosshairX + margin.left, transform: "translateX(-50%)",
@@ -352,16 +337,14 @@ export default function AnimatedBarChart({
               background: c.pillBg, color: c.pillText,
               borderRadius: 999, padding: "3px 14px",
               fontSize: 12, fontWeight: 500, whiteSpace: "nowrap",
-              boxShadow: "0 4px 12px rgba(0,0,0,0.25)",
+              boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
             }}>
               {labels[hoveredBarIdx]}
             </div>
-          </motion.div>
+          </div>
         )}
-      </AnimatePresence>
 
       {/* Tooltip */}
-      <AnimatePresence>
         {isHovering && (() => {
           const bar = barLayout.bars.find(b => b.barIdx === hoveredBarIdx);
           if (!bar) return null;
@@ -378,7 +361,6 @@ export default function AnimatedBarChart({
             />
           );
         })()}
-      </AnimatePresence>
 
       {/* Legend */}
       {showLegend && datasets.length > 1 && (

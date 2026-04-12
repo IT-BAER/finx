@@ -7,20 +7,19 @@ import SourceCategoryBarChart from "../components/SourceCategoryBarChart.jsx";
 
 import MultiCheckboxDropdown from "../components/MultiCheckboxDropdown.jsx";
 
-import {
-  LazyPie as Pie,
-} from "../components/LazyChart.jsx";
 import AnimatedBarChart from "../components/AnimatedBarChart.jsx";
 import AnimatedAreaChart from "../components/AnimatedAreaChart.jsx";
+import { LazyPie as Pie } from "../components/LazyChart.jsx";
 import { useTranslation } from "../hooks/useTranslation";
 import { getLocaleString } from "../utils/locale";
 import { useAuth } from "../contexts/AuthContext";
 import { useTheme } from "../contexts/ThemeContext.jsx";
 import { motion } from "framer-motion";
 import ChartLegend from "../components/ChartLegend.jsx";
-import { AnimatedPage, AnimatedSection, AnimatedStagger, AnimatedItem } from "../components/AnimatedPage.jsx";
+import { AnimatedPage, AnimatedSection } from "../components/AnimatedPage.jsx";
+import Card from "../components/Card.jsx";
+import SummaryCards from "../components/SummaryCards.jsx";
 
-import Card from "../components/Card";
 // Helper function to get YYYY-MM-DD from a date object in local timezone
 const parseLocalDate = (value) => {
   if (typeof value === "string" && /\d{4}-\d{2}-\d{2}/.test(value)) {
@@ -109,9 +108,26 @@ async function loadDashboardData() {
     return arr;
   })();
 
+  // Fill monthly daily expenses for every day from month start to today
+  const filledMonthlyDailyExpenses = (() => {
+    const map = new Map();
+    (monthly.dailyExpenses || []).forEach((d) => {
+      const key = toYYYYMMDD(d.date);
+      map.set(key, parseFloat(d.total || 0));
+    });
+    const arr = [];
+    const start = new Date(monthStart);
+    for (let d = new Date(start); d <= now; d.setDate(d.getDate() + 1)) {
+      const key = toYYYYMMDD(d);
+      arr.push({ date: key, total: map.get(key) || 0 });
+    }
+    return arr;
+  })();
+
   return {
     summary: monthly.summary || { total_income: 0, total_expenses: 0, balance: 0 },
     dailyExpenses: filledWeeklyDailyExpenses,
+    monthlyDailyExpenses: filledMonthlyDailyExpenses,
     // Use monthly expense by category to reflect entire current month
     expenseByCategory: monthly.expenseByCategory || [],
     weeklyExpenses: weekly.weeklyExpenses || { total_expenses: 0, days_with_expenses: 0 },
@@ -181,6 +197,7 @@ const Dashboard = () => {
   // Filtered data based on selected sources
   const [filteredSummary, setFilteredSummary] = useState(null);
   const [filteredDailyExpenses, setFilteredDailyExpenses] = useState([]);
+  const [filteredMonthlyDailyExpenses, setFilteredMonthlyDailyExpenses] = useState([]);
   const [filteredExpenseByCategory, setFilteredExpenseByCategory] = useState([]);
   const [filteredRecentTransactions, setFilteredRecentTransactions] = useState([]);
   const isCurrentPage = useRef(true);
@@ -468,6 +485,27 @@ const Dashboard = () => {
         setFilteredDailyExpenses(filteredDailyExpenses);
 
         // =============================
+        // Filtered Monthly Daily Expenses (current month, for desktop chart)
+        // =============================
+        const monthMap = new Map();
+        for (let d = new Date(monthStart); d <= now; d.setDate(d.getDate() + 1)) {
+          monthMap.set(toYYYYMMDD(d), 0);
+        }
+        (filtered || [])
+          .filter((tx) => tx?.type === "expense")
+          .forEach((tx) => {
+            const d = new Date(tx.date);
+            if (d < monthStart || d > now) return;
+            const key = toYYYYMMDD(d);
+            monthMap.set(key, (monthMap.get(key) || 0) + (parseFloat(tx.amount) || 0));
+          });
+        setFilteredMonthlyDailyExpenses(
+          Array.from(monthMap.entries())
+            .sort((a, b) => new Date(a[0]) - new Date(b[0]))
+            .map(([date, total]) => ({ date, total }))
+        );
+
+        // =============================
         // Filtered Expense by Category (Current month only)
         // =============================
         const filteredExpenseByCategory = [];
@@ -722,55 +760,6 @@ const Dashboard = () => {
 
   // Income vs Expenses chart removed from dashboard
 
-  const pieChartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    layout: { padding: 16 },
-    radius: "100%",
-    plugins: {
-      legend: {
-        position: "right",
-        labels: {
-          // Brighten labels in dark mode for better contrast
-          color: dark ? "#ffffff" : "#374151",
-          font: {
-            size: 12,
-            weight: "600",
-          },
-          usePointStyle: true,
-          boxWidth: 12,
-          padding: 15,
-        },
-        // Custom legend rendering to place percentages in colored squares
-        onHover: function (event, legendItem, legend) {
-          // This is just to prevent default hover behavior if needed
-        },
-      },
-      title: {
-        display: false,
-      },
-      datalabels: {
-        color: "#fff",
-        font: {
-          weight: "bold",
-          size: 12,
-        },
-        formatter: (value, context) => {
-          // Calculate total for percentage
-          const total = context.dataset.data.reduce((acc, val) => acc + val, 0);
-          // Calculate percentage
-          const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
-          // Only show percentage if it's above 5% to avoid clutter
-          return percentage > 5 ? `${percentage}%` : "";
-        },
-        anchor: "center",
-        align: "center",
-        clip: true,
-      },
-    },
-    cutout: "60%",
-  };
-
   if (loading) {
     return (
   <div className="container mx-auto px-4 pt-4 md:pt-0 pb-4">
@@ -888,7 +877,7 @@ const Dashboard = () => {
 
   return (
   <AnimatedPage>
-  <div className="container mx-auto px-4 pt-4 md:pt-0 pb-4 min-h-0">
+  <div className="dashboard-page container mx-auto px-4 pt-4 md:pt-0 pb-4 min-h-0">
     <motion.div 
       className="flex flex-row items-center justify-between mb-8 gap-4 min-h-[3rem]"
       initial={{ opacity: 0, y: -10 }}
@@ -919,215 +908,74 @@ const Dashboard = () => {
     {/* Source filter dropdown moved to title area */}
 
       {/* Summary Cards */}
-      <AnimatedStagger 
-        className={`grid grid-cols-2 md:grid-cols-4 gap-4 mb-6`}
-        staggerDelay={0.08}
-        initialDelay={0}
-      >
-        {!isIncomeTrackingDisabled && (
-          <AnimatedItem>
-          <Card
-            style={{ borderColor: "rgba(52, 211, 153, 0.5)" }}
-          >
-            <div className="px-4 py-3">
-              <div className="flex items-center">
-                <div className="p-2 rounded-full bg-green-100 dark:bg-green-900/30 mr-3">
-                  <svg
-                    className="w-4 h-4 text-green-500"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                    ></path>
-                  </svg>
-                </div>
-                <div>
-                  <h2 className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                    {t("totalIncome")}
-                  </h2>
-                  <p className="text-lg font-semibold text-green-600 dark:text-green-400">
-                    {formatCurrency(
-                      shouldFilter && filteredSummary
-                        ? filteredSummary.total_income
-                        : dashboardData?.summary?.total_income || 0
-                    )}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </Card>
-          </AnimatedItem>
-        )}
-
-        <AnimatedItem>
-        <Card
-          style={{ borderColor: "rgba(248, 113, 113, 0.5)" }}
-        >
-          <div className="px-4 py-3">
-            <div className="flex items-center">
-              <div className="p-2 rounded-full bg-red-100 dark:bg-red-900/30 mr-3">
-                <svg
-                  className="w-4 h-4 text-red-500"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                  ></path>
-                </svg>
-              </div>
-              <div>
-                <h2 className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                  {t("totalExpenses")}
-                </h2>
-                <p className="text-lg font-semibold text-red-600 dark:text-red-400">
-                  {formatCurrency(
-                    shouldFilter && filteredSummary
-                      ? filteredSummary.total_expenses
-                      : dashboardData?.summary?.total_expenses || 0
-                  )}
-                </p>
-              </div>
-            </div>
-          </div>
-        </Card>
-        </AnimatedItem>
-
-        {!isIncomeTrackingDisabled && (
-          <AnimatedItem>
-          <Card
-            style={{ borderColor: "rgba(168, 85, 247, 0.5)" }}
-          >
-            <div className="px-4 py-3">
-              <div className="flex items-center">
-                <div className="p-2 rounded-full bg-purple-100 dark:bg-purple-900/30 mr-3">
-                  <svg
-                    className="w-4 h-4 text-purple-500"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                    ></path>
-                  </svg>
-                </div>
-                <div>
-                  <h2 className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                    {t("netSavings")}
-                  </h2>
-                  <p className="text-lg font-semibold text-purple-600 dark:text-purple-400">
-                    {formatCurrency(
-                      shouldFilter && filteredSummary
-                        ? filteredSummary.balance
-                        : (dashboardData?.summary?.total_income || 0) -
-                          (dashboardData?.summary?.total_expenses || 0)
-                    )}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </Card>
-          </AnimatedItem>
-        )}
-
-        <AnimatedItem>
-        <Card
-          style={{ borderColor: "rgba(249, 115, 22, 0.5)" }}
-        >
-          <div className="px-4 py-3">
-            <div className="flex items-center">
-              <div className="p-2 rounded-full bg-orange-100 dark:bg-orange-900/30 mr-3">
-                <svg
-                  className="w-4 h-4 text-orange-500"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-                  ></path>
-                </svg>
-              </div>
-              <div>
-                <h2 className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                  {isIncomeTrackingDisabled
-                    ? "Ø " + t("dailyExpenses")
-                    : "Ø " + t("dailyExpenses")}
-                </h2>
-                <p className="text-lg font-semibold text-orange-600 dark:text-orange-400">
-                  {(() => {
-                    // Use filtered data if sources are selected, otherwise use dashboardData
-                    const dailyExpensesData = shouldFilter && filteredDailyExpenses.length > 0 
-                      ? filteredDailyExpenses 
-                      : dashboardData?.dailyExpenses || [];
-                    
-                    if (isIncomeTrackingDisabled) {
-                      return dailyExpensesData.length > 0
-                        ? formatCurrency(
-                            dailyExpensesData.reduce(
-                              (sum, item) => sum + parseFloat(item.total || 0),
-                              0,
-                            ) / dailyExpensesData.length,
-                          )
-                        : formatCurrency(0);
-                    } else {
-                      // For non-filtered case, use weekly expenses calculation
-                      if (shouldFilter) {
-                        // Calculate average from filtered 7-day series directly for consistency
-                        return dailyExpensesData.length > 0
-                          ? formatCurrency(
-                              dailyExpensesData.reduce((sum, item) => sum + (parseFloat(item.total || 0)), 0) /
-                              dailyExpensesData.length
-                            )
-                          : formatCurrency(0);
-                      } else {
-                        return dashboardData?.weeklyExpenses?.days_with_expenses > 0
-                          ? formatCurrency(
-                              dashboardData.weeklyExpenses.total_expenses /
-                                dashboardData.weeklyExpenses.days_with_expenses,
-                            )
-                          : formatCurrency(0);
-                      }
-                    }
-                  })()}
-                </p>
-              </div>
-            </div>
-          </div>
-        </Card>
-        </AnimatedItem>
-      </AnimatedStagger>
+      <SummaryCards
+        totalIncome={
+          shouldFilter && filteredSummary
+            ? filteredSummary.total_income
+            : dashboardData?.summary?.total_income || 0
+        }
+        totalExpenses={
+          shouldFilter && filteredSummary
+            ? filteredSummary.total_expenses
+            : dashboardData?.summary?.total_expenses || 0
+        }
+        netSavings={
+          shouldFilter && filteredSummary
+            ? filteredSummary.balance
+            : (dashboardData?.summary?.total_income || 0) -
+              (dashboardData?.summary?.total_expenses || 0)
+        }
+        averageExpense={(() => {
+          const dailyExpensesData = shouldFilter && filteredDailyExpenses.length > 0
+            ? filteredDailyExpenses
+            : dashboardData?.dailyExpenses || [];
+          if (isIncomeTrackingDisabled) {
+            return dailyExpensesData.length > 0
+              ? dailyExpensesData.reduce((sum, item) => sum + parseFloat(item.total || 0), 0) / dailyExpensesData.length
+              : 0;
+          }
+          if (shouldFilter) {
+            return dailyExpensesData.length > 0
+              ? dailyExpensesData.reduce((sum, item) => sum + parseFloat(item.total || 0), 0) / dailyExpensesData.length
+              : 0;
+          }
+          return dashboardData?.weeklyExpenses?.days_with_expenses > 0
+            ? dashboardData.weeklyExpenses.total_expenses / dashboardData.weeklyExpenses.days_with_expenses
+            : 0;
+        })()}
+        incomeTrackingDisabled={isIncomeTrackingDisabled}
+      />
 
       {/* Daily Expenses Chart - Moved to top */}
       <AnimatedSection delay={0.3} scrollTriggered={false}>
-      <div className="card md:h-[250px] mb-8">
+      <div className="card md:h-[370px] mb-8">
         <div className="card-body h-full flex flex-col min-h-0">
           <h2 className="text-xl font-semibold mb-3">{t("dailyExpenses")}</h2>
           {(() => {
-            // Use filtered data if sources are selected, otherwise use dashboardData
-            const dailyExpensesData = shouldFilter && filteredDailyExpenses.length > 0 
-              ? filteredDailyExpenses 
-              : dashboardData?.dailyExpenses || [];
+            // On desktop (md+), show full current month; on mobile, show last 7 days
+            const isWide = typeof window !== "undefined" && window.innerWidth >= 768;
+            let dailyExpensesData;
+            if (shouldFilter) {
+              if (isWide && filteredMonthlyDailyExpenses.length > 0) {
+                dailyExpensesData = filteredMonthlyDailyExpenses;
+              } else if (filteredDailyExpenses.length > 0) {
+                dailyExpensesData = filteredDailyExpenses;
+              } else {
+                dailyExpensesData = [];
+              }
+            } else if (isWide && dashboardData?.monthlyDailyExpenses?.length > 0) {
+              dailyExpensesData = dashboardData.monthlyDailyExpenses;
+            } else {
+              dailyExpensesData = dashboardData?.dailyExpenses || [];
+            }
+
+            // For monthly view use day number labels, for weekly use weekday names
+            const useMonthLabels = isWide && dailyExpensesData.length > 7;
+            const labels = dailyExpensesData.map((item) =>
+              useMonthLabels
+                ? String(new Date(item.date).getDate())
+                : formatShortWeekday(item.date)
+            );
             
             return dailyExpensesData.length > 0 ? (
               <motion.div
@@ -1138,7 +986,7 @@ const Dashboard = () => {
                 style={{ minHeight: 0 }}
               >
                 <AnimatedBarChart
-                  labels={dailyExpensesData.map((item) => formatShortWeekday(item.date))}
+                  labels={labels}
                   datasets={[
                     {
                       label: t("expenses"),
@@ -1182,196 +1030,141 @@ const Dashboard = () => {
               {t("expensesByCategory")}
             </h2>
             {(() => {
-              // Use filtered data if sources are selected, otherwise use dashboardData
               const expenseByCategoryData = shouldFilter && filteredExpenseByCategory.length > 0 
                 ? filteredExpenseByCategory 
                 : dashboardData?.expenseByCategory || [];
               
+              const catLabels = expenseByCategoryData.map((item) => {
+                const name = (item.category_name || "").trim();
+                return name !== "" ? name : (t("uncategorized") || "Uncategorized");
+              });
+              const catValues = expenseByCategoryData.map((item) => parseFloat(item.total));
+              const catColors = [
+                "rgba(248, 113, 113, 0.85)",
+                "rgba(96, 165, 250, 0.85)",
+                "rgba(251, 191, 36, 0.85)",
+                "rgba(139, 92, 246, 0.85)",
+                "rgba(16, 185, 129, 0.85)",
+                "rgba(244, 114, 182, 0.85)",
+                "rgba(209, 213, 219, 0.85)",
+                "rgba(139, 69, 19, 0.85)",
+              ];
+
               return expenseByCategoryData.length > 0 ? (
                 <>
-                  {/* Mobile: custom legend with amounts (scrollable) */}
+                  {/* Mobile: donut + scrollable legend */}
                   <div className="md:hidden">
                     <div className="w-full h-44">
                       <Pie
                         data={{
-                          labels: expenseByCategoryData.map((item) => {
-                            const name = (item.category_name || "").trim();
-                            return name !== "" ? name : (t("uncategorized") || "Uncategorized");
-                          }),
-                          datasets: [
-                            {
-                              data: expenseByCategoryData.map((item) => parseFloat(item.total)),
-                              radius: "85%",
-                              backgroundColor: [
-                                "rgba(248, 113, 113, 0.8)",
-                                "rgba(96, 165, 250, 0.8)",
-                                "rgba(251, 191, 36, 0.8)",
-                                "rgba(139, 92, 246, 0.8)",
-                                "rgba(16, 185, 129, 0.8)",
-                                "rgba(244, 114, 182, 0.8)",
-                                "rgba(209, 213, 219, 0.8)",
-                                "rgba(139, 69, 19, 0.8)",
-                              ],
-                              borderColor: [
-                                "rgba(248, 113, 113, 1)",
-                                "rgba(96, 165, 250, 1)",
-                                "rgba(251, 191, 36, 1)",
-                                "rgba(139, 92, 246, 1)",
-                                "rgba(16, 185, 129, 1)",
-                                "rgba(244, 114, 182, 1)",
-                                "rgba(209, 213, 219, 1)",
-                                "rgba(139, 69, 19, 1)",
-                              ],
-                              borderWidth: 1,
-                            },
-                          ],
-                      }}
-                      options={{
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        layout: { padding: 8 },
-                        plugins: {
-                          legend: { display: false },
-                          title: { display: false },
-                          datalabels: {
-                            color: "#fff",
-                            font: { weight: "bold", size: 12 },
-                            formatter: (value, context) => {
-                              const total = context.dataset.data.reduce((acc, v) => acc + v, 0);
-                              const pct = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
-                              return pct > 5 ? `${pct}%` : "";
-                            },
-                            anchor: "center",
-                            align: "center",
-                            clip: true,
-                          },
-                        },
-                        cutout: "60%",
-                      }}
-                  />
-                  </div>
-                  <ChartLegend
-                    labels={expenseByCategoryData.map((item) => {
-                      const name = (item.category_name || "").trim();
-                      return name !== "" ? name : (t("uncategorized") || "Uncategorized");
-                    })}
-                    values={expenseByCategoryData.map((item) => parseFloat(item.total))}
-                    backgroundColor={[
-                      "rgba(248, 113, 113, 0.8)",
-                      "rgba(96, 165, 250, 0.8)",
-                      "rgba(251, 191, 36, 0.8)",
-                      "rgba(139, 92, 246, 0.8)",
-                      "rgba(16, 185, 129, 0.8)",
-                      "rgba(244, 114, 182, 0.8)",
-                      "rgba(209, 213, 219, 0.8)",
-                      "rgba(139, 69, 19, 0.8)",
-                    ]}
-                    formatCurrency={formatCurrency}
-                  />
-                </div>
-
-                {/* Desktop: pie + custom right-side table legend */}
-                <div className="hidden md:flex items-center gap-6 w-full flex-1 h-full">
-                  <div className="flex-[2] h-full flex-1 min-w-0 overflow-hidden p-2 flex items-center justify-center" style={{ minHeight: 0 }}>
-                    <Pie
-                      data={{
-                        labels: expenseByCategoryData.map((item) => {
-                          const name = (item.category_name || "").trim();
-                          return name !== "" ? name : (t("uncategorized") || "Uncategorized");
-                        }),
-                        datasets: [
-                          {
-                            data: expenseByCategoryData.map((item) => parseFloat(item.total)),
-                            radius: "85%",
-                            backgroundColor: [
-                              "rgba(248, 113, 113, 0.8)",
-                              "rgba(96, 165, 250, 0.8)",
-                              "rgba(251, 191, 36, 0.8)",
-                              "rgba(139, 92, 246, 0.8)",
-                              "rgba(16, 185, 129, 0.8)",
-                              "rgba(244, 114, 182, 0.8)",
-                              "rgba(209, 213, 219, 0.8)",
-                              "rgba(139, 69, 19, 0.8)",
-                            ],
-                            borderColor: [
-                              "rgba(248, 113, 113, 1)",
-                              "rgba(96, 165, 250, 1)",
-                              "rgba(251, 191, 36, 1)",
-                              "rgba(139, 92, 246, 1)",
-                              "rgba(16, 185, 129, 1)",
-                              "rgba(244, 114, 182, 1)",
-                              "rgba(209, 213, 219, 1)",
-                              "rgba(139, 69, 19, 1)",
-                            ],
+                          labels: catLabels,
+                          datasets: [{
+                            data: catValues,
+                            backgroundColor: catColors,
+                            borderColor: catColors.map(c => c.replace("0.85", "1")),
                             borderWidth: 1,
-                          },
-                        ],
-                      }}
-                      options={{
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        layout: { padding: 12 },
-                        radius: "100%",
-                        plugins: {
-                          // disable built-in legend for desktop: we render a table next to the chart
-                          legend: { display: false },
-                          title: { display: false },
-                          datalabels: {
-                            color: "#fff",
-                            font: { weight: "bold", size: 12 },
-                            formatter: (value, context) => {
-                              const total = context.dataset.data.reduce((acc, val) => acc + val, 0);
-                              const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
-                              return percentage > 5 ? `${percentage}%` : "";
+                            hoverOffset: 12,
+                          }],
+                        }}
+                        options={{
+                          responsive: true,
+                          maintainAspectRatio: false,
+                          layout: { padding: 8 },
+                          plugins: {
+                            legend: { display: false },
+                            title: { display: false },
+                            datalabels: {
+                              color: "#fff",
+                              font: { weight: "bold", size: 12 },
+                              formatter: (value, context) => {
+                                const total = context.dataset.data.reduce((acc, v) => acc + v, 0);
+                                const pct = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                                return pct > 5 ? `${pct}%` : "";
+                              },
+                              anchor: "center",
+                              align: "center",
+                              clip: true,
                             },
-                            anchor: "center",
-                            align: "center",
-                            clip: true,
                           },
-                        },
-                        cutout: "60%",
-                      }}
-                      style={{ height: "260px", width: "260px", margin: "0 auto" }}
+                          cutout: "60%",
+                        }}
+                      />
+                    </div>
+                    <ChartLegend
+                      labels={catLabels}
+                      values={catValues}
+                      backgroundColor={catColors}
+                      formatCurrency={formatCurrency}
                     />
                   </div>
 
-                  {/* Right-side table legend */}
-                  <div className="w-52 max-h-[260px] overflow-y-auto pt-1 self-center scrollbar-thin-modern">
-                    <table className="w-full text-sm">
-                      <tbody>
-                        {expenseByCategoryData.map((item, idx) => {
-                          const name = (item.category_name || "").trim() || (t("uncategorized") || "Uncategorized");
-                          const amount = Number(item.total || 0);
-                          const bg = [
-                            "rgba(248, 113, 113, 0.8)",
-                            "rgba(96, 165, 250, 0.8)",
-                            "rgba(251, 191, 36, 0.8)",
-                            "rgba(139, 92, 246, 0.8)",
-                            "rgba(16, 185, 129, 0.8)",
-                            "rgba(244, 114, 182, 0.8)",
-                            "rgba(209, 213, 219, 0.8)",
-                            "rgba(139, 69, 19, 0.8)",
-                          ];
-                          const color = bg[idx % bg.length];
-                          return (
-                            <tr key={`${name}-${idx}`} className="h-9">
-                              <td className="align-middle pr-3">
-                                <div className="flex items-center min-w-0">
-                                  <span className="inline-block h-2.5 w-2.5 rounded-full mr-3 flex-shrink-0" style={{ backgroundColor: color }} aria-hidden="true" />
-                                  <span className="text-gray-700 dark:text-gray-300 truncate">{name}</span>
-                                </div>
-                              </td>
-                              <td className="text-right align-middle text-gray-600 dark:text-gray-400 font-medium whitespace-nowrap">
-                                {formatCurrency(amount)}
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
+                  {/* Desktop: donut + right-side table legend */}
+                  <div className="hidden md:flex items-center gap-6 w-full flex-1 h-full">
+                    <div className="flex-[2] h-full flex-1 min-w-0 overflow-hidden p-2 flex items-center justify-center" style={{ minHeight: 0 }}>
+                      <Pie
+                        data={{
+                          labels: catLabels,
+                          datasets: [{
+                            data: catValues,
+                            backgroundColor: catColors,
+                            borderColor: catColors.map(c => c.replace("0.85", "1")),
+                            borderWidth: 1,
+                            hoverOffset: 12,
+                          }],
+                        }}
+                        options={{
+                          responsive: true,
+                          maintainAspectRatio: false,
+                          layout: { padding: 12 },
+                          radius: "100%",
+                          plugins: {
+                            legend: { display: false },
+                            title: { display: false },
+                            datalabels: {
+                              color: "#fff",
+                              font: { weight: "bold", size: 12 },
+                              formatter: (value, context) => {
+                                const total = context.dataset.data.reduce((acc, val) => acc + val, 0);
+                                const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                                return percentage > 5 ? `${percentage}%` : "";
+                              },
+                              anchor: "center",
+                              align: "center",
+                              clip: true,
+                            },
+                          },
+                          cutout: "60%",
+                        }}
+                        style={{ height: "260px", width: "260px", margin: "0 auto" }}
+                      />
+                    </div>
+
+                    <div className="w-52 max-h-[260px] overflow-y-auto pt-1 self-center scrollbar-thin-modern">
+                      <table className="w-full text-sm">
+                        <tbody>
+                          {expenseByCategoryData.map((item, idx) => {
+                            const name = (item.category_name || "").trim() || (t("uncategorized") || "Uncategorized");
+                            const amount = Number(item.total || 0);
+                            const color = catColors[idx % catColors.length];
+                            return (
+                              <tr key={`${name}-${idx}`} className="h-9">
+                                <td className="align-middle pr-3">
+                                  <div className="flex items-center min-w-0">
+                                    <span className="inline-block h-2.5 w-2.5 rounded-full mr-3 flex-shrink-0" style={{ backgroundColor: color }} aria-hidden="true" />
+                                    <span className="text-gray-700 dark:text-gray-300 truncate">{name}</span>
+                                  </div>
+                                </td>
+                                <td className="text-right align-middle text-gray-600 dark:text-gray-400 font-medium whitespace-nowrap">
+                                  {formatCurrency(amount)}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
-                </div>
-              </>
+                </>
               ) : (
                 <div className="text-center py-8 text-gray-500">{t("noDataAvailable")}</div>
               );
