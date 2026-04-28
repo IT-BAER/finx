@@ -750,15 +750,6 @@ const Transactions = () => {
                                             {transaction.category_name ||
                                               transaction.category}
                                           </span>
-                                          {transaction.recurring_id && (
-                                            <Icon
-                                              src="/icons/recurring.svg"
-                                              size="sm"
-                                              variant="accent"
-                                              alt={t("recurring") || "Recurring"}
-                                              className="ml-2"
-                                            />
-                                          )}
                                           {transaction._isOffline && (
                                             <div className="flex items-center text-xs text-amber-600 dark:text-amber-400">
                                               <svg
@@ -779,14 +770,24 @@ const Transactions = () => {
                                           )}
                                         </div>
                                       </div>
-                                      <div
-                                        className={`font-medium whitespace-nowrap ml-2 ${transaction.type === "income"
-                                            ? "text-green-600 dark:text-green-400"
-                                            : "text-red-600 dark:text-red-400"
-                                          }`}
-                                      >
-                                        {transaction.type === "income" ? "+" : "-"}
-                                        {formatCurrency(parseFloat(transaction.amount))}
+                                      <div className="flex flex-col items-end ml-2 gap-1">
+                                        {transaction.recurring_id && (
+                                          <Icon
+                                            src="/icons/recurring.svg"
+                                            size="sm"
+                                            variant="accent"
+                                            alt={t("recurring") || "Recurring"}
+                                          />
+                                        )}
+                                        <div
+                                          className={`font-medium whitespace-nowrap ${transaction.type === "income"
+                                              ? "text-green-600 dark:text-green-400"
+                                              : "text-red-600 dark:text-red-400"
+                                            }`}
+                                        >
+                                          {transaction.type === "income" ? "+" : "-"}
+                                          {formatCurrency(parseFloat(transaction.amount))}
+                                        </div>
                                       </div>
                                     </div>
                                   </motion.div>
@@ -875,7 +876,17 @@ const Transactions = () => {
                                 className={`table-row`}
                               >
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200">
-                                  {formatDate(transaction.date)}
+                                  <div className="flex items-center justify-between gap-2">
+                                    <span>{formatDate(transaction.date)}</span>
+                                    {transaction.recurring_id && (
+                                      <Icon
+                                        src="/icons/recurring.svg"
+                                        size="sm"
+                                        variant="accent"
+                                        alt={t("recurring") || "Recurring"}
+                                      />
+                                    )}
+                                  </div>
                                 </td>
                                 <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-200 md:table-cell break-words max-w-xs">
                                   <div className="flex items-center gap-2">
@@ -925,15 +936,6 @@ const Transactions = () => {
                                           );
                                         })()}
                                       </div>
-                                      {transaction.recurring_id && (
-                                        <Icon
-                                          src="/icons/recurring.svg"
-                                          size="sm"
-                                          variant="accent"
-                                          alt={t("recurring") || "Recurring"}
-                                          className="ml-1"
-                                        />
-                                      )}
                                     </>
                                   ) : transaction.source_name || transaction.source ? (
                                     <div

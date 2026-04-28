@@ -114,15 +114,69 @@ const createRecurringTransaction = async (req, res) => {
 
     const db = require("../config/db");
 
-    // VALIDATION: Ensure category_id belongs to the user
+    // Determine the effective owner for this recurring rule.
+    // If linked to an existing transaction, the rule MUST be owned by the
+    // transaction's owner (not the logged-in user) so that auto-generated
+    // occurrences attach to the correct user's data and the category_id
+    // (which belongs to that user) can be resolved by the recurring processor.
+    // Without a base transaction we fall back to the logged-in user.
+    let effectiveOwnerId = req.user.id;
+    if (txnId) {
+      try {
+        const ownerLookup = await db.query(
+          "SELECT user_id FROM transactions WHERE id = $1",
+          [txnId],
+        );
+        if (ownerLookup.rows.length > 0) {
+          const txnOwnerId = Number(ownerLookup.rows[0].user_id);
+          if (txnOwnerId !== Number(req.user.id)) {
+            // Verify the requester has write access to that owner's data
+            const meta = await getSharingPermissionMeta(txnOwnerId, req.user.id);
+            if (meta && meta.exists && meta.writable) {
+              effectiveOwnerId = txnOwnerId;
+            }
+          } else {
+            effectiveOwnerId = txnOwnerId;
+          }
+        }
+      } catch (e) {
+        logger.warn(`[RecurringCreate] Failed to resolve transaction owner for ${txnId}: ${e.message}`);
+      }
+    }
+
+    // VALIDATION: Ensure category_id belongs to the effective owner.
+    // For shared edits the frontend may have looked up category_id against
+    // the logged-in user's categories; resolve by NAME against the actual
+    // owner so cross-user category mappings still work.
+    let resolvedCatId = catId;
     if (catId) {
       const catCheck = await db.query(
         "SELECT id FROM categories WHERE id = $1 AND user_id = $2",
-        [catId, req.user.id]
+        [catId, effectiveOwnerId]
       );
       if (catCheck.rows.length === 0) {
-        logger.error(`[RecurringCreate] Invalid category_id ${catId} for user ${req.user.id}`);
-        return res.status(400).json({ message: "Invalid category_id for this user" });
+        // Try resolve by name: look up the category by id (any owner) then
+        // find a category with the same name owned by effectiveOwnerId.
+        const nameLookup = await db.query(
+          "SELECT name FROM categories WHERE id = $1 LIMIT 1",
+          [catId],
+        );
+        const catName = nameLookup.rows[0]?.name;
+        if (catName) {
+          const ownerCat = await db.query(
+            "SELECT id FROM categories WHERE user_id = $1 AND LOWER(TRIM(name)) = LOWER(TRIM($2)) LIMIT 1",
+            [effectiveOwnerId, catName],
+          );
+          if (ownerCat.rows.length > 0) {
+            resolvedCatId = ownerCat.rows[0].id;
+          } else {
+            logger.error(`[RecurringCreate] Invalid category_id ${catId} for owner ${effectiveOwnerId} (no name match for "${catName}", requested by user ${req.user.id})`);
+            return res.status(400).json({ message: "Invalid category_id for this user" });
+          }
+        } else {
+          logger.error(`[RecurringCreate] Invalid category_id ${catId} for owner ${effectiveOwnerId} (requested by user ${req.user.id})`);
+          return res.status(400).json({ message: "Invalid category_id for this user" });
+        }
       }
     }
 
@@ -138,7 +192,7 @@ const createRecurringTransaction = async (req, res) => {
          AND recurrence_interval = $5
          AND (end_date IS NULL OR end_date >= $6)`,
       [
-        req.user.id,
+        effectiveOwnerId,
         titleFinal,
         normalizedAmountNum,
         startDateYMD,
@@ -152,11 +206,11 @@ const createRecurringTransaction = async (req, res) => {
     }
 
     const recurringTransaction = await RecurringTransaction.create(
-      req.user.id,
+      effectiveOwnerId,
       titleFinal,
       normalizedAmountNum,
       safeType,
-      catId,
+      resolvedCatId,
       source || null,
       target || null,
       description,
