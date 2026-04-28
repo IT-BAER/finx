@@ -127,6 +127,7 @@ const EditTransaction = () => {
         : (transaction.target_name || transaction.target || ""),
       date: formattedDate,
       isRecurring: !!transaction.recurring,
+      recurring_id: transaction.recurring?.id || transaction.recurring_id || null,
       recurrence_type: transaction.recurring?.recurrence_type || "monthly",
       recurrence_interval: transaction.recurring?.recurrence_interval || 1,
       end_date: transaction.recurring?.end_date 
@@ -261,7 +262,7 @@ const EditTransaction = () => {
           target: String(dataToSend.target || "").trim() || null,
           description: formData.description || null,
           recurrence_type: formData.recurrence_type,
-          recurrence_interval: parseInt(formData.recurrence_interval),
+          recurrence_interval: parseInt(formData.recurrence_interval) || 1,
           start_date: formData.date,
           end_date: formData.end_date || null,
           max_occurrences: formData.max_occurrences

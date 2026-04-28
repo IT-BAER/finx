@@ -202,14 +202,18 @@ class OfflineAPI {
         const response = await axios.get(`${API_BASE_URL}/transactions/${id}`);
         const transaction = response.data;
 
-        // Cache the transaction for offline editing
-        if (transaction && transaction.transaction) {
-          await offlineStorage.cacheTransactionForEditing(
-            transaction.transaction,
-          );
+        // Attach the recurring rule details to the transaction object so the edit form can use them
+        const txn = transaction.transaction;
+        if (txn && transaction.recurring) {
+          txn.recurring = transaction.recurring;
         }
 
-        return transaction.transaction;
+        // Cache the transaction for offline editing
+        if (txn) {
+          await offlineStorage.cacheTransactionForEditing(txn);
+        }
+
+        return txn;
       } else {
         // Try to get cached transaction for editing
         const cachedTransaction =

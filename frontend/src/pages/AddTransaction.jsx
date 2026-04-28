@@ -2,7 +2,6 @@ import { useState, useEffect, useMemo } from "react";
 import "../utils/haptics.js";
 import { useNavigate } from "react-router-dom";
 import offlineAPI from "../services/offlineAPI.js";
-import { recurringTransactionAPI } from "../services/api.jsx";
 import { useTranslation } from "../hooks/useTranslation";
 import { useCategories, useSources, useTargets } from "../hooks/useQueries";
 import Dropdown from "../components/Dropdown.jsx";
@@ -190,6 +189,8 @@ const AddTransaction = () => {
           category: String(formData.category || "").trim(),
           source: String(formData.source || "").trim(),
           target: String(formData.target || "").trim() || defaultTarget,
+          category_id:
+            categories.find((c) => String(c.name || "").trim().toLowerCase() === String(formData.category || "").trim().toLowerCase())?.id || null,
         };
       }
 
@@ -204,45 +205,8 @@ const AddTransaction = () => {
         window.toastWithHaptic.info(t("changesQueuedOffline"));
       } else if (result.transaction) {
         window.toastWithHaptic.success(t("transactionAddedSuccess"));
-      }
-
-      // If this is a recurring transaction, create the recurring transaction rule
-      if (formData.isRecurring && result.transaction && result.transaction.id) {
-        const recurringData = {
-          title:
-            formData.description ||
-            `${formData.type === "income" ? t("income") : t("expense")} - ${formData.category}`,
-          amount: parseFloat(formData.amount),
-          type: formData.type,
-          category_id:
-            formData.type === "income"
-              ? null
-              : categories.find((c) => String(c.name || "").trim().toLowerCase() === String(formData.category || "").trim().toLowerCase())?.id || null,
-          // Use the same field mapping as dataToSend for consistency
-          source: String(dataToSend.source || "").trim() || null,
-          target: String(dataToSend.target || "").trim() || null,
-          description: formData.description || null,
-          recurrence_type: formData.recurrence_type,
-          recurrence_interval: parseInt(formData.recurrence_interval),
-          start_date: formData.date,
-          end_date: formData.end_date || null,
-          max_occurrences: formData.max_occurrences
-            ? parseInt(formData.max_occurrences)
-            : null,
-          transaction_id: result.transaction.id,
-        };
-
-        try {
-          const recurringResult = await recurringTransactionAPI.create(recurringData);
+        if (formData.isRecurring) {
           window.toastWithHaptic.success(t("recurringTransactionCreated"));
-          
-          // The backend already updated the transaction with recurring_transaction_id
-          // No need to call updateTransaction - it will be included when the list refreshes
-        } catch (err) {
-          console.error("Error creating recurring transaction:", err);
-          window.toastWithHaptic.error(
-            err.response?.data?.message || t("failedToCreateRecurringTransaction")
-          );
         }
       }
 
