@@ -1,5 +1,5 @@
 const RecurringTransaction = require("../models/RecurringTransaction");
-const { getSharingPermissionMeta, getUsersSharedWithOwner } = require("../utils/access");
+const { getSharingPermissionMeta, getUsersSharedWithOwner, getAccessibleUserIds } = require("../utils/access");
 const logger = require("../utils/logger");
 
 // Helpers
@@ -170,11 +170,14 @@ const createRecurringTransaction = async (req, res) => {
 
     // If this recurring transaction is linked to a base transaction,
     // update that transaction to set its recurring_transaction_id
-    // This ensures the recurring icon appears on the initial transaction
+    // This ensures the recurring icon appears on the initial transaction.
+    // Use accessible user IDs so shared users (with write access) can update
+    // transactions owned by another user they have access to.
     if (txnId && recurringTransaction && recurringTransaction.id) {
-      await db.query( // Using the db instance required above
-        "UPDATE transactions SET recurring_transaction_id = $1 WHERE id = $2 AND user_id = $3",
-        [recurringTransaction.id, txnId, req.user.id],
+      const accessibleIds = await getAccessibleUserIds(req.user.id, "all");
+      await db.query(
+        "UPDATE transactions SET recurring_transaction_id = $1 WHERE id = $2 AND user_id = ANY($3::int[])",
+        [recurringTransaction.id, txnId, accessibleIds],
       );
     }
 
