@@ -12,7 +12,7 @@ All notable changes to this project are documented in this file.
 ### Changed
 - **Recurring icon position**: Moved the recurring indicator on the Transactions list — desktop shows it right-aligned in the date column; mobile shows it above the amount on the right side.
 
-## [v1.0.0] - 2026-06-10
+## [v1.0.0] - 2026-04-12
 
 ### Added
 - **Admin Dashboard**: Full admin dashboard with stats, user overview, server health, activity, audit logs, and error logs
@@ -41,7 +41,7 @@ All notable changes to this project are documented in this file.
 
 ---
 
-## [v0.8.7] - 2025-01-30
+## [v0.8.7] - 2026-01-25
 
 ### Removed (Backend)
 - **Push Notifications**: Removed all FCM/Firebase push notification infrastructure
@@ -77,7 +77,7 @@ All notable changes to this project are documented in this file.
 
 ---
 
-## [v0.8.6] - 2025-01-29
+## [v0.8.6] - 2026-01-21
 
 ### Security
 - Updated `tar` package to fix CVE-2026-23950 (race condition via Unicode collisions)
@@ -90,7 +90,7 @@ All notable changes to this project are documented in this file.
 
 ---
 
-## [v0.8.3] - 2026-01-08
+## [v0.8.3] - 2026-01-09
 
 ### fix
 
