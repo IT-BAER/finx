@@ -1,10 +1,12 @@
 import { useState, useEffect, useMemo } from "react";
 import "../utils/haptics.js";
 import { useNavigate, useParams } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import offlineAPI from "../services/offlineAPI.js";
 import { recurringTransactionAPI } from "../services/api.jsx";
 import { useTranslation } from "../hooks/useTranslation";
 import { useCategories, useSources, useTargets, useTransaction } from "../hooks/useQueries";
+import { queryKeys } from "../lib/queryClient";
 import Dropdown from "../components/Dropdown.jsx";
 import DropdownWithInput from "../components/DropdownWithInput.jsx";
 import Button from "../components/Button";
@@ -17,6 +19,7 @@ import { AnimatedPage, AnimatedSection } from "../components/AnimatedPage";
 import Card from "../components/Card";
 const EditTransaction = () => {
   const { id } = useParams();
+  const queryClient = useQueryClient();
   
   // React Query hooks for data fetching
   const { data: categoriesData = [] } = useCategories();
@@ -290,6 +293,9 @@ const EditTransaction = () => {
         window.toastWithHaptic.success(t("recurringTransactionRemoved"));
       }
 
+      // Invalidate RQ cache for this transaction so reopening always fetches fresh data
+      queryClient.invalidateQueries({ queryKey: queryKeys.transactionDetail(id) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.transactions });
       // Dispatch a custom event to notify the Transactions page to refresh
       window.dispatchEvent(new CustomEvent("transactionUpdated"));
       navigate("/transactions");
