@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented in this file.
 
+## [v1.0.1] - 2026-04-28
+
+### Fixed
+- **Recurring transactions on shared data**: Marking a shared transaction as recurring now correctly preserves the recurring icon and links the rule to the data owner instead of the editing user. Previously the `recurring_transaction_id` update silently failed for cross-user transactions.
+- **Category preservation in auto-generated occurrences**: Recurring rules created via shared edits now resolve the category to the rule owner's same-named category, so cron-generated transactions retain their category instead of falling back to NULL.
+- **Recurring rule deletion across users**: `DELETE` of a recurring rule now clears `recurring_transaction_id` on linked transactions regardless of owner.
+
+### Changed
+- **Recurring icon position**: Moved the recurring indicator on the Transactions list — desktop shows it right-aligned in the date column; mobile shows it above the amount on the right side.
+
 ## [v1.0.0] - 2026-06-10
 
 ### Added
