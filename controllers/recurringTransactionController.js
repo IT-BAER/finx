@@ -451,6 +451,16 @@ const deleteRecurringTransaction = async (req, res) => {
 
     await RecurringTransaction.delete(id);
 
+    // Clear recurring_transaction_id on any transactions still linked to this rule
+    try {
+      await db.query(
+        "UPDATE transactions SET recurring_transaction_id = NULL WHERE recurring_transaction_id = $1",
+        [id],
+      );
+    } catch (e) {
+      console.warn("Failed to clear recurring_transaction_id on linked transactions:", e.message);
+    }
+
     res.json({
       success: true,
       message: "Recurring transaction deleted successfully",
