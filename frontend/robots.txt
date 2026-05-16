@@ -3,5 +3,3 @@ User-agent: *
 Disallow: /api/
 Disallow: /admin/
 Allow: /
-
-Sitemap: https://finx.it-baer.net/sitemap.xml

@@ -37,7 +37,7 @@ export default defineConfig(({ mode }) => {
       host: true,
       port: 3000,
       open: true,
-      allowedHosts: ["localhost", "finx.it-baer.net"],
+      allowedHosts: ["localhost"],
       proxy: {
         "/api": {
           target: "http://localhost:5000",
