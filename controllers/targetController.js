@@ -43,7 +43,7 @@ const getTargets = async (req, res) => {
       const targets = await Target.findByUserId(validAsUserId);
       return res.json({
         success: true,
-        targets: targets.map((target) => target.name),
+        targets: targets.map((target) => ({ id: target.id, name: target.name })),
       });
     }
 
@@ -52,7 +52,7 @@ const getTargets = async (req, res) => {
       .map((_, i) => `$${i + 1}`)
       .join(", ");
     const query = `
-      SELECT DISTINCT TRIM(name) AS name
+      SELECT id, TRIM(name) AS name
       FROM targets
       WHERE user_id IN (${placeholders})
       ORDER BY TRIM(name) ASC
@@ -60,7 +60,7 @@ const getTargets = async (req, res) => {
     const result = await db.query(query, accessibleUserIds);
     res.json({
       success: true,
-      targets: result.rows.map((r) => r.name),
+      targets: result.rows.map((r) => ({ id: r.id, name: r.name })),
     });
   } catch (err) {
     console.error("Get targets error:", err.message);

@@ -43,7 +43,7 @@ const getSources = async (req, res) => {
       const sources = await Source.findByUserId(validAsUserId);
       return res.json({
         success: true,
-        sources: sources.map((source) => source.name),
+        sources: sources.map((source) => ({ id: source.id, name: source.name })),
       });
     }
 
@@ -52,7 +52,7 @@ const getSources = async (req, res) => {
       .map((_, i) => `$${i + 1}`)
       .join(", ");
     const query = `
-      SELECT DISTINCT TRIM(name) AS name
+      SELECT id, TRIM(name) AS name
       FROM sources
       WHERE user_id IN (${placeholders})
       ORDER BY TRIM(name) ASC
@@ -60,7 +60,7 @@ const getSources = async (req, res) => {
     const result = await db.query(query, accessibleUserIds);
     res.json({
       success: true,
-      sources: result.rows.map((r) => r.name),
+      sources: result.rows.map((r) => ({ id: r.id, name: r.name })),
     });
   } catch (err) {
     console.error("Get sources error:", err.message);
