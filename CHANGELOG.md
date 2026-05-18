@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## [v1.0.2] - 2026-07-15
+
+### Fixed
+- **Sources and targets API**: `GET /sources` and `GET /targets` now return `{id, name}` objects instead of plain name strings. Dashboard source lookup by ID now works correctly and the web frontend delete/edit flows are consistent. Self-hosted and managed server formats are now identical.
+
 ## [v1.0.1] - 2026-04-28
 
 ### Fixed
