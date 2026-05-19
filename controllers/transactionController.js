@@ -206,12 +206,18 @@ const getTransactions = async (req, res) => {
 
     if (validAsUserId) {
       // If a specific accessible user is requested, respect sharing permissions at row level
-      // Note: This path doesn't currently support pagination or search
-      const transactions = await Transaction.findByUserIdWithSharing(
+      const allTransactions = await Transaction.findByUserIdWithSharing(
         validAsUserId,
         req.user.id,
       );
-      return res.json({ success: true, transactions });
+      const total = allTransactions.length;
+      const transactions = allTransactions.slice(offsetNum, offsetNum + limitNum);
+      const hasMore = offsetNum + transactions.length < total;
+      return res.json({
+        success: true,
+        transactions,
+        pagination: { limit: limitNum, offset: offsetNum, total, hasMore },
+      });
     }
 
     // Otherwise, return all accessible data (mine + any shared to me) with pagination
@@ -408,7 +414,30 @@ const getTransactions = async (req, res) => {
       return acc;
     }, []);
 
-    res.json({ success: true, transactions });
+    // COUNT query for total (only on first page to avoid overhead on every page)
+    let total = null;
+    if (offsetNum === 0) {
+      const countQuery = `
+        SELECT COUNT(*) AS total
+        FROM transactions t
+        LEFT JOIN categories c ON t.category_id = c.id
+        LEFT JOIN sources s ON t.source_id = s.id
+        LEFT JOIN targets tg ON t.target_id = tg.id
+        WHERE t.user_id IN (${placeholders})
+        ${searchCondition}
+      `;
+      const countParams = [...accessibleUserIds];
+      if (searchQuery) countParams.push(`%${searchQuery}%`);
+      const countResult = await db.query(countQuery, countParams);
+      total = parseInt(countResult.rows[0].total, 10);
+    }
+
+    const hasMore = transactions.length === limitNum;
+    res.json({
+      success: true,
+      transactions,
+      pagination: { limit: limitNum, offset: offsetNum, total, hasMore },
+    });
   } catch (err) {
     console.error("Get transactions error:", err.message);
     res.status(500).json({ message: "Server error" });

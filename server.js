@@ -127,7 +127,12 @@ app.get("/", (req, res) => {
 
 app.get("/health", (req, res) => res.status(200).send("OK"));
 app.get("/api/health", (req, res) => {
-  res.status(200).json({ ok: true, time: Date.now() });
+  res.status(200).json({
+    ok: true,
+    time: Date.now(),
+    apiVersion: 2,
+    capabilities: { transactionsPagination: true },
+  });
 });
 app.get("/ready", async (req, res) => {
   try {

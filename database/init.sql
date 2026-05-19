@@ -156,6 +156,7 @@ CREATE INDEX IF NOT EXISTS idx_sharing_permissions_shared_owner ON sharing_permi
 
 -- Performance indexes for transactions and lookup tables
 CREATE INDEX IF NOT EXISTS idx_transactions_user ON transactions(user_id);
+CREATE INDEX IF NOT EXISTS idx_transactions_user_date_id ON transactions (user_id, date DESC, id DESC);
 
 -- Recurring Transactions table
 CREATE TABLE IF NOT EXISTS recurring_transactions (

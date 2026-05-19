@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented in this file.
 
+## [v1.1.0] - 2026-05-19
+
+### Added
+- **Server-side transaction pagination**: `GET /api/transactions` now returns a `pagination` envelope `{ limit, offset, total, hasMore }` alongside the `transactions` array. `total` is included only on the first page (`offset=0`) to avoid COUNT overhead on subsequent pages.
+- **API capability flag**: `GET /api/health` now returns `{ apiVersion: 2, capabilities: { transactionsPagination: true } }`. Mobile clients gate on this flag to decide between paginated and legacy single-pull mode.
+- **Composite DB index**: `idx_transactions_user_date_id ON transactions (user_id, date DESC, id DESC)` improves paginated query performance.
+
 ## [v1.0.2] - 2026-07-15
 
 ### Fixed

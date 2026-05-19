@@ -1,6 +1,6 @@
 {
   "name": "finx",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "A modern personal finance management application",
   "main": "server.js",
   "scripts": {
