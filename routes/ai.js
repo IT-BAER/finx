@@ -1,9 +1,9 @@
 const express = require("express");
 const router = express.Router();
 const auth = require("../middleware/auth");
-const { getAiKey } = require("../controllers/aiController");
+const { parseNotification } = require("../controllers/aiController");
 
-// GET /api/ai/key — returns managed OpenRouter API key for authenticated users
-router.get("/key", auth, getAiKey);
+// POST /api/ai/parse — server-side AI notification parsing (key never leaves server)
+router.post("/parse", auth, parseNotification);
 
 module.exports = router;
