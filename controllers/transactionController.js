@@ -194,11 +194,11 @@ const createTransaction = async (req, res) => {
 const getTransactions = async (req, res) => {
   try {
     // Optional filter to view as a specific accessible user
-    const { asUserId, limit, offset, q } = req.query;
+    const { asUserId, limit, offset, q, start_date, end_date } = req.query;
     const validAsUserId = await validateAsUserId(req.user.id, asUserId, "all");
 
     // Parse limit and offset with defaults
-    const limitNum = limit ? Math.min(parseInt(limit), 100) : 20; // Max 100, default 20
+    const limitNum = limit ? Math.min(parseInt(limit), 1000) : 20; // Max 1000, default 20
     const offsetNum = offset ? parseInt(offset) : 0;
 
     // Normalize search query for case-insensitive, accent-insensitive search
@@ -249,6 +249,17 @@ const getTransactions = async (req, res) => {
         )
       `;
       queryParams.push(`%${searchQuery}%`);
+      paramIndex++;
+    }
+
+    if (start_date) {
+      searchCondition += ` AND t.date >= $${paramIndex}`;
+      queryParams.push(start_date);
+      paramIndex++;
+    }
+    if (end_date) {
+      searchCondition += ` AND t.date <= $${paramIndex}`;
+      queryParams.push(end_date);
       paramIndex++;
     }
 
@@ -428,11 +439,13 @@ const getTransactions = async (req, res) => {
       `;
       const countParams = [...accessibleUserIds];
       if (searchQuery) countParams.push(`%${searchQuery}%`);
+      if (start_date) countParams.push(start_date);
+      if (end_date) countParams.push(end_date);
       const countResult = await db.query(countQuery, countParams);
       total = parseInt(countResult.rows[0].total, 10);
     }
 
-    const hasMore = transactions.length === limitNum;
+    const hasMore = rows.length === limitNum;
     res.json({
       success: true,
       transactions,
