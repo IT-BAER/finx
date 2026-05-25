@@ -23,6 +23,11 @@ if (!process.env.JWT_SECRET) {
   }
 }
 
+// Warn about missing OpenRouter key (non-fatal — endpoint returns 503 gracefully)
+if (!process.env.OPENROUTER_API_KEY) {
+  logger.warn("OPENROUTER_API_KEY is not set — managed AI notification parsing will be unavailable");
+}
+
 // Trust proxy for rate limiting
 app.set("trust proxy", 1);
 
@@ -159,6 +164,7 @@ app.use("/api/users", require("./routes/user"));
 app.use("/api/admin", require("./routes/admin"));
 app.use("/api/goals", require("./routes/goal"));
 app.use("/api/recurring-tools", require("./routes/recurring-tools"));
+app.use("/api/ai", require("./routes/ai"));
 
 // SSE events
 const authSSE = require("./middleware/authSSE");

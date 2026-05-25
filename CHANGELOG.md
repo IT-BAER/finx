@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented in this file.
 
+## [v1.1.1] - 2026-05-25
+
+### Added
+- **Managed AI notification parsing**: `GET /api/ai/key` endpoint returns the server-configured OpenRouter API key to authenticated users. The mobile app uses this key for AI-powered notification parsing. Set `OPENROUTER_API_KEY` in `.env` to enable.
+- **Startup warning**: Server logs a warning at boot if `OPENROUTER_API_KEY` is not set.
+
 ## [v1.1.0] - 2026-05-19
 
 ### Added

@@ -82,6 +82,7 @@ Backend environment file location differs by setup:
 | `CORS_ORIGIN` | Comma-separated list of allowed frontend origins |
 | `DISABLE_REGISTRATION` | Set `true` to block open signups (recommended) |
 | `DEV_MODE` | Set `true` for auto-login in dev only (don't use in prod) |
+| `OPENROUTER_API_KEY` | Optional; enables managed AI notification parsing in the mobile app (get key at openrouter.ai) |
 
 **Frontend build flags** (optional):
 - `VITE_DEV_MODE`: Pairs with backend `DEV_MODE` for local dev
