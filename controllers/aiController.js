@@ -59,7 +59,9 @@ const callOpenRouter = async (model, prompt, apiKey) => {
     const data = await response.json();
     const content = data?.choices?.[0]?.message?.content;
     if (!content) throw new Error("Empty response from model");
-    return JSON.parse(content.trim());
+    // Strip markdown code fences that some models add despite instructions
+    const cleaned = content.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
+    return JSON.parse(cleaned);
 };
 
 const parseNotification = async (req, res) => {
