@@ -60,9 +60,10 @@ const callOpenRouter = async (model, prompt, apiKey) => {
         if (jsonMatch) content = jsonMatch[0];
     }
     if (!content) throw new Error(`Empty response from model ${chosenModel}`);
-    // Strip markdown code fences that some models add despite instructions
-    const cleaned = content.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
-    return { parsed: JSON.parse(cleaned), chosenModel };
+    // Extract first JSON object — handles models that prefix/suffix with text or use code fences
+    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error(`No JSON object in response from model ${chosenModel}`);
+    return { parsed: JSON.parse(jsonMatch[0]), chosenModel };
 };
 
 const parseNotification = async (req, res) => {
