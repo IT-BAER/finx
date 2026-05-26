@@ -45,7 +45,7 @@ const callOpenRouter = async (model, prompt, apiKey) => {
             reasoning: { exclude: true },
             provider: { data_collection: "deny" },
         }),
-        signal: AbortSignal.timeout(15000),
+        signal: AbortSignal.timeout(30000),
     });
     if (!response.ok) {
         throw new Error(`OpenRouter HTTP ${response.status}`);
