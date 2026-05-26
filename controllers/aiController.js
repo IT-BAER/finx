@@ -51,11 +51,18 @@ const callOpenRouter = async (model, prompt, apiKey) => {
         throw new Error(`OpenRouter HTTP ${response.status}`);
     }
     const data = await response.json();
-    const content = data?.choices?.[0]?.message?.content;
-    if (!content) throw new Error("Empty response from model");
+    const chosenModel = data?.model ?? model;
+    let content = data?.choices?.[0]?.message?.content;
+    // Some reasoning models return null content with answer embedded in reasoning text
+    if (!content) {
+        const reasoning = data?.choices?.[0]?.message?.reasoning ?? "";
+        const jsonMatch = reasoning.match(/\{[\s\S]*?\}/);
+        if (jsonMatch) content = jsonMatch[0];
+    }
+    if (!content) throw new Error(`Empty response from model ${chosenModel}`);
     // Strip markdown code fences that some models add despite instructions
     const cleaned = content.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
-    return JSON.parse(cleaned);
+    return { parsed: JSON.parse(cleaned), chosenModel };
 };
 
 const parseNotification = async (req, res) => {
@@ -73,9 +80,9 @@ const parseNotification = async (req, res) => {
     const prompt = buildPrompt(text.trim(), categories, sources, targets);
     const model = "openrouter/free";
     try {
-        const parsed = await callOpenRouter(model, prompt, apiKey);
-        logger.info(`AI parse success via ${model}`);
-        return res.json({ parsed, model });
+        const { parsed, chosenModel } = await callOpenRouter(model, prompt, apiKey);
+        logger.info(`AI parse success via ${chosenModel}`);
+        return res.json({ parsed, model: chosenModel });
     } catch (err) {
         logger.error(`AI parse failed: ${err.message}`);
         return res.status(502).json({ message: "AI parsing unavailable" });
