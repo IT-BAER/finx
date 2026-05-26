@@ -1,11 +1,11 @@
 const logger = require("../utils/logger");
 
 const MANAGED_FREE_MODELS = [
-    "meta-llama/llama-3.1-8b-instruct:free",
+    "meta-llama/llama-3.3-70b-instruct:free",
+    "deepseek/deepseek-v4-flash:free",
     "meta-llama/llama-3.2-3b-instruct:free",
-    "google/gemma-3-4b-it:free",
-    "mistralai/mistral-7b-instruct:free",
-    "qwen/qwen-2.5-7b-instruct:free",
+    "google/gemma-4-31b-it:free",
+    "qwen/qwen3-next-80b-a3b-instruct:free",
 ];
 
 const buildPrompt = (text, categories, sources, targets) => {
