@@ -42,6 +42,7 @@ const callOpenRouter = async (model, prompt, apiKey) => {
             messages: [{ role: "user", content: prompt }],
             max_tokens: 256,
             temperature: 0.1,
+            reasoning: { exclude: true },
             provider: { data_collection: "deny" },
         }),
         signal: AbortSignal.timeout(15000),
