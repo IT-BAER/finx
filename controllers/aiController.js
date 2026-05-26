@@ -1,12 +1,5 @@
 const logger = require("../utils/logger");
 
-const MANAGED_FREE_MODELS = [
-    "meta-llama/llama-3.3-70b-instruct:free",
-    "deepseek/deepseek-v4-flash:free",
-    "meta-llama/llama-3.2-3b-instruct:free",
-    "google/gemma-4-31b-it:free",
-    "qwen/qwen3-next-80b-a3b-instruct:free",
-];
 
 const buildPrompt = (text, categories, sources, targets) => {
     const catList = categories.length ? categories.join(", ") : "(none provided)";
@@ -77,19 +70,15 @@ const parseNotification = async (req, res) => {
         return res.status(400).json({ message: "text too long (max 2000 chars)" });
     }
     const prompt = buildPrompt(text.trim(), categories, sources, targets);
-    let lastError;
-    for (const model of MANAGED_FREE_MODELS) {
-        try {
-            const parsed = await callOpenRouter(model, prompt, apiKey);
-            logger.info(`AI parse success via ${model}`);
-            return res.json({ parsed, model });
-        } catch (err) {
-            lastError = err;
-            logger.warn(`AI parse failed for model ${model}: ${err.message}`);
-        }
+    const model = "openrouter/free";
+    try {
+        const parsed = await callOpenRouter(model, prompt, apiKey);
+        logger.info(`AI parse success via ${model}`);
+        return res.json({ parsed, model });
+    } catch (err) {
+        logger.error(`AI parse failed: ${err.message}`);
+        return res.status(502).json({ message: "AI parsing unavailable" });
     }
-    logger.error(`AI parse: all models failed. Last error: ${lastError?.message}`);
-    return res.status(502).json({ message: "AI parsing unavailable — all models failed" });
 };
 
 module.exports = { parseNotification };
