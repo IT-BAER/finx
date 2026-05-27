@@ -54,7 +54,7 @@ app.use(cors(corsOptions));
 const morganFormat = process.env.NODE_ENV === "production" ? "combined" : "dev";
 app.use(morgan(morganFormat, { stream: logger.stream }));
 
-app.use(express.json());
+app.use(express.json({ limit: "1mb" }));
 
 // Security middleware
 const helmet = require("helmet");
@@ -164,7 +164,15 @@ app.use("/api/users", require("./routes/user"));
 app.use("/api/admin", require("./routes/admin"));
 app.use("/api/goals", require("./routes/goal"));
 app.use("/api/recurring-tools", require("./routes/recurring-tools"));
-app.use("/api/ai", require("./routes/ai"));
+app.use("/api/ai", (req, res, next) => {
+  const cl = Number(req.headers["content-length"]);
+  if (cl && cl > 32 * 1024) {
+    return res
+      .status(413)
+      .json({ message: "Payload too large", code: "AI_PAYLOAD_TOO_LARGE" });
+  }
+  next();
+}, require("./routes/ai"));
 
 // SSE events
 const authSSE = require("./middleware/authSSE");
