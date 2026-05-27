@@ -1,8 +1,10 @@
 const { z } = require("zod");
-const { MAX_FIELD_LEN, MAX_ITEM_LEN, MAX_ITEMS } = require("./aiSanitize");
+const { MAX_FIELD_LEN, MAX_ITEMS } = require("./aiSanitize");
 
+// Per-item limit for request arrays is generous — sanitizeStringArray clips to 64.
+// Zod only enforces the array-length cap (MAX_ITEMS) at the schema layer.
 const stringArray = z
-  .array(z.string().max(MAX_ITEM_LEN))
+  .array(z.string().max(MAX_FIELD_LEN))
   .max(MAX_ITEMS)
   .default([]);
 
