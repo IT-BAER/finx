@@ -54,7 +54,13 @@ app.use(cors(corsOptions));
 const morganFormat = process.env.NODE_ENV === "production" ? "combined" : "dev";
 app.use(morgan(morganFormat, { stream: logger.stream }));
 
-app.use(express.json({ limit: "1mb" }));
+// Skip global JSON parser on /api/ai so the route-level 32KB limit is the
+// real parser; otherwise the global 1MB cap would consume the body first
+// and the route-level express.json({ limit: "32kb" }) would become a no-op.
+app.use((req, res, next) => {
+  if (req.path.startsWith("/api/ai")) return next();
+  return express.json({ limit: "1mb" })(req, res, next);
+});
 
 // Security middleware
 const helmet = require("helmet");
