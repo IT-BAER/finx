@@ -30,14 +30,6 @@ const buildPrompt = (text, categories, sources, targets) => {
     ].join("\n");
 };
 
-// Static patterns for models unsuitable for structured JSON output.
-const MODEL_BLACKLIST = [
-    /^z-ai\//,         // returns null content
-    /thinking/,        // thinking variants emit reasoning field, not content
-    /-reasoning(:|$)/, // reasoning models unreliable for structured output
-    /-vl(:|$|-)/,      // vision-language models bad at text-only structured output
-];
-
 // Per-model rate-limit cooldowns: model id → timestamp when it becomes available again.
 const modelCooldowns = new Map();
 const isOnCooldown = (model) => Date.now() < (modelCooldowns.get(model) ?? 0);
@@ -46,7 +38,6 @@ const setCooldown = (model, retryAfterSeconds) => {
 };
 
 // Persistent blacklist: models that returned permanent errors (4xx non-429 or malformed JSON).
-// Survives server restarts so 404-only models are never retried after first discovery.
 const BLACKLIST_FILE = path.join(__dirname, "../.ai-model-blacklist.json");
 const sessionBlacklist = new Set();
 
@@ -64,45 +55,14 @@ const blacklistModel = (model) => {
     } catch (_) { /* best-effort persistence */ }
 };
 
-let freeModelsCache = null;
-let freeModelsCacheExpiry = 0;
-const FREE_MODELS_TTL_MS = 60 * 60 * 1000; // 1h
+// Ordered model list: primary → fallback.
+// provider.data_collection: "deny" disables training use on all calls.
+const MODELS = [
+    "deepseek/deepseek-v4-flash",
+    "google/gemma-4-26b-a4b-it",
+];
 
-const fetchFreeModels = async (apiKey) => {
-    const now = Date.now();
-    if (freeModelsCache && now < freeModelsCacheExpiry) return freeModelsCache;
-    const response = await fetch("https://openrouter.ai/api/v1/models", {
-        headers: { "Authorization": `Bearer ${apiKey}` },
-        signal: AbortSignal.timeout(10000),
-    });
-    if (!response.ok) {
-        return freeModelsCache || [];
-    }
-    const data = await response.json();
-    const all = Array.isArray(data?.data) ? data.data : [];
-    const free = all
-        .filter((m) => typeof m?.id === "string" && m.id.endsWith(":free"))
-        .filter((m) => !MODEL_BLACKLIST.some((pat) => pat.test(m.id)))
-        .filter((m) => (m.context_length ?? 0) >= 65536) // exclude tiny models (<64k ctx) — too small for reliable structured JSON
-        .map((m) => m.id);
-    freeModelsCache = free;
-    freeModelsCacheExpiry = now + FREE_MODELS_TTL_MS;
-    logger.info(`AI parse: refreshed free-models allowlist (${free.length} models)`);
-    return free;
-};
-
-const callOpenRouterOnce = async (model, prompt, apiKey, allowlist = null) => {
-    const body = {
-        model,
-        messages: [{ role: "user", content: prompt }],
-        max_tokens: 256,
-        temperature: 0.1,
-        provider: { data_collection: "deny" },
-    };
-    // reasoning.exclude only valid for the auto-router; specific models 400 if they don't support it
-    if (model === "openrouter/free") {
-        body.reasoning = { exclude: true };
-    }
+const callOpenRouterOnce = async (model, prompt, apiKey) => {
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
         method: "POST",
         headers: {
@@ -111,7 +71,13 @@ const callOpenRouterOnce = async (model, prompt, apiKey, allowlist = null) => {
             "HTTP-Referer": "https://myfinx.app",
             "X-Title": "FinX",
         },
-        body: JSON.stringify(body),
+        body: JSON.stringify({
+            model,
+            messages: [{ role: "user", content: prompt }],
+            max_tokens: 256,
+            temperature: 0.1,
+            provider: { data_collection: "deny" },
+        }),
         signal: AbortSignal.timeout(30000),
     });
     if (!response.ok) {
@@ -120,54 +86,27 @@ const callOpenRouterOnce = async (model, prompt, apiKey, allowlist = null) => {
             const retryAfter = data?.error?.metadata?.retry_after_seconds ?? 30;
             setCooldown(model, retryAfter);
         } else if (response.status >= 400 && response.status < 500) {
-            // Permanent 4xx → persist blacklist
             blacklistModel(model);
         }
         throw new Error(`OpenRouter HTTP ${response.status}`);
     }
     const data = await response.json();
     const chosenModel = data?.model ?? model;
-    // When openrouter/free routes to a model, reject if it doesn't pass our quality filters
-    if (model === "openrouter/free" && chosenModel !== model) {
-        const blocked =
-            MODEL_BLACKLIST.some((pat) => pat.test(chosenModel)) ||
-            sessionBlacklist.has(chosenModel) ||
-            (allowlist && allowlist.length > 0 && !allowlist.includes(chosenModel));
-        if (blocked) {
-            throw new Error(`openrouter/free routed to filtered model ${chosenModel}`);
-        }
-    }
-    let content = data?.choices?.[0]?.message?.content;
-    if (!content) {
-        const reasoning = data?.choices?.[0]?.message?.reasoning ?? "";
-        const jsonMatch = reasoning.match(/\{[\s\S]*?\}/);
-        if (jsonMatch) content = jsonMatch[0];
-    }
+    const content = data?.choices?.[0]?.message?.content;
     if (!content) throw new Error(`Empty response from model ${chosenModel}`);
     const jsonMatch = content.match(/\{[\s\S]*\}/);
     if (!jsonMatch) throw new Error(`No JSON object in response from model ${chosenModel}`);
     try {
         return { parsed: JSON.parse(jsonMatch[0]), chosenModel };
     } catch (e) {
-        // Malformed JSON → treat as permanent model failure for this session
         blacklistModel(model);
         throw new Error(`Malformed JSON from model ${chosenModel}: ${e.message}`);
     }
 };
 
-// Strategy: try openrouter/free auto-router first with allowlist as 5xx-fallback.
-// On 200-with-empty-content (e.g. z-ai), retry through the live-filtered allowlist explicitly.
 const callOpenRouter = async (prompt, apiKey) => {
-    const allowlist = await fetchFreeModels(apiKey).catch(() => []);
     let lastErr;
-    try {
-        return await callOpenRouterOnce("openrouter/free", prompt, apiKey, allowlist);
-    } catch (err) {
-        lastErr = err;
-        logger.warn(`AI parse: openrouter/free failed (${err.message}), falling back to allowlist`);
-    }
-    for (let i = 0; i < allowlist.length; i++) {
-        const model = allowlist[i];
+    for (const model of MODELS) {
         if (sessionBlacklist.has(model) || isOnCooldown(model)) continue;
         try {
             return await callOpenRouterOnce(model, prompt, apiKey);
@@ -176,7 +115,7 @@ const callOpenRouter = async (prompt, apiKey) => {
             logger.warn(`AI parse: model ${model} failed (${err.message}), trying next`);
         }
     }
-    throw lastErr || new Error("All fallback models failed");
+    throw lastErr || new Error("All models failed");
 };
 
 const parseNotification = async (req, res) => {
