@@ -13,7 +13,7 @@ const { z } = require('zod');
 
 const idSchema = z.number().int().positive();
 const stringIdSchema = z.string().regex(/^\d+$/).transform(Number);
-const optionalIdSchema = z.union([idSchema, stringIdSchema]).optional();
+const optionalIdSchema = z.union([idSchema, stringIdSchema, z.null()]).optional().nullable();
 
 const dateSchema = z.string().regex(
   /^\d{4}-\d{2}-\d{2}$/,
