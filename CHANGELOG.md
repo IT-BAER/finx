@@ -2,6 +2,19 @@
 
 All notable changes to this project are documented in this file.
 
+## Unreleased
+
+### Security
+- AI endpoint: zod request schema, per-item/array length caps, prompt-injection delimiting
+- AI endpoint: per-user hourly (60) and daily (300) rate limits keyed on user id
+- AI endpoint: 32 KB payload cap (returns `413 AI_PAYLOAD_TOO_LARGE`)
+- AI endpoint: response schema enforcement (Zod) — reject malformed LLM output before forwarding to client
+- AI endpoint: token-usage audit log per call (`aiAudit purpose=… user=… model=… …Tokens=…`)
+
+### Self-hosted only
+- AI endpoint defaults to admin-only; set `AI_ALLOW_NON_ADMIN=true` to open to all authenticated users
+- Removed `GET /api/ai/key` endpoint — clients no longer fetch managed keys; the server proxies AI calls via `POST /api/ai/parse`
+
 ## [v1.1.1] - 2026-05-25
 
 ### Added
