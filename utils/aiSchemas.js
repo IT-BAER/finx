@@ -24,7 +24,9 @@ const parseRequestSchema = z
   );
 
 const parseResponseSchema = z.object({
-  amount: z.number().positive().nullable(),
+  // LLMs occasionally return amount as a string ("24.90"). Coerce to number
+  // so the response passes schema validation in those cases.
+  amount: z.coerce.number().positive().nullable(),
   type: z.enum(["expense", "income"]).nullable(),
   description: z.string().max(80).nullable(),
   category: z.string().max(64).nullable(),
