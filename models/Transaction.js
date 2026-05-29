@@ -15,6 +15,7 @@ class Transaction {
     this.date = data.date;
     this.category_name = data.category_name; // For dashboard queries
     this.recurring_transaction_id = data.recurring_transaction_id; // For linking to recurring rules
+    this.mirrored_from_transaction_id = data.mirrored_from_transaction_id || null; // Cross-user mirror origin
   }
 
   // Create a new transaction
@@ -28,10 +29,11 @@ class Transaction {
     description,
     date,
     recurring_transaction_id = null,
+    mirrored_from_transaction_id = null,
   ) {
     const query = `
-      INSERT INTO transactions (user_id, category_id, source_id, target_id, amount, type, description, date, recurring_transaction_id)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      INSERT INTO transactions (user_id, category_id, source_id, target_id, amount, type, description, date, recurring_transaction_id, mirrored_from_transaction_id)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
       RETURNING *;
     `;
     const values = [
@@ -44,6 +46,7 @@ class Transaction {
       description,
       date,
       recurring_transaction_id,
+      mirrored_from_transaction_id,
     ];
     const result = await db.query(query, values);
     return new Transaction(result.rows[0]);

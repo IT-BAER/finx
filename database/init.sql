@@ -103,7 +103,8 @@ CREATE TABLE IF NOT EXISTS transactions (
     description TEXT,
     date DATE DEFAULT CURRENT_DATE,
     is_sample BOOLEAN DEFAULT FALSE,
-    recurring_transaction_id INTEGER
+    recurring_transaction_id INTEGER,
+    mirrored_from_transaction_id INTEGER REFERENCES transactions(id) ON DELETE SET NULL
 );
 
 -- Sharing permissions table (consolidated latest schema: no can_view_* booleans)
@@ -222,6 +223,7 @@ BEGIN
 END $$;
 
 CREATE INDEX IF NOT EXISTS idx_transactions_recurring_id ON transactions(recurring_transaction_id);
+CREATE INDEX IF NOT EXISTS idx_transactions_mirrored_from ON transactions(mirrored_from_transaction_id);
 CREATE INDEX IF NOT EXISTS idx_transactions_category ON transactions(category_id);
 CREATE INDEX IF NOT EXISTS idx_transactions_source ON transactions(source_id);
 CREATE INDEX IF NOT EXISTS idx_transactions_target ON transactions(target_id);

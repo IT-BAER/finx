@@ -6,6 +6,7 @@ const Goal = require("../models/Goal");
 const db = require("../config/db");
 const cache = require("../services/cache");
 const { getAccessibleUserIds, validateAsUserId, getSharingPermissionMeta, getUsersSharedWithOwner } = require("../utils/access");
+const { createMirror, syncMirrorOnUpdate, deleteMirror } = require("../utils/transactionMirror");
 
 // Create transaction
 const createTransaction = async (req, res) => {
@@ -183,6 +184,36 @@ const createTransaction = async (req, res) => {
     } catch (e) {
       // Log SSE broadcast errors but don't fail the request
       console.warn("SSE broadcast failed:", e && e.message ? e.message : e);
+    }
+
+    // Cross-user mirroring: if the counterparty is a write-shared source owned by
+    // another user, create a mirrored (type-flipped) transaction on their account.
+    try {
+      const mirrored = await createMirror(transaction, {
+        categoryName: inCategory,
+        sourceName: inSource,
+        targetName: inTarget,
+      });
+      if (mirrored && mirrored.ownerUserId) {
+        try {
+          await cache.invalidateDashboard(Number(mirrored.ownerUserId));
+        } catch (cacheErr) {
+          console.warn("Mirror cache invalidation failed:", cacheErr?.message);
+        }
+        try {
+          const sse = req.app.get("sse");
+          if (sse) {
+            const mPayload = { type: "transaction:create", transactionId: mirrored.mirror.id, ownerId: Number(mirrored.ownerUserId), at: Date.now() };
+            sse.broadcastToUser(Number(mirrored.ownerUserId), mPayload);
+            const mShared = await getUsersSharedWithOwner(Number(mirrored.ownerUserId));
+            if (mShared && mShared.length) sse.broadcastToUsers(mShared, mPayload);
+          }
+        } catch (e) {
+          console.warn("Mirror SSE broadcast failed:", e && e.message ? e.message : e);
+        }
+      }
+    } catch (e) {
+      console.warn("Transaction mirroring failed:", e && e.message ? e.message : e);
     }
   } catch (err) {
     console.error("Create transaction error:", err.message);
@@ -742,6 +773,36 @@ const updateTransaction = async (req, res) => {
         if (sharedWith && sharedWith.length) sse.broadcastToUsers(sharedWith, payload);
       }
     } catch (e) { }
+
+    // Keep cross-user mirror in sync (delete + recreate to handle counterparty changes)
+    try {
+      const mirrorNames = {
+        categoryName: inCategory || transaction.category_name || null,
+        sourceName: source !== undefined ? inSource : transaction.source_name,
+        targetName: target !== undefined ? inTarget : transaction.target_name,
+      };
+      const affectedOwners = await syncMirrorOnUpdate(updatedTransaction, mirrorNames);
+      if (affectedOwners && affectedOwners.length) {
+        const sse = req.app.get("sse");
+        for (const ownerUid of affectedOwners) {
+          try {
+            await cache.invalidateDashboard(Number(ownerUid));
+          } catch (cacheErr) {
+            console.warn("Mirror cache invalidation failed:", cacheErr?.message);
+          }
+          try {
+            if (sse) {
+              const mPayload = { type: "transaction:update", ownerId: Number(ownerUid), at: Date.now() };
+              sse.broadcastToUser(Number(ownerUid), mPayload);
+              const mShared = await getUsersSharedWithOwner(Number(ownerUid));
+              if (mShared && mShared.length) sse.broadcastToUsers(mShared, mPayload);
+            }
+          } catch (e) { }
+        }
+      }
+    } catch (e) {
+      console.warn("Mirror update sync failed:", e && e.message ? e.message : e);
+    }
   } catch (err) {
     console.error("Update transaction error:", err.message);
     res.status(500).json({ message: "Server error" });
@@ -789,7 +850,16 @@ const deleteTransaction = async (req, res) => {
       }
     }
 
-    // Authorized; delete regardless of requester id
+    // Authorized; remove any cross-user mirror BEFORE deleting the origin
+    // (the ON DELETE SET NULL FK would otherwise unlink the mirror first).
+    let mirrorOwners = [];
+    try {
+      mirrorOwners = await deleteMirror(Number(id));
+    } catch (e) {
+      console.warn("Mirror delete failed:", e && e.message ? e.message : e);
+    }
+
+    // delete regardless of requester id
     const deletedTransaction = await Transaction.delete(id);
     res.json({
       success: true,
@@ -821,6 +891,30 @@ const deleteTransaction = async (req, res) => {
         if (sharedWith && sharedWith.length) sse.broadcastToUsers(sharedWith, payload);
       }
     } catch (e) { }
+
+    // Broadcast removal of any cross-user mirror deleted above
+    try {
+      if (mirrorOwners && mirrorOwners.length) {
+        const sse = req.app.get("sse");
+        for (const ownerUid of mirrorOwners) {
+          try {
+            await cache.invalidateDashboard(Number(ownerUid));
+          } catch (cacheErr) {
+            console.warn("Mirror cache invalidation failed:", cacheErr?.message);
+          }
+          try {
+            if (sse) {
+              const mPayload = { type: "transaction:delete", ownerId: Number(ownerUid), at: Date.now() };
+              sse.broadcastToUser(Number(ownerUid), mPayload);
+              const mShared = await getUsersSharedWithOwner(Number(ownerUid));
+              if (mShared && mShared.length) sse.broadcastToUsers(mShared, mPayload);
+            }
+          } catch (e) { }
+        }
+      }
+    } catch (e) {
+      console.warn("Mirror delete sync failed:", e && e.message ? e.message : e);
+    }
   } catch (err) {
     console.error("Delete transaction error:", err.message);
     res.status(500).json({ message: "Server error" });
