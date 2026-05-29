@@ -51,13 +51,21 @@ const getTargets = async (req, res) => {
     const placeholders = accessibleUserIds
       .map((_, i) => `$${i + 1}`)
       .join(", ");
+    const ownParam = `$${accessibleUserIds.length + 1}`;
+    // Dedupe by name across accessible users (own + shared). When the same
+    // name exists for multiple users, prefer the current user's own row so
+    // editing/deleting keeps working on their own entry.
     const query = `
-      SELECT id, TRIM(name) AS name
-      FROM targets
-      WHERE user_id IN (${placeholders})
-      ORDER BY TRIM(name) ASC
+      SELECT id, name FROM (
+        SELECT DISTINCT ON (LOWER(TRIM(name)))
+          id, TRIM(name) AS name
+        FROM targets
+        WHERE user_id IN (${placeholders})
+        ORDER BY LOWER(TRIM(name)), (user_id = ${ownParam}) DESC, id
+      ) dedup
+      ORDER BY LOWER(name) ASC
     `;
-    const result = await db.query(query, accessibleUserIds);
+    const result = await db.query(query, [...accessibleUserIds, req.user.id]);
     res.json({
       success: true,
       targets: result.rows.map((r) => ({ id: r.id, name: r.name })),
