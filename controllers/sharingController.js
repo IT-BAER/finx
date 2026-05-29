@@ -195,16 +195,48 @@ const getSharedWithMe = async (req, res) => {
 
     const result = await db.query(query, [req.user.id]);
 
-    // Format the data to include owner full name
-    const permissions = result.rows.map((permission) => ({
-      ...permission,
-      owner_full_name:
-        permission.owner_first_name && permission.owner_last_name
-          ? `${permission.owner_first_name} ${permission.owner_last_name}`
-          : permission.owner_first_name ||
-            permission.owner_last_name ||
-            permission.owner_email,
-    }));
+    // Format the data to include owner full name and resolved shared source names.
+    // source_filter_names lets clients flag picker entries that correspond to a
+    // source shared with the current user (NULL filter = all of the owner's sources).
+    const permissions = [];
+    for (const permission of result.rows) {
+      let sourceFilterNames = null;
+      try {
+        let ids = null;
+        if (permission.source_filter) {
+          const parsed = JSON.parse(permission.source_filter);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            ids = parsed.map((x) => Number(x)).filter((n) => !Number.isNaN(n));
+          }
+        }
+        if (ids && ids.length > 0) {
+          const nameRes = await db.query(
+            "SELECT name FROM sources WHERE user_id = $1 AND id = ANY($2)",
+            [permission.owner_user_id, ids],
+          );
+          sourceFilterNames = nameRes.rows.map((r) => r.name);
+        } else if (!permission.source_filter) {
+          // NULL filter means all of the owner's sources are shared
+          const nameRes = await db.query(
+            "SELECT name FROM sources WHERE user_id = $1",
+            [permission.owner_user_id],
+          );
+          sourceFilterNames = nameRes.rows.map((r) => r.name);
+        }
+      } catch (e) {
+        // ignore name resolution errors; leave as null
+      }
+      permissions.push({
+        ...permission,
+        owner_full_name:
+          permission.owner_first_name && permission.owner_last_name
+            ? `${permission.owner_first_name} ${permission.owner_last_name}`
+            : permission.owner_first_name ||
+              permission.owner_last_name ||
+              permission.owner_email,
+        source_filter_names: sourceFilterNames,
+      });
+    }
 
     res.json({
       success: true,
