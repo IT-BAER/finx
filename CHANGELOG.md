@@ -2,7 +2,12 @@
 
 All notable changes to this project are documented in this file.
 
-## Unreleased
+## [v1.2.0] - 2026-05-29
+
+### Added
+- **Cross-user transaction mirroring**: When a user records a transaction whose counterparty matches a source that another user has write-shared with them, FinX now creates a mirrored, opposite-type transaction owned by that user. An expense paid to a shared account appears as income for the account owner, and vice versa. Mirrors preserve amount, date, description, category, and source/target names (resolved/created in the owner's namespace); only the owner and type differ.
+- **Mirror tracking**: New `mirrored_from_transaction_id` column on `transactions` (FK `ON DELETE SET NULL`, indexed) links each mirror to its origin. Updates re-sync the mirror and deletes remove it; loops are prevented (a mirror never spawns another mirror).
+- **Shared source names in `shared-with-me`**: `GET /api/sharing/shared-with-me` now returns `source_filter_names` for each permission (resolved from the owner's source ids; a NULL filter resolves to all the owner's source names) so clients can flag shared entries in pickers.
 
 ### Security
 - AI endpoint: zod request schema, per-item/array length caps, prompt-injection delimiting
