@@ -27,7 +27,6 @@ router.post(
 
 // Map body-parser entity.too.large to our standard 413 response so the
 // 32KB cap is enforced for chunked/no-Content-Length uploads too.
-// eslint-disable-next-line no-unused-vars
 router.use((err, req, res, next) => {
   if (err && (err.type === "entity.too.large" || err.status === 413)) {
     return res

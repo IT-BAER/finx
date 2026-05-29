@@ -3,13 +3,31 @@ const MAX_ITEM_LEN = 64;
 const MAX_ITEMS = 200;
 const MAX_TOTAL_ARR_BYTES = 8000;
 
-// Control chars except \n (0x0A) and \t (0x09).
-const CTRL_RE = /[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]+/g;
 const WHITESPACE_RE = /[\r\n\t]+/g;
+
+const isDisallowedControlChar = (char) => {
+  const code = char.charCodeAt(0);
+  return (code < 32 && code !== 9 && code !== 10 && code !== 13) || code === 127;
+};
+
+const replaceControlChars = (text) => {
+  let out = "";
+  let inControlRun = false;
+  for (const char of text) {
+    if (isDisallowedControlChar(char)) {
+      if (!inControlRun) out += " ";
+      inControlRun = true;
+      continue;
+    }
+    out += char;
+    inControlRun = false;
+  }
+  return out;
+};
 
 const sanitizeText = (raw, maxLen = MAX_FIELD_LEN) => {
   if (typeof raw !== "string") return "";
-  return raw.replace(CTRL_RE, " ").trim().slice(0, maxLen);
+  return replaceControlChars(raw).trim().slice(0, maxLen);
 };
 
 const sanitizeStringArray = (arr) => {
@@ -18,9 +36,7 @@ const sanitizeStringArray = (arr) => {
   let total = 0;
   for (const item of arr) {
     if (typeof item !== "string") continue;
-    const cleaned = item
-      .replace(WHITESPACE_RE, " ")
-      .replace(CTRL_RE, " ")
+    const cleaned = replaceControlChars(item.replace(WHITESPACE_RE, " "))
       .trim()
       .slice(0, MAX_ITEM_LEN);
     if (!cleaned) continue;
