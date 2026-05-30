@@ -54,6 +54,8 @@ const createRecurringTransaction = async (req, res) => {
       end_date,
       max_occurrences,
       transaction_id,
+      reminder_enabled,
+      reminder_lead,
     } = req.body;
 
     // Minimal validation + normalization to avoid DB errors
@@ -205,6 +207,10 @@ const createRecurringTransaction = async (req, res) => {
       return res.status(409).json({ message: "A similar recurring transaction already exists." });
     }
 
+    const safeReminderEnabled = reminder_enabled === true || reminder_enabled === "true";
+    const leadRaw = String(reminder_lead || "week").toLowerCase().trim();
+    const safeReminderLead = ["day", "week", "month"].includes(leadRaw) ? leadRaw : "week";
+
     const recurringTransaction = await RecurringTransaction.create(
       effectiveOwnerId,
       titleFinal,
@@ -220,6 +226,8 @@ const createRecurringTransaction = async (req, res) => {
       endDateYMD,
       maxOcc,
       txnId,
+      safeReminderEnabled,
+      safeReminderLead,
     );
 
     // If this recurring transaction is linked to a base transaction,
@@ -411,6 +419,15 @@ const updateRecurringTransaction = async (req, res) => {
       } else {
         delete normalized.recurrence_type;
       }
+    }
+
+    if (Object.prototype.hasOwnProperty.call(updatesRaw, "reminder_enabled")) {
+      normalized.reminder_enabled = updatesRaw.reminder_enabled === true || updatesRaw.reminder_enabled === "true";
+    }
+    if (Object.prototype.hasOwnProperty.call(updatesRaw, "reminder_lead")) {
+      const l = String(updatesRaw.reminder_lead || "").toLowerCase().trim();
+      if (["day", "week", "month"].includes(l)) normalized.reminder_lead = l;
+      else delete normalized.reminder_lead;
     }
 
     // VALIDATION: If category_id is being updated

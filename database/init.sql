@@ -175,6 +175,8 @@ CREATE TABLE IF NOT EXISTS recurring_transactions (
   start_date DATE NOT NULL,
   end_date DATE,
   max_occurrences INTEGER,
+  reminder_enabled BOOLEAN DEFAULT FALSE,
+  reminder_lead VARCHAR(16) DEFAULT 'week',
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );

@@ -16,6 +16,8 @@ class RecurringTransaction {
     end_date,
     max_occurrences,
     transaction_id,
+    reminder_enabled = false,
+    reminder_lead = "week",
   ) {
     const result = await db.query(
       `INSERT INTO recurring_transactions (
@@ -32,8 +34,10 @@ class RecurringTransaction {
         start_date,
         end_date,
         max_occurrences,
-        transaction_id
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+        transaction_id,
+        reminder_enabled,
+        reminder_lead
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
       RETURNING *`,
       [
         user_id,
@@ -50,6 +54,8 @@ class RecurringTransaction {
         end_date,
         max_occurrences,
         transaction_id,
+        reminder_enabled,
+        reminder_lead,
       ],
     );
     return result.rows[0];
@@ -117,6 +123,8 @@ class RecurringTransaction {
       "start_date",
       "end_date",
       "max_occurrences",
+      "reminder_enabled",
+      "reminder_lead",
     ];
 
     const sets = [];
@@ -179,6 +187,8 @@ class RecurringTransaction {
       "start_date",
       "end_date",
       "max_occurrences",
+      "reminder_enabled",
+      "reminder_lead",
     ];
 
     const sets = [];
