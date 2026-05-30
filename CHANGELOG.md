@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## [v1.2.1] - 2026-05-31
+
+### Added
+- **Recurring reminder fields**: `recurring_transactions` now persists `reminder_enabled` (bool, default false) and `reminder_lead` (`day`|`week`|`month`, default `week`). Create and update endpoints accept and sanitize both; `GET /api/recurring-transactions` returns them. Enables the mobile client's recurring renewal reminder notifications. Migration `017-add-recurring-reminder-fields.sql` adds the columns idempotently.
+
 ## [v1.2.0] - 2026-05-29
 
 ### Added
