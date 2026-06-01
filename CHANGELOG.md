@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## [v1.2.2] - 2026-06-01
+
+### Fixed
+- **Silent session refresh — no more spurious re-logins**: refresh-token rotation now tolerates benign races. A single-use refresh token re-presented within a 60-second grace window (e.g. a client retrying a refresh whose response was lost, or two near-simultaneous refreshes) is re-issued instead of being treated as a reuse attack and revoking the entire token family — which previously forced the user to log in again. Genuinely old or unknown tokens still revoke the family. Migration `018-refresh-token-rotation-grace.sql` adds `previous_token_hash` / `previous_rotated_at` to `refresh_tokens` (additive, idempotent).
+
 ## [v1.2.1] - 2026-05-31
 
 ### Added
