@@ -17,6 +17,10 @@ const REFRESH_TOKEN_EXPIRY_DAYS = 90; // 90 days for persistent login (sliding w
 const REFRESH_TOKEN_BYTES = 32;
 const BCRYPT_ROUNDS = 10;
 const MAX_SESSIONS_PER_USER = 10; // Maximum concurrent sessions per user
+// Grace window during which the immediately-previous (just-rotated-away) refresh
+// token is still accepted, so retried/concurrent refreshes don't trip reuse
+// detection and force a logout.
+const REFRESH_ROTATION_GRACE_MS = 60 * 1000;
 
 /**
  * Generate a cryptographically secure refresh token
@@ -106,7 +110,8 @@ async function storeRefreshToken(userId, tokenHash, tokenFamily, expiresAt, devi
  */
 async function getRefreshTokenData(userId, tokenFamily) {
     const query = `
-        SELECT id, token_hash, token_family, device_id, expires_at, revoked_at
+        SELECT id, token_hash, token_family, device_id, expires_at, revoked_at,
+               previous_token_hash, previous_rotated_at
         FROM refresh_tokens
         WHERE user_id = $1 AND token_family = $2
     `;
@@ -151,6 +156,8 @@ async function getRefreshTokenData(userId, tokenFamily) {
             family: row.token_family,
             expires: row.expires_at,
             deviceId: row.device_id,
+            previousHash: row.previous_token_hash,
+            previousRotatedAt: row.previous_rotated_at,
         };
     } catch (err) {
         logger.error(`[RefreshToken] Error getting token data for user ${userId}:`, err.message);
@@ -242,48 +249,64 @@ async function validateAndRotateToken(userId, token, tokenFamily, deviceInfo = {
         return { valid: false, error: "Refresh token expired" };
     }
 
-    // Validate token
-    const isValid = await compareToken(token, tokenData.hash);
-    if (!isValid) {
-        logger.warn(`[RefreshToken] Token hash mismatch for user ${userId} - potential token reuse!`);
-        // This could be a token reuse attack - revoke the entire family
-        await revokeTokenFamily(tokenFamily);
-        return { valid: false, error: "Invalid refresh token - session revoked for security" };
-    }
-
-    logger.info(`[RefreshToken] Token valid for user ${userId}, rotating...`);
-
-    // Token is valid - rotate it
-    const newToken = generateRefreshToken();
-    const newTokenHash = await hashToken(newToken);
     const newExpiry = calculateExpiry();
-    
-    // Preserve device info from original token, merge with any new info
-    const mergedDeviceInfo = {
-        deviceId: deviceInfo.deviceId || tokenData.deviceId,
-        deviceName: deviceInfo.deviceName,
-        deviceType: deviceInfo.deviceType,
-        ipAddress: deviceInfo.ipAddress,
-        userAgent: deviceInfo.userAgent,
-    };
-    
-    // Keep the same family for valid rotations
-    await storeRefreshToken(userId, newTokenHash, tokenFamily, newExpiry, mergedDeviceInfo);
 
-    // If this was a legacy token, clear it from users table after successful migration
-    if (tokenData.isLegacy) {
-        logger.info(`[RefreshToken] Migrating legacy token for user ${userId} to new table`);
+    // Happy path: the presented token IS the current one — rotate it. Record the
+    // rotated-away token as `previous` so a retried/concurrent refresh within the
+    // grace window is recognised as benign rather than a reuse attack.
+    if (await compareToken(token, tokenData.hash)) {
+        logger.info(`[RefreshToken] Token valid for user ${userId}, rotating...`);
+        const newToken = generateRefreshToken();
+        const newTokenHash = await hashToken(newToken);
         await db.query(
-            `UPDATE users SET refresh_token_hash = NULL, refresh_token_family = NULL, refresh_token_expires = NULL WHERE id = $1`,
-            [userId]
+            `UPDATE refresh_tokens
+                SET token_hash = $3,
+                    previous_token_hash = $4,
+                    previous_rotated_at = CURRENT_TIMESTAMP,
+                    expires_at = $5,
+                    last_used_at = CURRENT_TIMESTAMP
+              WHERE user_id = $1 AND token_family = $2`,
+            [userId, tokenFamily, newTokenHash, tokenData.hash, newExpiry]
         );
+
+        if (tokenData.isLegacy) {
+            logger.info(`[RefreshToken] Migrating legacy token for user ${userId} to new table`);
+            await db.query(
+                `UPDATE users SET refresh_token_hash = NULL, refresh_token_family = NULL, refresh_token_expires = NULL WHERE id = $1`,
+                [userId]
+            );
+        }
+
+        return { valid: true, newToken, newFamily: tokenFamily };
     }
 
-    return {
-        valid: true,
-        newToken,
-        newFamily: tokenFamily, // Same family for valid rotation
-    };
+    // Grace path: the presented token is the immediately-previous one and the last
+    // rotation was within the grace window — a benign race (the client retried a
+    // refresh whose response was lost, or two near-simultaneous refreshes). Re-issue
+    // a fresh token WITHOUT revoking and WITHOUT shifting `previous`, so any further
+    // retries of the same stale token within the window also succeed.
+    if (tokenData.previousHash && tokenData.previousRotatedAt) {
+        const ageMs = Date.now() - new Date(tokenData.previousRotatedAt).getTime();
+        if (ageMs <= REFRESH_ROTATION_GRACE_MS && (await compareToken(token, tokenData.previousHash))) {
+            logger.info(`[RefreshToken] Grace rotation for user ${userId} (retried/concurrent refresh, age ${ageMs}ms) — re-issuing, not revoking`);
+            const newToken = generateRefreshToken();
+            const newTokenHash = await hashToken(newToken);
+            await db.query(
+                `UPDATE refresh_tokens
+                    SET token_hash = $3,
+                        expires_at = $4,
+                        last_used_at = CURRENT_TIMESTAMP
+                  WHERE user_id = $1 AND token_family = $2`,
+                [userId, tokenFamily, newTokenHash, newExpiry]
+            );
+            return { valid: true, newToken, newFamily: tokenFamily };
+        }
+    }
+
+    // Genuine reuse / unknown token → revoke the entire family (security response).
+    logger.warn(`[RefreshToken] Token hash mismatch for user ${userId} - potential token reuse, revoking family!`);
+    await revokeTokenFamily(tokenFamily);
+    return { valid: false, error: "Invalid refresh token - session revoked for security" };
 }
 
 /**
