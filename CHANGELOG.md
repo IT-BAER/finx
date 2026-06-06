@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## [v1.2.3] - 2026-06-06
+
+### Fixed
+- **Native-app transaction categories now persist on create**: the create endpoint previously resolved a category only from a `category` *name* and silently ignored a numeric `category_id`. Native clients send the category as a `category_id`, so every transaction created from the app was saved uncategorised — while edits were unaffected because the update endpoint already honoured `category_id`. Create now accepts `category_id` as a fallback when no name is supplied, validating that it refers to an existing category, and duplicate detection resolves the category name from that id so id-based creates are matched correctly. The web app (which sends the category name) is unchanged.
+
 ## [v1.2.2] - 2026-06-01
 
 ### Fixed

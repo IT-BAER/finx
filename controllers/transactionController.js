@@ -13,6 +13,7 @@ const createTransaction = async (req, res) => {
   try {
     const {
       category,
+      category_id,
       source,
       target,
       amount,
@@ -36,8 +37,9 @@ const createTransaction = async (req, res) => {
     const inSource = norm(source);
     const inTarget = norm(target);
 
-    // Handle category (global by name)
+    // Handle category (global by name, or by numeric id from native clients)
     let categoryId = null;
+    let categoryNameForDup = inCategory;
     if (inCategory) {
       try {
         // Try to find any category with the same name regardless of owner
@@ -58,6 +60,20 @@ const createTransaction = async (req, res) => {
       } catch (err) {
         console.error("Category handling error:", err);
         return res.status(500).json({ message: "Failed to process category" });
+      }
+    } else if (category_id != null) {
+      // Native clients send the category as a numeric id (names are display-only).
+      // Accept the id directly when it refers to an existing category.
+      const idNum = Number(category_id);
+      if (Number.isInteger(idNum) && idNum > 0) {
+        const byId = await db.query(
+          "SELECT id, name FROM categories WHERE id = $1 LIMIT 1",
+          [idNum],
+        );
+        if (byId.rows.length > 0) {
+          categoryId = byId.rows[0].id;
+          categoryNameForDup = byId.rows[0].name;
+        }
       }
     }
 
@@ -129,7 +145,7 @@ const createTransaction = async (req, res) => {
       amount,
       transactionType,
       description || "",
-      inCategory || null,
+      categoryNameForDup || null,
       inSource || null,
       inTarget || null,
     ]);
