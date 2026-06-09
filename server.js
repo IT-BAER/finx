@@ -172,7 +172,9 @@ app.use("/api/goals", require("./routes/goal"));
 app.use("/api/recurring-tools", require("./routes/recurring-tools"));
 app.use("/api/ai", (req, res, next) => {
   const cl = Number(req.headers["content-length"]);
-  if (cl && cl > 32 * 1024) {
+  // OCR carries a base64 image; everything else stays at the 32KB text cap.
+  const cap = req.path === "/ocr" ? 6 * 1024 * 1024 : 32 * 1024;
+  if (cl && cl > cap) {
     return res
       .status(413)
       .json({ message: "Payload too large", code: "AI_PAYLOAD_TOO_LARGE" });

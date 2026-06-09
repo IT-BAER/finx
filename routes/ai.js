@@ -3,10 +3,11 @@ const router = express.Router();
 const auth = require("../middleware/auth");
 const isAdmin = require("../middleware/isAdmin");
 const { perUserHourly, perUserDaily } = require("../middleware/aiRateLimit");
-const { parseNotification } = require("../controllers/aiController");
+const { parseNotification, parseReceipt } = require("../controllers/aiController");
 
 // 32 KB body cap applied before parsing JSON in this route.
 const aiBodyJson = express.json({ limit: "32kb" });
+const ocrBodyJson = express.json({ limit: "6mb" });
 
 // Admin-only by default. Set AI_ALLOW_NON_ADMIN=true to open to all users.
 const allowAll = process.env.AI_ALLOW_NON_ADMIN === "true";
@@ -23,6 +24,17 @@ router.post(
   perUserDaily(),
   aiBodyJson,
   parseNotification,
+);
+
+// POST /api/ai/ocr — server-side receipt/invoice OCR (image → transaction fields)
+router.post(
+  "/ocr",
+  auth,
+  gate,
+  perUserHourly({ limit: 20 }),
+  perUserDaily({ limit: 60 }),
+  ocrBodyJson,
+  parseReceipt,
 );
 
 // Map body-parser entity.too.large to our standard 413 response so the

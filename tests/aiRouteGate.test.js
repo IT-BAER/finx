@@ -69,3 +69,21 @@ test("admin gate: AI_ALLOW_NON_ADMIN=true opens to all users", async () => {
   assert.equal(r.status, 200);
   delete process.env.AI_ALLOW_NON_ADMIN;
 });
+
+test("OCR admin gate: non-admin blocked by default", async () => {
+  delete process.env.AI_ALLOW_NON_ADMIN;
+  const b64 = Buffer.from("x".repeat(64)).toString("base64");
+  const r = await request(makeApp({ is_admin: false }))
+    .post("/api/ai/ocr")
+    .send({ image: b64, mime: "image/jpeg" });
+  assert.equal(r.status, 403);
+});
+
+test("OCR admin gate: admin user passes (200)", async () => {
+  delete process.env.AI_ALLOW_NON_ADMIN;
+  const b64 = Buffer.from("x".repeat(64)).toString("base64");
+  const r = await request(makeApp({ is_admin: true }))
+    .post("/api/ai/ocr")
+    .send({ image: b64, mime: "image/jpeg" });
+  assert.equal(r.status, 200);
+});
