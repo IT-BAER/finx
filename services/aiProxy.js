@@ -159,15 +159,12 @@ const callAiProxy = async ({ purpose, vars, userId }) => {
   };
 
   if (purpose === "RECEIPT_OCR") {
-    // Free vision models are flaky (per-model rate limits / transient 5xx). Try a few
-    // distinct free vision models before surfacing a failure, so a single bad roll of
-    // openrouter/free doesn't show the user "couldn't read the receipt".
-    const models = [...new Set([
-      cfg.model,
-      "openrouter/free",
-      "meta-llama/llama-3.2-11b-vision-instruct:free",
-      "qwen/qwen2.5-vl-72b-instruct:free",
-    ])];
+    // One free attempt (openrouter/free), then an OPTIONAL paid fallback set via
+    // OCR_FALLBACK_MODEL (e.g. openai/gpt-4o-mini, ~$0.001/scan) for when the free tier
+    // is rate-limited (429). Retrying more *free* models is pointless: the ~20/min + daily
+    // free quota is account-level across ALL :free models, so they 429 together — and it
+    // would burn the quota faster (N calls per scan).
+    const models = [...new Set([cfg.model, process.env.OCR_FALLBACK_MODEL].filter(Boolean))];
     let lastErr;
     for (const model of models) {
       try {
