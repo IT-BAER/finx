@@ -160,10 +160,12 @@ const callAiProxy = async ({ purpose, vars, userId }) => {
 
   if (purpose === "RECEIPT_OCR") {
     // One free attempt (openrouter/free), then an OPTIONAL paid fallback set via
-    // OCR_FALLBACK_MODEL (e.g. openai/gpt-4o-mini, ~$0.001/scan) for when the free tier
-    // is rate-limited (429). Retrying more *free* models is pointless: the ~20/min + daily
-    // free quota is account-level across ALL :free models, so they 429 together — and it
-    // would burn the quota faster (N calls per scan).
+    // OCR_FALLBACK_MODEL for when the free tier is rate-limited (429). Recommended:
+    // google/gemini-2.5-flash-lite (~$0.0002/scan — Gemini tokenizes images efficiently).
+    // AVOID openai/gpt-4o-mini here: it bills images at a ~33x token multiplier (~$0.006/scan).
+    // Retrying more *free* models is pointless: the ~20/min + daily free quota is
+    // account-level across ALL :free models, so they 429 together — and it would burn
+    // the quota faster (N calls per scan).
     const models = [...new Set([cfg.model, process.env.OCR_FALLBACK_MODEL].filter(Boolean))];
     let lastErr;
     for (const model of models) {
