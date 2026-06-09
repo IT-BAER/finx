@@ -9,6 +9,16 @@ const PURPOSES = Object.freeze({
     temperature: 0.1,
     responseSchema: parseResponseSchema,
   },
+  RECEIPT_OCR: {
+    id: "RECEIPT_OCR",
+    // openrouter/free auto-selects a FREE model that supports the request's
+    // capabilities (image understanding) because we send an image part.
+    // Override with OCR_MODEL to pin a specific (e.g. paid) vision model.
+    model: process.env.OCR_MODEL || "openrouter/free",
+    maxTokens: 400,
+    temperature: 0.1,
+    responseSchema: parseResponseSchema,
+  },
 });
 
 const renderNotificationPrompt = (vars) => {
@@ -44,6 +54,32 @@ const renderNotificationPrompt = (vars) => {
   ].join("\n");
 };
 
+const renderReceiptPrompt = (vars) => {
+  const catList = vars.categories?.length ? vars.categories.join(", ") : "(none)";
+  return [
+    "You are a receipt/invoice parser. The user sends a photo of ONE receipt or invoice.",
+    "Extract the SINGLE transaction it represents. Use the GRAND TOTAL actually paid",
+    "(the final total incl. tax), NOT subtotals or individual line items.",
+    "Respond with ONLY valid JSON matching the schema — no markdown, no prose.",
+    "",
+    "Schema:",
+    JSON.stringify({
+      amount: "<positive number, the grand total>",
+      currency: "<ISO-4217 or null>",
+      type: "expense",
+      description: "<merchant/store name, <=80 chars>",
+      category: "<best matching category from list or null>",
+      source: null,
+      target: "<merchant/store name>",
+      date: "<YYYY-MM-DD on the receipt, else null>",
+    }),
+    "",
+    `Available categories: ${catList}`,
+    "",
+    "Return ONLY the JSON object.",
+  ].join("\n");
+};
+
 const buildPromptFor = (purposeId, vars) => {
   if (!PURPOSES[purposeId]) throw new Error(`unknown purpose: ${purposeId}`);
   if (purposeId === "NOTIFICATION_PARSE") return renderNotificationPrompt(vars);
@@ -59,7 +95,21 @@ const callAiProxy = async ({ purpose, vars, userId }) => {
     err.status = 503;
     throw err;
   }
-  const prompt = buildPromptFor(purpose, vars);
+  let messages;
+  if (purpose === "RECEIPT_OCR") {
+    messages = [
+      {
+        role: "user",
+        content: [
+          { type: "text", text: renderReceiptPrompt(vars) },
+          { type: "image_url", image_url: { url: `data:${vars.mime};base64,${vars.image}` } },
+        ],
+      },
+    ];
+  } else {
+    messages = [{ role: "user", content: buildPromptFor(purpose, vars) }];
+  }
+
   const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -70,13 +120,13 @@ const callAiProxy = async ({ purpose, vars, userId }) => {
     },
     body: JSON.stringify({
       model: cfg.model,
-      messages: [{ role: "user", content: prompt }],
+      messages,
       max_tokens: cfg.maxTokens,
       temperature: cfg.temperature,
       reasoning: { exclude: true },
       provider: { data_collection: "deny" },
     }),
-    signal: AbortSignal.timeout(30000),
+    signal: AbortSignal.timeout(45000),
   });
   if (!response.ok) {
     const err = new Error(`OpenRouter HTTP ${response.status}`);
