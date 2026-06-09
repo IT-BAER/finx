@@ -1,5 +1,5 @@
 const logger = require('../utils/logger');
-const { parseRequestSchema } = require('../utils/aiSchemas');
+const { parseRequestSchema, ocrRequestSchema } = require('../utils/aiSchemas');
 const { sanitizeText, sanitizeStringArray } = require('../utils/aiSanitize');
 const { callAiProxy } = require('../services/aiProxy');
 
@@ -44,4 +44,34 @@ const parseNotification = async (req, res) => {
   }
 };
 
-module.exports = { parseNotification };
+const parseReceipt = async (req, res) => {
+  const parsed = ocrRequestSchema.safeParse(req.body || {});
+  if (!parsed.success) {
+    return res.status(400).json({
+      message: parsed.error.issues[0]?.message || 'invalid request body',
+      code: 'AI_BAD_REQUEST',
+    });
+  }
+  const v = parsed.data;
+  const vars = {
+    image: v.image,
+    mime: v.mime,
+    categories: sanitizeStringArray(v.categories),
+  };
+  try {
+    const { parsed: out, model } = await callAiProxy({
+      purpose: 'RECEIPT_OCR',
+      vars,
+      userId: req.user?.id,
+    });
+    return res.json({ parsed: out, model });
+  } catch (err) {
+    logger.error('AI OCR failed (user=' + (req.user?.id) + '): ' + err.message);
+    const status = err.status || 502;
+    return res
+      .status(status)
+      .json({ message: status === 503 ? 'AI not configured' : 'AI parsing unavailable' });
+  }
+};
+
+module.exports = { parseNotification, parseReceipt };
