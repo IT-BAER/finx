@@ -39,8 +39,8 @@ const parseResponseSchema = z.object({
   currency: z.string().max(8).nullable().optional(),
 });
 
-// Max base64 image payload accepted by the OCR endpoint (~5MB binary → ~6.7MB base64).
-const MAX_IMAGE_B64_LEN = 7_000_000;
+// Base64 image cap (~6 MiB) — kept just under the route/server.js 6 MiB body gate so an oversized image fails as a clean 400 (schema) rather than a 413.
+const MAX_IMAGE_B64_LEN = 6_200_000;
 
 const ocrRequestSchema = z
   .object({
