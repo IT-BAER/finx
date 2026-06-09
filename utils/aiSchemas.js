@@ -39,4 +39,15 @@ const parseResponseSchema = z.object({
   currency: z.string().max(8).nullable().optional(),
 });
 
-module.exports = { parseRequestSchema, parseResponseSchema };
+// Max base64 image payload accepted by the OCR endpoint (~5MB binary → ~6.7MB base64).
+const MAX_IMAGE_B64_LEN = 7_000_000;
+
+const ocrRequestSchema = z
+  .object({
+    image: z.string().min(16).max(MAX_IMAGE_B64_LEN),
+    mime: z.enum(["image/jpeg", "image/png", "image/webp"]),
+    categories: stringArray,
+  })
+  .strip();
+
+module.exports = { parseRequestSchema, parseResponseSchema, ocrRequestSchema, MAX_IMAGE_B64_LEN };

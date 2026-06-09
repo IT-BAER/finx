@@ -1,6 +1,6 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
-const { parseRequestSchema, parseResponseSchema } = require("../utils/aiSchemas");
+const { parseRequestSchema, parseResponseSchema, ocrRequestSchema } = require("../utils/aiSchemas");
 
 test("parseRequestSchema accepts minimal valid body", () => {
   const r = parseRequestSchema.safeParse({ text: "Spent 5 EUR at Coffee" });
@@ -40,4 +40,28 @@ test("parseResponseSchema enforces amount + type + 80-char description", () => {
     description: "x".repeat(200),
   });
   assert.equal(bad.success, false);
+});
+
+test("ocrRequestSchema accepts valid jpeg with categories", () => {
+  const b64 = Buffer.from("x".repeat(64)).toString("base64");
+  const r = ocrRequestSchema.safeParse({ image: b64, mime: "image/jpeg", categories: ["Food"] });
+  assert.equal(r.success, true);
+});
+
+test("ocrRequestSchema rejects missing image", () => {
+  const r = ocrRequestSchema.safeParse({ mime: "image/jpeg" });
+  assert.equal(r.success, false);
+});
+
+test("ocrRequestSchema rejects disallowed mime", () => {
+  const b64 = Buffer.from("x".repeat(64)).toString("base64");
+  const r = ocrRequestSchema.safeParse({ image: b64, mime: "image/gif" });
+  assert.equal(r.success, false);
+});
+
+test("ocrRequestSchema defaults categories to empty array", () => {
+  const b64 = Buffer.from("x".repeat(64)).toString("base64");
+  const r = ocrRequestSchema.safeParse({ image: b64, mime: "image/png" });
+  assert.equal(r.success, true);
+  assert.deepEqual(r.data.categories, []);
 });
