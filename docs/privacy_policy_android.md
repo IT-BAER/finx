@@ -1,6 +1,6 @@
 # Privacy Policy for FinX
 
-**Last Updated:** April 27, 2026
+**Last Updated:** June 10, 2026
 
 Your privacy is our priority. How we handle your data depends on how you use the app.
 
@@ -46,8 +46,20 @@ FinX includes an opt-in **Location Reminders** feature (available to Premium sub
 - **Opt-in and revocable** — you can disable it at any time in Settings; revoking location permission in your device settings also stops all location access immediately
 - **Premium-only** — available to Premium subscribers only
 
+### AI Features (Optional – Receipt Scanning & Notification Parsing)
+
+FinX includes optional AI features that require your **explicit in-app consent** before any data is sent. Nothing is sent until you accept the disclosure shown in the app, and declining keeps the feature off.
+
+- **Receipt Scanning:** When you scan a receipt or invoice, the photo is sent to an AI service that extracts the transaction details (amount, date, merchant). The image is **transient** — it is downscaled, sent for a single extraction, then discarded. It is not stored by FinX, not attached to the transaction, and not retained on FinX servers.
+- **Notification Parsing:** When enabled, the text of incoming transaction notifications (e.g. bank payment alerts) is sent to an AI service that extracts the transaction details. The text is used for that single extraction only.
+
+**How it is handled:**
+- Both features are **opt-in** and gated behind an explicit consent dialog; if you decline, no data is sent.
+- Requests are routed to third-party AI providers for processing. FinX requests that your data **not be used for model training** (sent with a no-data-collection flag where supported), but cannot fully guarantee the retention practices of every provider.
+- Advanced users may supply their own API key (BYOK), in which case requests go directly to the provider they choose.
+
 ### Automatically Collected Data
-- **None** (beyond what is described above). FinX does not use analytics, tracking, or crash reporting services.
+- **None.** FinX does not use analytics, tracking, or crash reporting services. (The opt-in AI features above only run when you trigger them and after you consent.)
 
 ## How We Use Your Data
 
@@ -57,14 +69,17 @@ Your data is used solely to provide the app's functionality:
 - Tracking savings goals
 - Syncing between devices (Online Mode only)
 - Detecting nearby points of interest via geofencing to trigger local transaction reminders (Location Reminders feature, opt-in, Premium only)
+- Extracting transaction details from receipt photos or notification text via AI (AI Features, opt-in, consent-gated)
 
 ## Data Sharing
 
-**We do not share your financial data with any third parties.**
+**We do not sell your data, and we do not share it with advertising networks, analytics providers, or data brokers.**
 
 - No advertising networks
 - No analytics providers
 - No data brokers
+
+The only third parties that ever receive your data are the limited, purpose-specific service providers described below (location POI lookup, subscription management, and — only if you opt in — AI processing).
 
 ### OpenStreetMap Overpass API (Location Reminders only)
 
@@ -83,6 +98,10 @@ FinX uses RevenueCat to manage optional Premium subscriptions. RevenueCat proces
 - Any data stored in Local Mode or on your server
 
 For more information, see [RevenueCat's Privacy Policy](https://www.revenuecat.com/privacy).
+
+### AI Processing (Receipt Scanning & Notification Parsing — opt-in)
+
+If — and only if — you opt in to the AI features, receipt images or notification text are sent to third-party AI providers solely to extract transaction details for you. This happens only after you grant explicit in-app consent, and only for the specific scan or notification involved. FinX requests that this data not be used for model training. Receipt images are transient and are not retained by FinX. See **AI Features** under "Data We Collect" above for details.
 
 ## Data Security
 
