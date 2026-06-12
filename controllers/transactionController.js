@@ -1,6 +1,5 @@
 const Transaction = require("../models/Transaction");
 const RecurringTransaction = require("../models/RecurringTransaction");
-const Category = require("../models/Category");
 const User = require("../models/User");
 const Goal = require("../models/Goal");
 const db = require("../config/db");
@@ -642,23 +641,15 @@ const updateTransaction = async (req, res) => {
       }
     }
 
-    // Check if category belongs to user (if provided and not newly created)
+    // Validate category by existence (categories are global by name/id here — mirrors
+    // createTransaction). A shared transaction may carry a category owned by the other
+    // party, so do NOT enforce per-owner ownership or the edit 404s.
     if (categoryId && !category) {
-      // Use findByIdForUser to enforce ownership check at the model level
-      const categoryRecord = await Category.findByIdForUser(categoryId, ownerId);
-      if (process.env.DEBUG === "true") {
-        console.log(
-          "Checking category ownership via findByIdForUser: categoryId=%s, categoryRecord=",
-          categoryId,
-          categoryRecord,
-        );
-      }
-      if (!categoryRecord) {
-        if (process.env.DEBUG === "true") {
-          console.log(
-            `Category ownership failed for categoryId=${categoryId}, user=${req.user?.id}`,
-          );
-        }
+      const byId = await db.query(
+        "SELECT id FROM categories WHERE id = $1 LIMIT 1",
+        [categoryId],
+      );
+      if (byId.rows.length === 0) {
         return res.status(404).json({ message: "Category not found" });
       }
     }

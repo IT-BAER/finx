@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## [v1.2.4] - 2026-06-12
+
+### Fixed
+- **Editing a shared transaction no longer fails with `404 Category not found`**: the update endpoint enforced per-owner category ownership (`Category.findByIdForUser(category_id, ownerId)`), so saving an edit to a transaction whose category is owned by the *other* party in a write-share was rejected with `404` — and the native client, treating it as a transient failure, silently discarded the change on the next pull-to-refresh. Category validation on update now mirrors create: a numeric `category_id` is accepted whenever it refers to an existing category, regardless of owner (categories are global by name/id in FinX). Editing any field (amount, description, source/target, date, category) on a shared transaction now persists.
+
 ## [v1.2.3] - 2026-06-06
 
 ### Fixed
