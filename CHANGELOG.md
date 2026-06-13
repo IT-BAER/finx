@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## [v1.2.5] - 2026-06-13
+
+### Fixed
+- **Receipt OCR no longer fabricates a transaction from a blank or non-receipt photo**: the OCR prompt previously *commanded* extraction with no escape hatch, so a blank/black image or a non-receipt photo made the vision model invent a plausible merchant + amount (e.g. "REWE €10.50"). The prompt now tells the model to first decide whether the image is a readable receipt and return `is_receipt: false` with null fields when it is blank, too dark, or not a receipt — never guessing. The response schema carries the `is_receipt` flag through to the client, which rejects the scan instead of pre-filling fabricated data. (The client also short-circuits a pure-blank image before any model call.)
+
 ## [v1.2.4] - 2026-06-12
 
 ### Fixed

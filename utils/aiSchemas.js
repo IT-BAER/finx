@@ -24,6 +24,11 @@ const parseRequestSchema = z
   );
 
 const parseResponseSchema = z.object({
+  // Receipt-OCR only: the model's self-report that the image was a readable receipt.
+  // false ⇒ blank/dark/non-receipt ⇒ the client must NOT pre-fill (anti-hallucination).
+  // Accept boolean or string and pass through unchanged; the client normalizes. Lenient on
+  // purpose — a malformed advisory flag must never fail the whole parse.
+  is_receipt: z.union([z.boolean(), z.string()]).nullable().optional(),
   // LLMs occasionally return amount as a string ("24.90"). Coerce to number
   // so the response passes schema validation in those cases.
   amount: z.coerce.number().positive().nullable(),

@@ -42,6 +42,30 @@ test("parseResponseSchema enforces amount + type + 80-char description", () => {
   assert.equal(bad.success, false);
 });
 
+test("parseResponseSchema passes is_receipt through (bool + string) and tolerates absence", () => {
+  // Anti-hallucination flag must survive validation so the client can reject blank-image fabrications.
+  const boolFalse = parseResponseSchema.safeParse({
+    is_receipt: false, amount: null, type: null, description: null,
+    category: null, source: null, target: null, date: null,
+  });
+  assert.equal(boolFalse.success, true);
+  assert.equal(boolFalse.data.is_receipt, false);
+
+  const strFalse = parseResponseSchema.safeParse({
+    is_receipt: "false", amount: 10.5, type: "expense", description: "REWE",
+    category: null, source: null, target: "REWE", date: null,
+  });
+  assert.equal(strFalse.success, true);
+  assert.equal(strFalse.data.is_receipt, "false");
+
+  const absent = parseResponseSchema.safeParse({
+    amount: 5.5, type: "expense", description: "Coffee",
+    category: null, source: null, target: null, date: null,
+  });
+  assert.equal(absent.success, true);
+  assert.equal(absent.data.is_receipt, undefined);
+});
+
 test("ocrRequestSchema accepts valid jpeg with categories", () => {
   const b64 = Buffer.from("x".repeat(64)).toString("base64");
   const r = ocrRequestSchema.safeParse({ image: b64, mime: "image/jpeg", categories: ["Food"] });
