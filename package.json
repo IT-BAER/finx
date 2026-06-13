@@ -1,6 +1,6 @@
 {
   "name": "finx",
-  "version": "1.2.5",
+  "version": "1.2.6",
   "description": "A modern personal finance management application",
   "main": "server.js",
   "scripts": {
@@ -39,9 +39,6 @@
     "compression": "^1.7.4",
     "cors": "^2.8.5",
     "dotenv": "^16.6.1",
-    "expo-document-picker": "^14.0.8",
-    "expo-file-system": "^19.0.20",
-    "expo-sharing": "^14.0.8",
     "express": "^4.21.2",
     "express-rate-limit": "^7.5.1",
     "helmet": "^7.2.0",
@@ -49,8 +46,7 @@
     "jsonwebtoken": "^9.0.2",
     "morgan": "^1.10.1",
     "pg": "^8.13.1",
-    "react": "^19.1.1",
-    "uuid": "^9.0.1",
+    "uuid": "^11.1.1",
     "winston": "^3.19.0",
     "winston-daily-rotate-file": "^5.0.0",
     "zod": "^4.3.4"

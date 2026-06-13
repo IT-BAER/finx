@@ -42,7 +42,9 @@ module.exports = [
       },
     },
     settings: {
-      react: { version: "detect" },
+      // Pinned (not "detect") because `react` is intentionally not a backend dependency;
+      // detect would warn on every lint run. The frontend declares its own react.
+      react: { version: "19" },
     },
     plugins: {
       react,
@@ -86,7 +88,9 @@ module.exports = [
       },
     },
     settings: {
-      react: { version: "detect" },
+      // Pinned (not "detect") because `react` is intentionally not a backend dependency;
+      // detect would warn on every lint run. The frontend declares its own react.
+      react: { version: "19" },
     },
     plugins: {
       react,

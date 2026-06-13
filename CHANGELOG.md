@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented in this file.
 
+## [v1.2.6] - 2026-06-13
+
+### Security
+- **Cleared all production dependency vulnerabilities (Dependabot 40 → build-time-only residue).** Backend: removed the unused Expo client packages (`expo-document-picker`, `expo-file-system`, `expo-sharing`) and the unused `react` dependency, which eliminated the `shell-quote` (critical) and `@xmldom/xmldom` (high) advisories they dragged in; bumped `uuid` 9 → 11 (patched, `require()` usage unaffected) and patched `body-parser`/`express`/`qs` within their majors → **backend 0 known vulnerabilities**. Frontend: patched `axios` → 1.17, `react-router(-dom)` → 7.17, `postcss` → 8.5, and `follow-redirects` (all within-major, build verified).
+- **Deferred:** the remaining `esbuild`/`vite` advisories are **build-time only** (dev-server / Deno binary resolution) and never execute on the deployed server, which serves pre-built static assets — so they pose no production risk. Their npm fix requires the Vite 8 (Rolldown) migration, which breaks the current build and is deferred to a dedicated change.
+
 ## [v1.2.5] - 2026-06-13
 
 ### Fixed
