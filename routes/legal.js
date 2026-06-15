@@ -54,7 +54,7 @@ router.get("/privacy", (req, res) => {
     <p>When using Online Mode, your data is stored on your own self-hosted server. FinX does not have access to your data. Your privacy and data security depend on how you configure and secure your server.</p>
 
     <h2>Managed Hosting Privacy</h2>
-    <p>When using the FinX managed hosting service, your data is stored on servers located in the European Union (EU) and is fully DSGVO/GDPR compliant. Your financial data remains on EU servers and is never shared with third parties.</p>
+    <p>When using the FinX managed hosting service, your data is stored on servers located in the European Union (EU) and is fully DSGVO/GDPR compliant. Your financial data remains on EU servers, is never sold, and is shared only with the limited, purpose-specific service providers described under Data Sharing below.</p>
 
     <hr>
 
@@ -64,6 +64,13 @@ router.get("/privacy", (req, res) => {
       <li><strong>Account Data (Online Mode only):</strong> Email address, name, and password (stored on your self-hosted server)</li>
       <li><strong>Financial Data:</strong> Transaction records, categories, budgets, and savings goals (stored locally or on your server depending on mode)</li>
     </ul>
+    <h3>AI Features (Optional &mdash; Receipt Scanning &amp; Notification Parsing)</h3>
+    <p>FinX includes optional AI features that require your <strong>explicit in-app consent</strong> before any data is sent. Nothing is sent until you accept the disclosure shown in the app, and declining keeps the feature off.</p>
+    <ul>
+      <li><strong>Receipt Scanning:</strong> When you scan a receipt or invoice, the photo is sent to a third-party AI service that extracts the transaction details (amount, date, merchant). The image is <strong>transient</strong> &mdash; it is downscaled, sent for a single extraction, then discarded. It is not stored by FinX, not attached to the transaction, and not retained on FinX servers.</li>
+      <li><strong>Notification Parsing:</strong> When enabled, the text of incoming transaction notifications (e.g. bank payment alerts) is sent to a third-party AI service that extracts the transaction details. The text is used for that single extraction only.</li>
+    </ul>
+    <p>Both features are opt-in and gated behind an explicit consent dialog. FinX requests that your data <strong>not be used for model training</strong> (sent with a no-data-collection flag where supported) but cannot fully guarantee the retention practices of every provider. Advanced users may supply their own API key (BYOK), in which case requests go directly to the provider they choose.</p>
     <h3>Automatically Collected Data</h3>
     <p><strong>None.</strong> FinX does not use analytics, tracking, or crash reporting services.</p>
 
@@ -74,15 +81,17 @@ router.get("/privacy", (req, res) => {
       <li>Generating reports and insights</li>
       <li>Tracking savings goals</li>
       <li>Syncing between devices (Online Mode only)</li>
+      <li>Extracting transaction details from receipt photos or notification text via AI (opt-in, consent-gated)</li>
     </ul>
 
     <h2>Data Sharing</h2>
-    <p><strong>We do not share your financial data with any third parties.</strong></p>
+    <p><strong>We do not sell your data, and we do not share it with advertising networks, analytics providers, or data brokers.</strong></p>
     <ul>
       <li>No advertising networks</li>
       <li>No analytics providers</li>
       <li>No data brokers</li>
     </ul>
+    <p>The only third parties that ever receive your data are the limited, purpose-specific service providers described below (subscription management and &mdash; only if you opt in &mdash; AI processing).</p>
 
     <h3>Subscription Management (RevenueCat)</h3>
     <p>FinX uses RevenueCat to manage optional Premium subscriptions. RevenueCat processes only billing-related metadata:</p>
@@ -98,6 +107,9 @@ router.get("/privacy", (req, res) => {
       <li>Any data stored in Local Mode or on your server</li>
     </ul>
     <p>For more information, see <a href="https://www.revenuecat.com/privacy" rel="noopener noreferrer">RevenueCat&rsquo;s Privacy Policy</a>.</p>
+
+    <h3>AI Processing (Receipt Scanning &amp; Notification Parsing &mdash; opt-in)</h3>
+    <p>If &mdash; and only if &mdash; you opt in to the AI features, receipt images or notification text are sent to third-party AI providers solely to extract transaction details for you. This happens only after you grant explicit in-app consent, and only for the specific scan or notification involved. FinX requests that this data not be used for model training. Receipt images are transient and are not retained by FinX. See <strong>AI Features</strong> under &ldquo;Data We Collect&rdquo; above for details.</p>
 
     <h2>Data Security</h2>
     <ul>
