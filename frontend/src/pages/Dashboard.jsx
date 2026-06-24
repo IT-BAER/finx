@@ -274,6 +274,43 @@ const Dashboard = () => {
     };
   }, []);
 
+  // Fetch server-side filtered summary when a source filter is active.
+  // Uses getDashboardDataRaw (no cache) so the unfiltered offline cache is
+  // never overwritten with filtered data.
+  useEffect(() => {
+    if (!shouldFilter) {
+      setFilteredSummary(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const now = new Date();
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        const startDate = toYYYYMMDD(monthStart);
+        const endDate = toYYYYMMDD(now);
+        const res = await transactionAPI.getDashboardDataRaw({
+          startDate,
+          endDate,
+          source_ids: selectedSources.join(","),
+        });
+        if (cancelled) return;
+        const data = res.data?.data || res.data;
+        const s = data?.summary;
+        if (s) {
+          setFilteredSummary({
+            total_income: parseFloat(s.total_income) || 0,
+            total_expenses: parseFloat(s.total_expenses) || 0,
+            balance: parseFloat(s.balance) || 0,
+          });
+        }
+      } catch {
+        // Leave filteredSummary as-is on error (cards stay on last good value)
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [shouldFilter, selectedSources]);
+
   // Derive extra insights after data loads
   useEffect(() => {
     if (!dashboardData) return;
@@ -425,33 +462,6 @@ const Dashboard = () => {
 
         const chartData = { labels: dayLabels, datasets };
         setPerSourceChartData(chartData);
-
-        // =============================
-        // Filtered Summary (Current month only)
-        // =============================
-        const filteredSummary = {
-          total_income: 0,
-          total_expenses: 0,
-          balance: 0
-        };
-
-        const filteredMonthly = (filtered || []).filter((tx) => {
-          const d = new Date(tx.date);
-          return d >= monthStart && d <= monthEnd;
-        });
-
-        if (filteredMonthly.length > 0) {
-          filteredMonthly.forEach((tx) => {
-            const amount = parseFloat(tx.amount) || 0;
-            if (tx.type === 'income') {
-              filteredSummary.total_income += amount;
-            } else if (tx.type === 'expense') {
-              filteredSummary.total_expenses += amount;
-            }
-          });
-          filteredSummary.balance = filteredSummary.total_income - filteredSummary.total_expenses;
-        }
-        setFilteredSummary(filteredSummary);
 
         // =============================
         // Filtered Daily Expenses (STRICT last 7 days)

@@ -357,6 +357,12 @@ export const transactionAPI = {
       throw err;
     }
   },
+  // Bypass all caching — used for source-filtered summary fetches so the
+  // unfiltered offline cache is never polluted with filtered results.
+  getDashboardDataRaw: async (params) => {
+    const response = await api.get("/transactions/dashboard", { params });
+    return response;
+  },
   getReportData: async (params) => {
     const cacheKey = `${cacheKeys.REPORT_DATA}_${JSON.stringify(params || {})}`;
 
