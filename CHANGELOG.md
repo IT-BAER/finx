@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented in this file.
 
+## [v1.2.7] - 2026-06-24
+
+### Fixed
+- **The source filter now includes a filtered account's income, not just its expenses.** An account is a `sources` row on its expenses but a `targets` row on its incomes (separate tables, joined only by name), so the dashboard/transactions source filter — which matched only `source_id` — silently dropped every income on a filtered account (a shared account showed expenses but no incomes). `GET /transactions` and `/transactions/dashboard` now accept a `source_ids` filter that matches **both** the source (expense) and target (income) side, resolving the income side per owner by name; the dashboard cache key includes the active filter.
+- **Web dashboard totals under a source filter now come from the server** rather than a fragile client-side recompute, so a filtered (including shared) account's income and expense cards are correct.
+
 ## [v1.2.6] - 2026-06-13
 
 ### Security
