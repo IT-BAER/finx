@@ -6,6 +6,7 @@ const db = require("../config/db");
 const cache = require("../services/cache");
 const { getAccessibleUserIds, validateAsUserId, getSharingPermissionMeta, getUsersSharedWithOwner } = require("../utils/access");
 const { createMirror, syncMirrorOnUpdate, deleteMirror } = require("../utils/transactionMirror");
+const { parseSourceIds, buildSourceFilterClause } = require("../utils/sourceFilter");
 
 // Create transaction
 const createTransaction = async (req, res) => {
@@ -240,7 +241,8 @@ const createTransaction = async (req, res) => {
 const getTransactions = async (req, res) => {
   try {
     // Optional filter to view as a specific accessible user
-    const { asUserId, limit, offset, q, start_date, end_date } = req.query;
+    const { asUserId, limit, offset, q, start_date, end_date, source_ids } = req.query;
+    const sourceIds = parseSourceIds(source_ids);
     const validAsUserId = await validateAsUserId(req.user.id, asUserId, "all");
 
     // Parse limit and offset with defaults
@@ -307,6 +309,15 @@ const getTransactions = async (req, res) => {
       searchCondition += ` AND t.date <= $${paramIndex}`;
       queryParams.push(end_date);
       paramIndex++;
+    }
+
+    // Source filter: match the selected accounts on either the source (expense) or target
+    // (income) side, so a filtered account shows both its incomes and expenses.
+    const srcFilter = buildSourceFilterClause(sourceIds, paramIndex, "t");
+    if (srcFilter.clause) {
+      searchCondition += ` AND ${srcFilter.clause}`;
+      queryParams.push(...srcFilter.values);
+      paramIndex = srcFilter.nextIndex;
     }
 
     const query = `
@@ -931,7 +942,8 @@ const deleteTransaction = async (req, res) => {
 // Get dashboard data (aggregate over mine + shared to me by default, optional asUserId)
 const getDashboardData = async (req, res) => {
   try {
-    const { timeRange, startDate, endDate, asUserId } = req.query;
+    const { timeRange, startDate, endDate, asUserId, source_ids } = req.query;
+    const sourceIds = parseSourceIds(source_ids);
 
     // Optional single-user view if accessible
     const singleUserId = await validateAsUserId(req.user.id, asUserId, "all");
@@ -963,8 +975,11 @@ const getDashboardData = async (req, res) => {
     const startDateStr = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, "0")}-${String(start.getDate()).padStart(2, "0")}`;
     const endDateStr = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, "0")}-${String(end.getDate()).padStart(2, "0")}`;
 
-    // Cache key based on user, date range, and view mode
-    const viewMode = timeRange || "monthly";
+    // Cache key based on user, date range, and view mode (plus the source filter, so a
+    // filtered dashboard never serves cached unfiltered totals or vice versa).
+    const viewMode =
+      (timeRange || "monthly") +
+      (sourceIds.length ? `:src=${sourceIds.join(",")}` : "");
     const cacheKey = cache.dashboardKey(req.user.id, startDateStr, endDateStr, viewMode);
 
     // Try cache first
@@ -1005,6 +1020,7 @@ const getDashboardData = async (req, res) => {
         startDateStr,
         endDateStr,
         incomeDisabled,
+        sourceIds,
       );
       summary.total_income += Number(s.total_income || 0);
       summary.total_expenses += Number(s.total_expenses || 0);

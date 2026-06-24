@@ -1,4 +1,5 @@
 const db = require("../config/db");
+const { buildSourceFilterClause } = require("../utils/sourceFilter");
 
 class Transaction {
   constructor(data) {
@@ -194,6 +195,7 @@ class Transaction {
     startDate = null,
     endDate = null,
     isIncomeTrackingDisabled = false,
+    sourceIds = [],
   ) {
     let query;
 
@@ -225,6 +227,14 @@ class Transaction {
     if (startDate && endDate) {
       query += ` AND date >= $2 AND date <= $3`;
       values.push(startDate, endDate);
+    }
+
+    // Source filter: include both the source (expense) and target (income) side of the
+    // selected accounts. Unaliased table here ("" alias) — clause is self-contained.
+    const srcFilter = buildSourceFilterClause(sourceIds, values.length + 1, "");
+    if (srcFilter.clause) {
+      query += ` AND ${srcFilter.clause}`;
+      values.push(...srcFilter.values);
     }
 
     const result = await db.query(query, values);

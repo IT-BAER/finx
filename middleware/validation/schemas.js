@@ -90,6 +90,8 @@ const getTransactionsQuerySchema = z.object({
   category: z.string().optional(),
   source: z.string().optional(),
   type: transactionTypeSchema.optional(),
+  // CSV of source ids to filter by, e.g. "42,7". Parsed + validated in the controller.
+  source_ids: z.string().regex(/^[0-9,\s]*$/).max(200).optional(),
 });
 
 // ============================================
@@ -240,6 +242,8 @@ const dashboardQuerySchema = z.object({
   period: z.enum(['week', 'month', 'quarter', 'year', 'all', 'custom']).optional(),
   startDate: dateSchema.optional(),
   endDate: dateSchema.optional(),
+  // CSV of source ids to filter the dashboard by, e.g. "42,7". Parsed in the controller.
+  source_ids: z.string().regex(/^[0-9,\s]*$/).max(200).optional(),
 });
 
 const reportQuerySchema = z.object({
