@@ -530,6 +530,16 @@ const Dashboard = () => {
             .map(([date, total]) => ({ date, total }))
         );
 
+        // Current-month slice of the (source-)filtered transactions, reused by the
+        // category breakdown + recent-transactions cards below. The source-filter
+        // refactor dropped this definition while keeping its uses, leaving
+        // filteredMonthly undefined → the effect threw here and never reached Top
+        // Expenses / the per-source balance trend (both rendered empty).
+        const filteredMonthly = (filtered || []).filter((tx) => {
+          const d = new Date(tx.date);
+          return d >= monthStart && d <= monthEnd;
+        });
+
         // =============================
         // Filtered Expense by Category (Current month only)
         // =============================

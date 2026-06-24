@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## [v1.2.9] - 2026-06-24
+
+### Fixed
+- **The dashboard balance-trend and largest-expenses cards no longer render empty.** The source-filter change in v1.2.7 removed the `filteredMonthly` helper but left two references to it, so the dashboard's derived-insights effect threw a `ReferenceError` partway through and silently skipped everything computed after it — the per-source balance trend, the top-5 expenses, the month's category breakdown and recent-transactions list. The helper (the current-month slice of the source-filtered transactions) is restored.
+
 ## [v1.2.8] - 2026-06-24
 
 ### Changed
