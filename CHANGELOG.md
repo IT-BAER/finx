@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## [v1.2.8] - 2026-06-24
+
+### Changed
+- **The dashboard and reports source filter now lists only your spending accounts**, not every income payer. A source that only appears as the payer on an income (never spent from) was cluttering the filter; the web filter now shows only accounts you actually spend from (sources used as the `source_id` on at least one expense), and still marks shared accounts with the owner's name. This mirrors the mobile app's account filter. Client-side change (the shared `/sharing/sources` endpoint is unchanged, so the sharing-setup picker still lists every source).
+
 ## [v1.2.7] - 2026-06-24
 
 ### Fixed

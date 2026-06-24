@@ -159,7 +159,22 @@ const Reports = () => {
           };
         });
 
-        setSources(processedSources);
+        // Accounts-only: payers (income-only sources) never appear as an expense source_id,
+        // so restrict the filter dropdown to sources actually spent from. Mirrors the app.
+        let accountsOnly = processedSources;
+        try {
+          const all = await offlineAPI.getAllTransactions();
+          const expenseSourceIds = new Set(
+            (all || [])
+              .filter((t) => String(t.type).toLowerCase() === "expense" && t.source_id != null)
+              .map((t) => String(t.source_id)),
+          );
+          if (expenseSourceIds.size > 0) {
+            accountsOnly = processedSources.filter((s) => expenseSourceIds.has(String(s.id)));
+          }
+        } catch {}
+
+        setSources(accountsOnly);
       } catch (err) {
         setSources([]);
       }
