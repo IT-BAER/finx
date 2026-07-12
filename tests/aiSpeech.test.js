@@ -17,6 +17,16 @@ test("speechRequestSchema rejects empty text", () => {
   assert.equal(speechRequestSchema.safeParse({}).success, false);
 });
 
+test("speechRequestSchema accepts text at the max length boundary", () => {
+  const r = speechRequestSchema.safeParse({ text: "a".repeat(2000) });
+  assert.equal(r.success, true);
+});
+
+test("speechRequestSchema rejects text one char over the max length", () => {
+  const r = speechRequestSchema.safeParse({ text: "a".repeat(2001) });
+  assert.equal(r.success, false);
+});
+
 test("speechRequestSchema defaults arrays and strips unknown keys", () => {
   const r = speechRequestSchema.safeParse({ text: "x", evil: 1 });
   assert.equal(r.success, true);

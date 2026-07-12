@@ -65,17 +65,17 @@ const speechRequestSchema = z
 
 const speechResponseSchema = z.object({
   is_financial: z.union([z.boolean(), z.string()]).nullable().optional(),
-  intent: z.enum(["transaction", "goal_create", "goal_contribution"]).nullable(),
-  amount: z.coerce.number().positive().nullable(),
-  type: z.enum(["expense", "income"]).nullable(),
-  description: z.string().max(80).nullable(),
-  category: z.string().max(64).nullable(),
+  intent: z.enum(["transaction", "goal_create", "goal_contribution"]).nullable().optional(),
+  amount: z.coerce.number().positive().nullable().optional(),
+  type: z.enum(["expense", "income"]).nullable().optional(),
+  description: z.string().max(80).nullable().optional(),
+  category: z.string().max(64).nullable().optional(),
   source: z.string().max(64).nullable().optional(),
-  target: z.string().max(64).nullable(),
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),
-  goal_name: z.string().max(64).nullable(),
-  goal_target: z.coerce.number().positive().nullable(),
-  goal_deadline: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),
+  target: z.string().max(64).nullable().optional(),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+  goal_name: z.string().max(64).nullable().optional(),
+  goal_target: z.coerce.number().positive().nullable().optional(),
+  goal_deadline: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
 });
 
 module.exports = {
