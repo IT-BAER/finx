@@ -3,7 +3,7 @@ const router = express.Router();
 const auth = require("../middleware/auth");
 const isAdmin = require("../middleware/isAdmin");
 const { perUserHourly, perUserDaily } = require("../middleware/aiRateLimit");
-const { parseNotification, parseReceipt } = require("../controllers/aiController");
+const { parseNotification, parseReceipt, parseSpeech } = require("../controllers/aiController");
 
 // 32 KB body cap applied before parsing JSON in this route.
 const aiBodyJson = express.json({ limit: "32kb" });
@@ -24,6 +24,17 @@ router.post(
   perUserDaily(),
   aiBodyJson,
   parseNotification,
+);
+
+// POST /api/ai/parse-speech — dictated phrase → transaction/goal fields
+router.post(
+  "/parse-speech",
+  auth,
+  gate,
+  perUserHourly(),
+  perUserDaily(),
+  aiBodyJson,
+  parseSpeech,
 );
 
 // POST /api/ai/ocr — server-side receipt/invoice OCR (image → transaction fields)

@@ -55,4 +55,34 @@ const ocrRequestSchema = z
   })
   .strip();
 
-module.exports = { parseRequestSchema, parseResponseSchema, ocrRequestSchema, MAX_IMAGE_B64_LEN };
+const speechRequestSchema = z
+  .object({
+    text: z.string().min(1).max(MAX_FIELD_LEN),
+    categories: stringArray,
+    goals: stringArray,
+  })
+  .strip();
+
+const speechResponseSchema = z.object({
+  is_financial: z.union([z.boolean(), z.string()]).nullable().optional(),
+  intent: z.enum(["transaction", "goal_create", "goal_contribution"]).nullable(),
+  amount: z.coerce.number().positive().nullable(),
+  type: z.enum(["expense", "income"]).nullable(),
+  description: z.string().max(80).nullable(),
+  category: z.string().max(64).nullable(),
+  source: z.string().max(64).nullable().optional(),
+  target: z.string().max(64).nullable(),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),
+  goal_name: z.string().max(64).nullable(),
+  goal_target: z.coerce.number().positive().nullable(),
+  goal_deadline: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),
+});
+
+module.exports = {
+  parseRequestSchema,
+  parseResponseSchema,
+  ocrRequestSchema,
+  MAX_IMAGE_B64_LEN,
+  speechRequestSchema,
+  speechResponseSchema,
+};

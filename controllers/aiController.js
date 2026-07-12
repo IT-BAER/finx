@@ -1,5 +1,5 @@
 const logger = require('../utils/logger');
-const { parseRequestSchema, ocrRequestSchema } = require('../utils/aiSchemas');
+const { parseRequestSchema, ocrRequestSchema, speechRequestSchema } = require('../utils/aiSchemas');
 const { sanitizeText, sanitizeStringArray } = require('../utils/aiSanitize');
 const { callAiProxy } = require('../services/aiProxy');
 
@@ -74,4 +74,38 @@ const parseReceipt = async (req, res) => {
   }
 };
 
-module.exports = { parseNotification, parseReceipt };
+const parseSpeech = async (req, res) => {
+  const parsed = speechRequestSchema.safeParse(req.body || {});
+  if (!parsed.success) {
+    return res.status(400).json({
+      message: parsed.error.issues[0]?.message || 'invalid request body',
+      code: 'AI_BAD_REQUEST',
+    });
+  }
+  const v = parsed.data;
+  const text = sanitizeText(v.text);
+  if (!text) {
+    return res.status(400).json({ message: 'text required', code: 'AI_BAD_REQUEST' });
+  }
+  const vars = {
+    text,
+    categories: sanitizeStringArray(v.categories),
+    goals: sanitizeStringArray(v.goals),
+  };
+  try {
+    const { parsed: out, model } = await callAiProxy({
+      purpose: 'SPEECH_PARSE',
+      vars,
+      userId: req.user?.id,
+    });
+    return res.json({ parsed: out, model });
+  } catch (err) {
+    logger.error('AI speech parse failed (user=' + (req.user?.id) + '): ' + err.message);
+    const status = err.status || 502;
+    return res
+      .status(status)
+      .json({ message: status === 503 ? 'AI not configured' : 'AI parsing unavailable' });
+  }
+};
+
+module.exports = { parseNotification, parseReceipt, parseSpeech };
