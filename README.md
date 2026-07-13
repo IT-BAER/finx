@@ -8,11 +8,11 @@
 [![PostgreSQL](https://img.shields.io/badge/DB-PostgreSQL-336791.svg)](https://www.postgresql.org/)
 ![Open Source](https://img.shields.io/badge/Open%20Source-Free-brightgreen.svg)
 
-<img src="./finx%20-%20banner.jpg" alt="FinX — Self‑Hosted Personal Finance" style="max-width: 100%; height: auto;" />
+Self-hosted personal finance tracker: a React web frontend with a Node.js/PostgreSQL backend, plus a native Android app.
 
-Modern, self-hosted, open-source personal finance app with sharing, recurring transactions, and fast UX.
+Your database, your server, your transactions. FinX has no cloud component; everything runs on hardware you control.
 
-**Free forever. Self-hosted. Your data stays yours.**
+<a href="https://play.google.com/store/apps/details?id=com.baer.finx" target="_blank"><img src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" alt="Get it on Google Play" height="80"></a>
 
 </div>
 
@@ -46,14 +46,13 @@ Modern, self-hosted, open-source personal finance app with sharing, recurring tr
 
 ## ✨ Key Features
 
-- **Realtime updates**: Transaction changes propagate instantly across devices via SSE; Dashboard and Reports auto-refresh without manual reload
-- **Fast UX**: Early CSS delivery, passive listeners, lazy loading for optimal performance
+- **Realtime updates**: Transaction changes propagate to other devices via SSE; Dashboard and Reports refresh without a reload
 - **Transactions** with categories, sources, targets; imports with duplicate detection
 - **Recurring rules** and background processor (systemd scheduler supported)
-- **Sharing** with fine-grained `can_edit` access; visibility honored server-side
+- **Sharing** with fine-grained `can_edit` access; visibility enforced server-side
 - **Admin taxonomy management** (categories/sources/targets)
-- **Clean Express API** with JWT auth; PostgreSQL persistence
-- **Offline capture**: Add transactions while disconnected; syncs automatically when connection resumes
+- **Express API** with JWT auth; PostgreSQL persistence
+- **Offline capture**: Add transactions while disconnected; they sync when the connection resumes
 
 ---
 
@@ -304,18 +303,16 @@ npm run migrate-db
 
 ## 📶 Offline & Connectivity
 
-The app includes robust offline support:
-
-- **Server-based connectivity**: The app considers itself "online" only when the server is reachable via `GET /api/health`
-- **Health polling**: Checks every ~8s when online, faster retries on failures
+- **Server-based connectivity**: The app counts as "online" only when the server answers `GET /api/health`
+- **Health polling**: Checks every ~8s when online, retries faster after failures
 - **Offline detection**: Switches to offline after 2 consecutive failed checks
-- **Queued mutations**: Transactions added offline are queued and synced when connection resumes
+- **Queued mutations**: Transactions added offline are queued and synced when the connection resumes
 
 ### Realtime Updates (SSE)
 
-- Backend exposes Server-Sent Events stream at `/api/events`
-- Transaction create/update/delete broadcasts to owner and shared users
-- Dashboard and Reports auto-refresh without manual reload
+- Backend exposes a Server-Sent Events stream at `/api/events`
+- Transaction create/update/delete broadcasts to the owner and shared users
+- Dashboard and Reports refresh without a reload
 - Connection adapts to tab visibility with exponential-backoff reconnect
 
 **Reverse proxy tip:** Disable buffering for `/api/events` (e.g., `proxy_buffering off;` in Nginx).
@@ -348,15 +345,14 @@ Optional environment variables for `frontend/.env`:
 
 ## 📱 Mobile App
 
-Looking for a native Android experience? Check out **[FinX Mobile](https://github.com/AlexanderBerardworx/finx-mobile)**.
+FinX has a native Android app:
 
-**Features:**
-- **Local Mode**: Fully offline, all data stored on device. No server required.
-- **Server Mode**: Connect to your self-hosted FinX backend for sync and sharing.
-- Secure login with JWT tokens and biometric quick access
-- Full offline transaction capture with automatic sync
+<a href="https://play.google.com/store/apps/details?id=com.baer.finx" target="_blank"><img src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" alt="Get it on Google Play" height="80"></a>
 
-Download from [finx-mobile releases](https://github.com/AlexanderBerardworx/finx-mobile/releases) or build from source.
+- **Local Mode**: Works fully offline; all data stays on the device, no server required
+- **Server Mode**: Connects to your self-hosted FinX backend for sync and sharing
+- Login with JWT tokens and biometric quick access
+- Offline transaction capture with automatic sync
 
 ---
 
