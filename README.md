@@ -1,6 +1,6 @@
 <div align="center">
 
-# FinX — Personal Finance Tracker
+# FinX - Personal Finance Tracker
 
 [![Node.js](https://img.shields.io/badge/Node.js-20.x-green.svg)](https://nodejs.org/)
 [![Express](https://img.shields.io/badge/Backend-Express-informational.svg)](https://expressjs.com/)
@@ -25,7 +25,7 @@ Your database, your server, your transactions. FinX has no cloud component; ever
 - [Configuration](#%EF%B8%8F-configuration-environment)
 - [Quick Install](#-quick-installupdate)
   - [Docker Compose](#-docker-compose)
-  - [Debian/Ubuntu](#-debianubuntu-no-docker--interactive-installerupdater)
+  - [Debian/Ubuntu](#-debianubuntu-no-docker---interactive-installerupdater)
   - [Development](#-development-windowsmacoslinux)
 - [Update/Upgrade](#-updateupgrade)
 - [Management](#%EF%B8%8F-management)
@@ -106,7 +106,7 @@ docker compose up -d --build
 
 App: http://localhost:3000 • API: proxied at /api
 
-### 🐧 Debian/Ubuntu (no Docker) — Interactive Installer/Updater
+### 🐧 Debian/Ubuntu (no Docker) - Interactive Installer/Updater
 
 ```bash
 sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/IT-BAER/finx/main/setup.sh)"
