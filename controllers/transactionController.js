@@ -7,6 +7,7 @@ const cache = require("../services/cache");
 const { getAccessibleUserIds, validateAsUserId, getSharingPermissionMeta, getUsersSharedWithOwner } = require("../utils/access");
 const { createMirror, syncMirrorOnUpdate, deleteMirror } = require("../utils/transactionMirror");
 const { parseSourceIds, buildSourceFilterClause } = require("../utils/sourceFilter");
+const { buildTransactionOrderBy } = require("../utils/transactionSort");
 
 // Create transaction
 const createTransaction = async (req, res) => {
@@ -241,7 +242,7 @@ const createTransaction = async (req, res) => {
 const getTransactions = async (req, res) => {
   try {
     // Optional filter to view as a specific accessible user
-    const { asUserId, limit, offset, q, start_date, end_date, source_ids } = req.query;
+    const { asUserId, limit, offset, q, startDate, endDate, type, source_ids, sort, order } = req.query;
     const sourceIds = parseSourceIds(source_ids);
     const validAsUserId = await validateAsUserId(req.user.id, asUserId, "all");
 
@@ -300,14 +301,19 @@ const getTransactions = async (req, res) => {
       paramIndex++;
     }
 
-    if (start_date) {
+    if (startDate) {
       searchCondition += ` AND t.date >= $${paramIndex}`;
-      queryParams.push(start_date);
+      queryParams.push(startDate);
       paramIndex++;
     }
-    if (end_date) {
+    if (endDate) {
       searchCondition += ` AND t.date <= $${paramIndex}`;
-      queryParams.push(end_date);
+      queryParams.push(endDate);
+      paramIndex++;
+    }
+    if (type) {
+      searchCondition += ` AND t.type = $${paramIndex}`;
+      queryParams.push(type);
       paramIndex++;
     }
 
@@ -320,6 +326,10 @@ const getTransactions = async (req, res) => {
       paramIndex = srcFilter.nextIndex;
     }
 
+    // Every param appended after the accessible-user ids belongs to the WHERE filter, so the
+    // count/totals queries can reuse them verbatim (keeps count honest under a source filter).
+    const filterParams = queryParams.slice(accessibleUserIds.length);
+
     const query = `
       SELECT t.*, c.name as category_name, s.name as source_name, tg.name as target_name,
              t.recurring_transaction_id as recurring_id, rt.recurrence_type as recurring_recurrence_type
@@ -330,7 +340,7 @@ const getTransactions = async (req, res) => {
       LEFT JOIN recurring_transactions rt ON t.recurring_transaction_id = rt.id
       WHERE t.user_id IN (${placeholders})
       ${searchCondition}
-      ORDER BY t.date DESC, t.id DESC
+      ${buildTransactionOrderBy(sort, order)}
       LIMIT $${paramIndex} OFFSET $${paramIndex + 1};
     `;
     queryParams.push(limitNum, offsetNum);
@@ -482,11 +492,17 @@ const getTransactions = async (req, res) => {
       return acc;
     }, []);
 
-    // COUNT query for total (only on first page to avoid overhead on every page)
+    // COUNT + running totals over the whole filtered set (only on the first page, so later
+    // pages skip the aggregate overhead). Totals let the ledger show a real income/expense/net
+    // for the current filter, not just the rows currently paged in.
     let total = null;
+    let totals = null;
     if (offsetNum === 0) {
-      const countQuery = `
-        SELECT COUNT(*) AS total
+      const aggQuery = `
+        SELECT
+          COUNT(*) AS total,
+          COALESCE(SUM(CASE WHEN t.type = 'income' THEN t.amount ELSE 0 END), 0) AS income,
+          COALESCE(SUM(CASE WHEN t.type = 'expense' THEN t.amount ELSE 0 END), 0) AS expenses
         FROM transactions t
         LEFT JOIN categories c ON t.category_id = c.id
         LEFT JOIN sources s ON t.source_id = s.id
@@ -494,12 +510,12 @@ const getTransactions = async (req, res) => {
         WHERE t.user_id IN (${placeholders})
         ${searchCondition}
       `;
-      const countParams = [...accessibleUserIds];
-      if (searchQuery) countParams.push(`%${searchQuery}%`);
-      if (start_date) countParams.push(start_date);
-      if (end_date) countParams.push(end_date);
-      const countResult = await db.query(countQuery, countParams);
-      total = parseInt(countResult.rows[0].total, 10);
+      const aggResult = await db.query(aggQuery, [...accessibleUserIds, ...filterParams]);
+      const agg = aggResult.rows[0];
+      total = parseInt(agg.total, 10);
+      const income = parseFloat(agg.income);
+      const expenses = parseFloat(agg.expenses);
+      totals = { income, expenses, net: income - expenses };
     }
 
     const hasMore = rows.length === limitNum;
@@ -507,6 +523,7 @@ const getTransactions = async (req, res) => {
       success: true,
       transactions,
       pagination: { limit: limitNum, offset: offsetNum, total, hasMore },
+      totals,
     });
   } catch (err) {
     console.error("Get transactions error:", err.message);

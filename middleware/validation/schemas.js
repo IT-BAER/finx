@@ -92,6 +92,9 @@ const getTransactionsQuerySchema = z.object({
   type: transactionTypeSchema.optional(),
   // CSV of source ids to filter by, e.g. "42,7". Parsed + validated in the controller.
   source_ids: z.string().regex(/^[0-9,\s]*$/).max(200).optional(),
+  // Sortable ledger columns; the controller whitelists these again before they touch SQL.
+  sort: z.enum(["date", "amount", "description", "category"]).optional(),
+  order: z.enum(["asc", "desc"]).optional(),
 });
 
 // ============================================
