@@ -2,7 +2,7 @@ const logger = require('../utils/logger');
 const { parseRequestSchema, ocrRequestSchema, speechRequestSchema, chatRequestSchema } = require('../utils/aiSchemas');
 const { sanitizeText, sanitizeStringArray } = require('../utils/aiSanitize');
 const { callAiProxy } = require('../services/aiProxy');
-const { runChatTurn, makeRealDeps } = require('../services/aiChat');
+const { runChatTurn, makeRealDeps, getMonthlyCostUsd, isOverMonthlyCap, monthlyCapUsd } = require('../services/aiChat');
 
 // Function references only — see services/aiChat.js: building this object never touches the
 // DB, only calling a function inside it does (first real chat request, not module load).
@@ -122,9 +122,21 @@ const chat = async (req, res) => {
     });
   }
   try {
+    const userId = req.user?.id;
+    // Cap disabled (0, this repo's self-hosted default) — skip the pre-flight query entirely,
+    // so an install that never ran migration 020 isn't queried for a table it lacks.
+    if (monthlyCapUsd() > 0) {
+      const currentCostUsd = await getMonthlyCostUsd(userId);
+      if (isOverMonthlyCap(currentCostUsd)) {
+        return res.status(429).json({
+          message: 'Monthly AI chat budget reached. Try again next month.',
+          code: 'AI_CHAT_MONTHLY_CAP',
+        });
+      }
+    }
     const { reply, toolCallsUsed } = await runChatTurn({
       messages: parsed.data.messages,
-      userId: req.user?.id,
+      userId,
       deps: chatDeps,
     });
     return res.json({ success: true, reply, toolCallsUsed });

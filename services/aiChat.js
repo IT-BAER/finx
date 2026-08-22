@@ -3,11 +3,52 @@ const { postOpenRouter } = require("./aiProxy");
 const { parseSourceIds, buildSourceFilterClause } = require("../utils/sourceFilter");
 const { buildBalancesQuery, rowToBalance, sumTotal } = require("../utils/accountBalance");
 
-const MAX_TOOL_ITERATIONS = 5;
-const CHAT_MAX_TOKENS = 700;
+const MAX_TOOL_ITERATIONS = 3;
+const CHAT_MAX_TOKENS = 500;
 const CHAT_TEMPERATURE = 0.3;
+// Schema still allows up to 20 client messages; only the last N feed the model context, to
+// bound per-turn token cost regardless of how long the client-side thread has grown.
+const HISTORY_TRIM_TO = 8;
+const QUERY_TRANSACTIONS_MAX_LIMIT = 30;
+
+// Self-hosted default: 0 = disabled, since this deployment brings its own OpenRouter key.
+// The managed hosting (finx-server repo) defaults this to 0.50. Overridable via
+// CHAT_MONTHLY_COST_CAP_USD.
+const CHAT_MONTHLY_CAP_DEFAULT_USD = 0;
+const DEFAULT_COST_IN_PER_M = 0.27;
+const DEFAULT_COST_OUT_PER_M = 1.1;
 
 const chatModelName = () => process.env.CHAT_MODEL || "deepseek/deepseek-chat";
+
+const costInPerM = () => {
+  const raw = Number(process.env.CHAT_COST_IN_PER_M);
+  return Number.isFinite(raw) && raw >= 0 ? raw : DEFAULT_COST_IN_PER_M;
+};
+const costOutPerM = () => {
+  const raw = Number(process.env.CHAT_COST_OUT_PER_M);
+  return Number.isFinite(raw) && raw >= 0 ? raw : DEFAULT_COST_OUT_PER_M;
+};
+
+/** USD cost of one turn's token usage, at the configured (or default) per-million rates. */
+const computeCostUsd = (inputTokens, outputTokens) =>
+  ((Number(inputTokens) || 0) * costInPerM()) / 1e6 + ((Number(outputTokens) || 0) * costOutPerM()) / 1e6;
+
+/** UTC calendar month key, e.g. "2026-08" — matches the ai_chat_usage.month column. */
+const currentMonthKey = (date = new Date()) => date.toISOString().slice(0, 7);
+
+const monthlyCapUsd = () => {
+  const raw = process.env.CHAT_MONTHLY_COST_CAP_USD;
+  if (raw === undefined || raw === "") return CHAT_MONTHLY_CAP_DEFAULT_USD;
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : CHAT_MONTHLY_CAP_DEFAULT_USD;
+};
+
+/** A cap of 0 (or negative) disables the check entirely — never blocks. */
+const isOverMonthlyCap = (currentCostUsd) => {
+  const cap = monthlyCapUsd();
+  if (cap <= 0) return false;
+  return (Number(currentCostUsd) || 0) >= cap;
+};
 
 /**
  * System prompt for the finance-assistant persona. Keep the injected `today` so relative
@@ -41,7 +82,7 @@ const CHAT_TOOLS = [
           category_id: { type: "integer" },
           source_ids: { type: "array", items: { type: "integer" } },
           q: { type: "string", description: "free-text search over description/category/source/target" },
-          limit: { type: "integer", description: "max rows to return, default 20, max 50" },
+          limit: { type: "integer", description: "max rows to return, default 20, max 30" },
         },
       },
     },
@@ -162,7 +203,7 @@ const realQueryTransactions = async ({ userId, start_date, end_date, type, categ
   const aggResult = await db.query(aggQuery, [...userIds, ...filterParams]);
   const agg = aggResult.rows[0] || {};
 
-  const lim = Math.min(Math.max(Number.isInteger(limit) ? limit : 20, 1), 50);
+  const lim = Math.min(Math.max(Number.isInteger(limit) ? limit : 20, 1), QUERY_TRANSACTIONS_MAX_LIMIT);
   const listQuery = `
     SELECT t.date, t.amount, t.type, c.name AS category, s.name AS source, tg.name AS target, t.description
     FROM transactions t
@@ -232,11 +273,46 @@ const realGetBalances = async ({ userId }) => {
   };
 };
 
+/**
+ * Accumulate one turn's token usage into the per-user monthly ledger (UPSERT, additive).
+ * Never blocks the reply on failure at the call site — callers await it directly since a
+ * failed write only means the cap is briefly under-counted, not that the turn should fail.
+ */
+const realRecordUsage = async ({ userId, inputTokens, outputTokens }) => {
+  const db = require("../config/db");
+  const month = currentMonthKey();
+  const costUsd = computeCostUsd(inputTokens, outputTokens);
+  const inTok = Math.max(0, Math.round(Number(inputTokens) || 0));
+  const outTok = Math.max(0, Math.round(Number(outputTokens) || 0));
+  await db.query(
+    `INSERT INTO ai_chat_usage (user_id, month, input_tokens, output_tokens, cost_usd)
+     VALUES ($1, $2, $3, $4, $5)
+     ON CONFLICT (user_id, month) DO UPDATE SET
+       input_tokens = ai_chat_usage.input_tokens + EXCLUDED.input_tokens,
+       output_tokens = ai_chat_usage.output_tokens + EXCLUDED.output_tokens,
+       cost_usd = ai_chat_usage.cost_usd + EXCLUDED.cost_usd`,
+    [userId, month, inTok, outTok, costUsd],
+  );
+};
+
+/** Current-UTC-month cost so far for a user, or 0 if no row exists yet. */
+const realGetMonthlyCostUsd = async (userId) => {
+  const db = require("../config/db");
+  const month = currentMonthKey();
+  const result = await db.query(
+    "SELECT cost_usd FROM ai_chat_usage WHERE user_id = $1 AND month = $2",
+    [userId, month],
+  );
+  if (result.rows.length === 0) return 0;
+  return Number.parseFloat(result.rows[0].cost_usd) || 0;
+};
+
 /** Deps object for production use — see the module doc above for the lazy-require rationale. */
 const makeRealDeps = () => ({
   queryTransactions: realQueryTransactions,
   getBreakdown: realGetBreakdown,
   getBalances: realGetBalances,
+  recordUsage: realRecordUsage,
 });
 
 const TOOL_EXECUTORS = {
@@ -285,51 +361,79 @@ const callModelOnce = async (chatModel, model, convo, { withTools }) => {
     err.status = 502;
     throw err;
   }
-  return { message, model: data?.model ?? model };
+  const usage = {
+    promptTokens: Number(data?.usage?.prompt_tokens) || 0,
+    completionTokens: Number(data?.usage?.completion_tokens) || 0,
+  };
+  return { message, model: data?.model ?? model, usage };
 };
 
 /**
- * Run one chat turn: system prompt + the client-sent thread, an agent loop of up to
- * MAX_TOOL_ITERATIONS tool round-trips, then a forced final call without tools if the cap is
- * hit. Stateless — the client resends the whole thread every message (no server history).
+ * Run one chat turn: system prompt + the last HISTORY_TRIM_TO client-sent messages, an agent
+ * loop of up to MAX_TOOL_ITERATIONS tool round-trips, then a forced final call without tools if
+ * the cap is hit. Stateless — the client resends the whole thread every message (no server
+ * history). Accumulates token usage across every model call this turn and UPSERTs it into the
+ * per-user monthly ledger before returning (see realRecordUsage).
  * @param {{messages: Array<{role: string, content: string}>, userId: number, deps: object}} args
- *        deps = { queryTransactions, getBreakdown, getBalances, chatModel? } — chatModel
- *        defaults to a real OpenRouter call; tests inject a fake to avoid network access.
+ *        deps = { queryTransactions, getBreakdown, getBalances, chatModel?, recordUsage? } —
+ *        chatModel/recordUsage default to the real OpenRouter call / ledger write; tests inject
+ *        fakes to avoid network + DB access.
  */
 const runChatTurn = async ({ messages, userId, deps }) => {
   const model = chatModelName();
   const today = new Date().toISOString().slice(0, 10);
   const chatModel = deps?.chatModel || ((body) => postOpenRouter(body));
+  const recordUsage = deps?.recordUsage || realRecordUsage;
 
+  const trimmedMessages = Array.isArray(messages) ? messages.slice(-HISTORY_TRIM_TO) : messages;
   const convo = [
     { role: "system", content: buildChatSystemPrompt({ today }) },
-    ...messages,
+    ...trimmedMessages,
   ];
 
   let toolCallsUsed = 0;
   let lastModelName = model;
+  let totalInputTokens = 0;
+  let totalOutputTokens = 0;
 
-  for (let iter = 0; iter < MAX_TOOL_ITERATIONS; iter++) {
-    const { message, model: chosenModel } = await callModelOnce(chatModel, model, convo, { withTools: true });
-    lastModelName = chosenModel;
-    const toolCalls = message.tool_calls;
-    if (!toolCalls || toolCalls.length === 0) {
-      logger.info(`aiAudit purpose=CHAT user=${userId ?? "?"} model=${lastModelName} toolCalls=${toolCallsUsed}`);
-      return { reply: message.content || "", toolCallsUsed };
+  try {
+    for (let iter = 0; iter < MAX_TOOL_ITERATIONS; iter++) {
+      const { message, model: chosenModel, usage } = await callModelOnce(chatModel, model, convo, { withTools: true });
+      lastModelName = chosenModel;
+      totalInputTokens += usage.promptTokens;
+      totalOutputTokens += usage.completionTokens;
+      const toolCalls = message.tool_calls;
+      if (!toolCalls || toolCalls.length === 0) {
+        return { reply: message.content || "", toolCallsUsed, inputTokens: totalInputTokens, outputTokens: totalOutputTokens };
+      }
+      convo.push({ role: "assistant", content: message.content || null, tool_calls: toolCalls });
+      for (const call of toolCalls) {
+        toolCallsUsed++;
+        const result = await executeTool(call, deps, userId);
+        convo.push({ role: "tool", tool_call_id: call.id, content: JSON.stringify(result) });
+      }
     }
-    convo.push({ role: "assistant", content: message.content || null, tool_calls: toolCalls });
-    for (const call of toolCalls) {
-      toolCallsUsed++;
-      const result = await executeTool(call, deps, userId);
-      convo.push({ role: "tool", tool_call_id: call.id, content: JSON.stringify(result) });
+
+    // Cap reached: one final call with tools withheld so the model must answer from what it has.
+    const { message: finalMessage, model: finalModel, usage: finalUsage } = await callModelOnce(chatModel, model, convo, { withTools: false });
+    lastModelName = finalModel;
+    totalInputTokens += finalUsage.promptTokens;
+    totalOutputTokens += finalUsage.completionTokens;
+    return { reply: finalMessage.content || "", toolCallsUsed, inputTokens: totalInputTokens, outputTokens: totalOutputTokens };
+  } finally {
+    // Ledger write must never fail the turn (a DB hiccup here only under-counts the cap, it must
+    // not lose the user's answer), and must still capture tokens already spent on a mid-turn
+    // model throw — so this runs on every exit path, success or error, not just the happy return.
+    try {
+      await recordUsage({ userId, inputTokens: totalInputTokens, outputTokens: totalOutputTokens });
+    } catch (e) {
+      logger.error(`aiChat recordUsage failed for user=${userId ?? "?"}: ${e?.message || e}`);
     }
+    logger.info(
+      `aiAudit purpose=CHAT user=${userId ?? "?"} model=${lastModelName} toolCalls=${toolCallsUsed} ` +
+      `inTok=${totalInputTokens} outTok=${totalOutputTokens}`,
+    );
   }
-
-  // Cap reached: one final call with tools withheld so the model must answer from what it has.
-  const { message: finalMessage, model: finalModel } = await callModelOnce(chatModel, model, convo, { withTools: false });
-  lastModelName = finalModel;
-  logger.info(`aiAudit purpose=CHAT user=${userId ?? "?"} model=${lastModelName} toolCalls=${toolCallsUsed}`);
-  return { reply: finalMessage.content || "", toolCallsUsed };
 };
 
 module.exports = {
@@ -337,4 +441,9 @@ module.exports = {
   CHAT_TOOLS,
   runChatTurn,
   makeRealDeps,
+  computeCostUsd,
+  currentMonthKey,
+  monthlyCapUsd,
+  isOverMonthlyCap,
+  getMonthlyCostUsd: realGetMonthlyCostUsd,
 };

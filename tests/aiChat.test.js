@@ -1,14 +1,39 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
-const { runChatTurn, buildChatSystemPrompt, CHAT_TOOLS } = require("../services/aiChat");
+const {
+  runChatTurn,
+  buildChatSystemPrompt,
+  CHAT_TOOLS,
+  computeCostUsd,
+  currentMonthKey,
+  isOverMonthlyCap,
+} = require("../services/aiChat");
 const { chatRequestSchema } = require("../utils/aiSchemas");
 
 const fakeDeps = (overrides = {}) => ({
   queryTransactions: async () => ({ transactions: [], total_income: 0, total_expense: 0, count: 0 }),
   getBreakdown: async () => ({ expense_by_category: [] }),
   getBalances: async () => ({ balances: [], total: 0 }),
+  recordUsage: async () => {},
   ...overrides,
 });
+
+const withEnv = async (vars, fn) => {
+  const prev = {};
+  for (const k of Object.keys(vars)) prev[k] = process.env[k];
+  try {
+    for (const [k, v] of Object.entries(vars)) {
+      if (v === undefined) delete process.env[k];
+      else process.env[k] = v;
+    }
+    await fn();
+  } finally {
+    for (const k of Object.keys(vars)) {
+      if (prev[k] === undefined) delete process.env[k];
+      else process.env[k] = prev[k];
+    }
+  }
+};
 
 test("buildChatSystemPrompt includes today's date and is finance-scoped", () => {
   const prompt = buildChatSystemPrompt({ today: "2026-08-22" });
@@ -80,12 +105,13 @@ test("2. tool call -> executor result fed back -> final answer", async () => {
   assert.equal(queryArgs.start_date, "2026-08-01");
 });
 
-test("3. 5-iteration cap -> forced final call without tools", async () => {
+test("3. 3-iteration cap -> forced final call without tools", async () => {
   let calls = 0;
   const chatModel = async (body) => {
     calls++;
-    if (calls <= 5) {
+    if (calls <= 3) {
       assert.ok(body.tools, `call ${calls} should still offer tools`);
+      assert.equal(body.max_tokens, 500, "max_tokens must be the tightened 500 bound");
       return {
         model: "test/model",
         choices: [{
@@ -98,7 +124,7 @@ test("3. 5-iteration cap -> forced final call without tools", async () => {
         usage: {},
       };
     }
-    // 6th call is the forced final without tools
+    // 4th call is the forced final without tools
     assert.equal(body.tools, undefined);
     return { model: "test/model", choices: [{ message: { role: "assistant", content: "Final answer." } }], usage: {} };
   };
@@ -107,9 +133,9 @@ test("3. 5-iteration cap -> forced final call without tools", async () => {
     userId: 1,
     deps: { ...fakeDeps(), chatModel },
   });
-  assert.equal(calls, 6);
+  assert.equal(calls, 4);
   assert.equal(out.reply, "Final answer.");
-  assert.equal(out.toolCallsUsed, 5);
+  assert.equal(out.toolCallsUsed, 3);
 });
 
 test("4. unknown tool name from model -> error result row, loop continues", async () => {
@@ -342,4 +368,294 @@ test("8b. getTransactions ignores a non-numeric category_id (no filter, no crash
   const mainSelect = calls.find((c) => c.text.includes("FROM transactions t") && !c.text.includes("COUNT(*)"));
   assert.ok(mainSelect);
   assert.doesNotMatch(mainSelect.text, /category_id = \$/);
+});
+
+// --- Cost ceiling batch ---
+
+test("cost: computeCostUsd applies the default $0.27/$1.10 per-million rates", async () => {
+  await withEnv({ CHAT_COST_IN_PER_M: undefined, CHAT_COST_OUT_PER_M: undefined }, () => {
+    const cost = computeCostUsd(1_000_000, 1_000_000);
+    assert.ok(Math.abs(cost - (0.27 + 1.1)) < 1e-9, `got ${cost}`);
+    assert.equal(computeCostUsd(0, 0), 0);
+  });
+});
+
+test("cost: computeCostUsd honors CHAT_COST_IN_PER_M / CHAT_COST_OUT_PER_M overrides", async () => {
+  await withEnv({ CHAT_COST_IN_PER_M: "1", CHAT_COST_OUT_PER_M: "2" }, () => {
+    const cost = computeCostUsd(1_000_000, 1_000_000);
+    assert.ok(Math.abs(cost - 3) < 1e-9, `got ${cost}`);
+  });
+});
+
+test("ledger: runChatTurn accumulates prompt+completion tokens across every model call and records once", async () => {
+  let calls = 0;
+  const chatModel = async () => {
+    calls++;
+    if (calls === 1) {
+      return {
+        model: "test/model",
+        choices: [{
+          message: {
+            role: "assistant",
+            content: null,
+            tool_calls: [{ id: "call_1", type: "function", function: { name: "get_account_balances", arguments: "{}" } }],
+          },
+        }],
+        usage: { prompt_tokens: 100, completion_tokens: 10 },
+      };
+    }
+    return {
+      model: "test/model",
+      choices: [{ message: { role: "assistant", content: "done" } }],
+      usage: { prompt_tokens: 150, completion_tokens: 20 },
+    };
+  };
+  let recordedCalls = 0;
+  let recorded = null;
+  const out = await runChatTurn({
+    messages: [{ role: "user", content: "balances" }],
+    userId: 1,
+    deps: {
+      ...fakeDeps({
+        recordUsage: async (args) => {
+          recordedCalls++;
+          recorded = args;
+        },
+      }),
+      chatModel,
+    },
+  });
+  assert.equal(recordedCalls, 1, "the ledger must be written exactly once per turn, not per model call");
+  assert.equal(recorded.userId, 1);
+  assert.equal(recorded.inputTokens, 250);
+  assert.equal(recorded.outputTokens, 30);
+  assert.equal(out.inputTokens, 250);
+  assert.equal(out.outputTokens, 30);
+});
+
+test("cap: isOverMonthlyCap is true once cost_usd reaches the cap", async () => {
+  await withEnv({ CHAT_MONTHLY_COST_CAP_USD: "0.50" }, () => {
+    assert.equal(isOverMonthlyCap(0.49), false);
+    assert.equal(isOverMonthlyCap(0.5), true);
+    assert.equal(isOverMonthlyCap(1), true);
+  });
+});
+
+test("cap: a cap of 0 disables the check entirely", async () => {
+  await withEnv({ CHAT_MONTHLY_COST_CAP_USD: "0" }, () => {
+    assert.equal(isOverMonthlyCap(1_000_000), false);
+  });
+});
+
+test("cap: pre-flight 429 fires with AI_CHAT_MONTHLY_CAP before the model is ever called", async () => {
+  require.cache[require.resolve("../services/aiChat")] = {
+    exports: {
+      runChatTurn: async () => { throw new Error("must not be called when over cap"); },
+      makeRealDeps: () => ({}),
+      getMonthlyCostUsd: async () => 5,
+      isOverMonthlyCap: (cost) => cost >= 0.5,
+      monthlyCapUsd: () => 0.5,
+    },
+  };
+  delete require.cache[require.resolve("../controllers/aiController")];
+  const { chat } = require("../controllers/aiController");
+
+  const req = { user: { id: 1 }, body: { messages: [{ role: "user", content: "hi" }] } };
+  const res = {
+    status(code) { this.statusCode = code; return this; },
+    json(body) { this.body = body; return this; },
+  };
+  await chat(req, res);
+
+  assert.equal(res.statusCode, 429);
+  assert.equal(res.body.code, "AI_CHAT_MONTHLY_CAP");
+
+  delete require.cache[require.resolve("../services/aiChat")];
+  delete require.cache[require.resolve("../controllers/aiController")];
+});
+
+test("cap: under the cap, the chat controller proceeds to runChatTurn normally", async () => {
+  require.cache[require.resolve("../services/aiChat")] = {
+    exports: {
+      runChatTurn: async () => ({ reply: "ok", toolCallsUsed: 0 }),
+      makeRealDeps: () => ({}),
+      getMonthlyCostUsd: async () => 0.1,
+      isOverMonthlyCap: (cost) => cost >= 0.5,
+      monthlyCapUsd: () => 0.5,
+    },
+  };
+  delete require.cache[require.resolve("../controllers/aiController")];
+  const { chat } = require("../controllers/aiController");
+
+  const req = { user: { id: 1 }, body: { messages: [{ role: "user", content: "hi" }] } };
+  const res = {
+    status(code) { this.statusCode = code; return this; },
+    json(body) { this.body = body; return this; },
+  };
+  await chat(req, res);
+
+  assert.equal(res.statusCode ?? 200, 200);
+  assert.equal(res.body.reply, "ok");
+
+  delete require.cache[require.resolve("../services/aiChat")];
+  delete require.cache[require.resolve("../controllers/aiController")];
+});
+
+test("month rollover: currentMonthKey is a UTC YYYY-MM key that flips at the calendar boundary", () => {
+  assert.equal(currentMonthKey(new Date(Date.UTC(2026, 7, 31, 23, 59, 59))), "2026-08");
+  assert.equal(currentMonthKey(new Date(Date.UTC(2026, 8, 1, 0, 0, 0))), "2026-09");
+  assert.match(currentMonthKey(), /^\d{4}-\d{2}$/);
+});
+
+test("trim: runChatTurn only sends the last 8 client messages to the model, schema still allows 20", async () => {
+  const clientMessages = Array.from({ length: 12 }, (_, i) => ({ role: "user", content: `msg ${i}` }));
+  let sentNonSystem = null;
+  const chatModel = async (body) => {
+    sentNonSystem = body.messages.filter((m) => m.role !== "system");
+    return { model: "test/model", choices: [{ message: { role: "assistant", content: "ok" } }], usage: {} };
+  };
+  await runChatTurn({
+    messages: clientMessages,
+    userId: 1,
+    deps: { ...fakeDeps(), chatModel },
+  });
+  assert.equal(sentNonSystem.length, 8);
+  assert.equal(sentNonSystem[0].content, "msg 4", "the oldest 4 of 12 must be trimmed off");
+  assert.equal(sentNonSystem[7].content, "msg 11");
+});
+
+test("bounds: query_transactions clamps an oversized limit to 30, not 50", async () => {
+  const calls = [];
+  require.cache[require.resolve("../config/db")] = {
+    exports: {
+      query: async (text, params) => {
+        calls.push({ text, params });
+        if (text.includes("sharing_permissions")) return { rows: [] };
+        if (text.includes("COALESCE(SUM(CASE WHEN t.type = 'income'")) {
+          return { rows: [{ income: "0", expense: "0" }] };
+        }
+        return { rows: [] };
+      },
+    },
+  };
+  delete require.cache[require.resolve("../services/aiChat")];
+  const { makeRealDeps } = require("../services/aiChat");
+
+  await makeRealDeps().queryTransactions({ userId: 1, limit: 9999 });
+
+  const listSelect = calls.find((c) => c.text.includes("FROM transactions t") && c.text.includes("LIMIT $"));
+  assert.ok(listSelect);
+  assert.equal(listSelect.params[listSelect.params.length - 1], 30);
+
+  delete require.cache[require.resolve("../config/db")];
+  delete require.cache[require.resolve("../services/aiChat")];
+});
+
+// --- Review fix round: I1/I2/I3 ---
+
+test("I1. a recordUsage DB failure never fails the chat turn", async () => {
+  const chatModel = async () => ({
+    model: "test/model",
+    choices: [{ message: { role: "assistant", content: "ok" } }],
+    usage: {},
+  });
+  const out = await runChatTurn({
+    messages: [{ role: "user", content: "hi" }],
+    userId: 1,
+    deps: {
+      ...fakeDeps({ recordUsage: async () => { throw new Error("db down"); } }),
+      chatModel,
+    },
+  });
+  assert.equal(out.reply, "ok");
+});
+
+test("I1. a mid-turn model throw still records tokens already spent, then rethrows", async () => {
+  let calls = 0;
+  const chatModel = async () => {
+    calls++;
+    if (calls === 1) {
+      return {
+        model: "test/model",
+        choices: [{
+          message: {
+            role: "assistant",
+            content: null,
+            tool_calls: [{ id: "call_1", type: "function", function: { name: "get_account_balances", arguments: "{}" } }],
+          },
+        }],
+        usage: { prompt_tokens: 50, completion_tokens: 5 },
+      };
+    }
+    // second call has no message -> callModelOnce throws "Empty response from chat model"
+    return { model: "test/model", choices: [] };
+  };
+  let recorded = null;
+  await assert.rejects(
+    runChatTurn({
+      messages: [{ role: "user", content: "hi" }],
+      userId: 1,
+      deps: {
+        ...fakeDeps({ recordUsage: async (args) => { recorded = args; } }),
+        chatModel,
+      },
+    }),
+    /Empty response from chat model/,
+  );
+  assert.ok(recorded, "recordUsage must still run on a mid-turn throw");
+  assert.equal(recorded.inputTokens, 50);
+  assert.equal(recorded.outputTokens, 5);
+});
+
+test("I2. realRecordUsage emits the additive UPSERT with the correct SQL and params", async () => {
+  let captured = null;
+  require.cache[require.resolve("../config/db")] = {
+    exports: {
+      query: async (text, params) => {
+        captured = { text, params };
+        return { rows: [] };
+      },
+    },
+  };
+  delete require.cache[require.resolve("../services/aiChat")];
+  const { makeRealDeps, computeCostUsd, currentMonthKey } = require("../services/aiChat");
+
+  await makeRealDeps().recordUsage({ userId: 7, inputTokens: 120, outputTokens: 40 });
+
+  assert.ok(captured, "expected the UPSERT to run");
+  assert.match(captured.text, /ai_chat_usage\.cost_usd \+ EXCLUDED\.cost_usd/);
+  const expectedCost = computeCostUsd(120, 40);
+  assert.deepEqual(captured.params, [7, currentMonthKey(), 120, 40, expectedCost]);
+
+  delete require.cache[require.resolve("../config/db")];
+  delete require.cache[require.resolve("../services/aiChat")];
+});
+
+test("I3. chat() skips the monthly-cost pre-flight query entirely when the cap is disabled (0)", async () => {
+  let getMonthlyCostUsdCalls = 0;
+  require.cache[require.resolve("../services/aiChat")] = {
+    exports: {
+      runChatTurn: async () => ({ reply: "ok", toolCallsUsed: 0 }),
+      makeRealDeps: () => ({}),
+      getMonthlyCostUsd: async () => { getMonthlyCostUsdCalls++; return 999; },
+      isOverMonthlyCap: () => true, // would 429 if the pre-flight ran
+      monthlyCapUsd: () => 0,
+    },
+  };
+  delete require.cache[require.resolve("../controllers/aiController")];
+  const { chat } = require("../controllers/aiController");
+
+  const req = { user: { id: 1 }, body: { messages: [{ role: "user", content: "hi" }] } };
+  const res = {
+    status(code) { this.statusCode = code; return this; },
+    json(body) { this.body = body; return this; },
+  };
+  await chat(req, res);
+
+  assert.equal(getMonthlyCostUsdCalls, 0, "must not query usage when the cap is disabled");
+  assert.equal(res.statusCode ?? 200, 200);
+  assert.equal(res.body.reply, "ok");
+
+  delete require.cache[require.resolve("../services/aiChat")];
+  delete require.cache[require.resolve("../controllers/aiController")];
 });

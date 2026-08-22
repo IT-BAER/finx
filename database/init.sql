@@ -297,5 +297,15 @@ CREATE INDEX IF NOT EXISTS idx_goals_user_deadline ON goals(user_id, deadline);
 CREATE INDEX IF NOT EXISTS idx_recurring_user ON recurring_transactions(user_id);
 CREATE INDEX IF NOT EXISTS idx_recurring_user_next_run ON recurring_transactions(user_id, start_date, end_date);
 
+-- Per-user monthly AI-chat token/cost ledger (aligns with migration 020 for upgrades)
+CREATE TABLE IF NOT EXISTS ai_chat_usage (
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    month CHAR(7) NOT NULL,
+    input_tokens BIGINT NOT NULL DEFAULT 0,
+    output_tokens BIGINT NOT NULL DEFAULT 0,
+    cost_usd NUMERIC(8,4) NOT NULL DEFAULT 0,
+    PRIMARY KEY (user_id, month)
+);
+
 -- Sample data now handled exclusively by init-db.js
 -- All data initialization moved to init-db.js

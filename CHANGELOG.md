@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented in this file.
 
+## [v1.3.3] - 2026-08-22
+
+### Added
+- **Optional monthly cost cap for AI chat.** Each chat turn's token usage is now tracked per user per UTC calendar month. Set `CHAT_MONTHLY_COST_CAP_USD` to enable a hard cap (disabled by default here, since this is self-hosted with your own OpenRouter key) — once the tracked cost reaches it, the endpoint answers 429 instead of calling the model. A ledger write failure never fails the turn, and tokens already spent are still recorded even if the model call itself errors mid-turn.
+- **Tighter per-turn bounds.** Tool round-trips capped at 3 (was 5), model responses capped at 500 tokens (was 700), `query_transactions` row limit capped at 30 (was 50), and only the last 8 messages of a client thread are sent to the model regardless of how long the conversation has grown (the request schema still accepts up to 20).
+
 ## [v1.3.2] - 2026-08-22
 
 ### Added
