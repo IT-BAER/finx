@@ -9,8 +9,8 @@ const {
 test("query binds the accessible user ids once and scopes both sides", () => {
   const { text, values } = buildBalancesQuery([7, 9]);
   assert.deepStrictEqual(values, [[7, 9]]);
-  // One bind param reused for the sources scope and the transactions scope.
-  assert.strictEqual((text.match(/\$1::int\[\]/g) || []).length, 2);
+  // One bind param reused for the sources scope, the net subquery, and both membership tests.
+  assert.strictEqual((text.match(/\$1::int\[\]/g) || []).length, 4);
   // Incomes are matched through the same-named targets row, not source_id.
   assert.ok(text.includes("LOWER(TRIM(tg.name)) = LOWER(TRIM(s.name))"));
   assert.ok(text.includes("LOWER(t.type) = 'income'"));
@@ -89,4 +89,20 @@ test("total sums every account balance", () => {
   assert.strictEqual(sumTotal([]), 0);
   assert.strictEqual(sumTotal(null), 0);
   assert.strictEqual(sumTotal([{ balance: Number.NaN }, { balance: 5 }]), 5);
+});
+
+test("payers are excluded: a source only counts as an account if it is used like one", () => {
+  const { text } = buildBalancesQuery([7]);
+  // Spent from, receives income through its same-named target, or has an opening balance.
+  assert.ok(text.includes("s.opening_balance <> 0"));
+  assert.ok(text.includes("LOWER(te.type) = 'expense'"));
+  assert.ok(text.includes("LOWER(ti.type) = 'income'"));
+  // The income test goes through targets, so an income's payer row does not qualify.
+  assert.ok(text.includes("ti.target_id IN ("));
+});
+
+test("a SimpleFIN-synced account counts as an account, and only where that column exists", () => {
+  assert.ok(buildBalancesQuery([7]).text.includes("OR s.synced_balance IS NOT NULL"));
+  const without = buildBalancesQuery([7], { withSynced: false }).text;
+  assert.ok(!without.includes("s.synced_balance IS NOT NULL"));
 });

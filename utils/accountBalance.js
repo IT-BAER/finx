@@ -26,6 +26,12 @@ const MATCHING_TARGET_IDS = `
  *   - an income landed on its same-named target -> money entered it -> +amount
  *   - both at once (paying yourself)            -> a wash          ->  0
  *
+ * Which sources count as accounts: a `sources` row is also created for the payer of an
+ * income, and a payer is not an account of yours. A row is listed only when it is spent from
+ * (source of >=1 expense), receives income through its same-named target, or carries a
+ * non-zero opening balance. A brand-new account with no transactions and a zero opening
+ * balance is therefore not listed until it has either.
+ *
  * @param {number[]} userIds accessible owner ids (requester + anyone sharing with them)
  * @param {{withSynced?: boolean}} [opts] withSynced=false omits the SimpleFIN columns,
  *        for the self-hosted schema that has no such columns.
@@ -36,6 +42,8 @@ function buildBalancesQuery(userIds, opts = {}) {
   const syncedCols = withSynced
     ? "s.synced_balance,\n      s.synced_balance_at,"
     : "NULL::numeric AS synced_balance,\n      NULL::timestamptz AS synced_balance_at,";
+  // An account SimpleFIN reported is an account even with no transactions and a zero opening.
+  const syncedMembership = withSynced ? "OR s.synced_balance IS NOT NULL" : "";
   const text = `
     SELECT
       s.id,
@@ -65,6 +73,23 @@ function buildBalancesQuery(userIds, opts = {}) {
       ), 0) AS net
     FROM sources s
     WHERE s.user_id = ANY($1::int[])
+      AND (
+        s.opening_balance <> 0
+        ${syncedMembership}
+        OR EXISTS (
+          SELECT 1 FROM transactions te
+          WHERE te.user_id = ANY($1::int[])
+            AND te.source_id = s.id
+            AND LOWER(te.type) = 'expense'
+        )
+        OR EXISTS (
+          SELECT 1 FROM transactions ti
+          WHERE ti.user_id = ANY($1::int[])
+            AND LOWER(ti.type) = 'income'
+            AND ti.target_id IN (${MATCHING_TARGET_IDS}
+            )
+        )
+      )
     ORDER BY LOWER(s.name) ASC`;
   return { text, values: [userIds] };
 }
