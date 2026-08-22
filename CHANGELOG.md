@@ -2,6 +2,19 @@
 
 All notable changes to this project are documented in this file.
 
+## [v1.3.0] - 2026-08-22
+
+### Added
+- **Per-account balances.** `GET /transactions/balances` answers one balance per accessible account, computed as the account's opening balance plus its all-time net. "Net" counts both sides of an account: expenses through `transactions.source_id` and incomes through the same-named `targets` row, so a shared account no longer reads as expenses-only. The response also carries the summed total. `PUT /sources/:id/opening-balance` restates the opening figure and is owner-only, because a shared account has a single balance. Migration `019-account-balances.sql` adds `sources.opening_balance NUMERIC(14,2) NOT NULL DEFAULT 0` and runs automatically on start.
+- **Voice entry endpoint.** `POST /api/ai/parse-speech` turns a spoken transcript into a transaction, a goal, or a goal contribution for the mobile app. Speech recognition itself stays on the device; only the resulting text is sent, and only after the user has accepted the AI data consent.
+
+### Changed
+- **The transactions list is sorted and filtered by the server.** `GET /transactions` now accepts whitelisted sort and order parameters plus a type filter, and answers the first page with a total count and running income, expense and net figures for the whole filtered set, not just the page. This matches the managed server and keeps the mobile ledger correct across pagination.
+
+### Fixed
+- **Date filtering on `GET /transactions` reached SQL for the first time.** The controller read `start_date`/`end_date` while the request validator only accepted `startDate`/`endDate`, so a date range was silently dropped.
+- **The transactions count query kept its source-filter bind parameters**, so a filtered list's count matches the rows it returns.
+
 ## [v1.2.9] - 2026-06-24
 
 ### Fixed
