@@ -4,6 +4,7 @@ const {
   createSource,
   getSources,
   updateSource,
+  updateOpeningBalance,
   deleteSource,
 } = require("../controllers/sourceController");
 const auth = require("../middleware/auth");
@@ -19,6 +20,9 @@ router.get("/", getSources);
 
 // Update source
 router.put("/:id", updateSource);
+
+// Correct the opening balance (owner only)
+router.put("/:id/opening-balance", updateOpeningBalance);
 
 // Delete source
 router.delete("/:id", deleteSource);

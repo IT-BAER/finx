@@ -125,9 +125,42 @@ const deleteSource = async (req, res) => {
   }
 };
 
+// Correct an account's opening balance.
+// Owner-only on purpose: a shared account has one balance, and only its owner may restate it.
+const updateOpeningBalance = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const raw = req.body?.openingBalance;
+    const value = typeof raw === "string" ? Number.parseFloat(raw) : raw;
+
+    if (typeof value !== "number" || !Number.isFinite(value)) {
+      return res.status(400).json({ message: "openingBalance must be a number" });
+    }
+    // NUMERIC(14,2): 12 integer digits. Reject out-of-range instead of letting pg throw a 500.
+    if (Math.abs(value) >= 1e12) {
+      return res.status(400).json({ message: "openingBalance out of range" });
+    }
+
+    const source = await Source.findById(id);
+    if (!source || source.user_id !== req.user.id) {
+      return res.status(404).json({ message: "Source not found" });
+    }
+
+    const result = await db.query(
+      "UPDATE sources SET opening_balance = $1 WHERE id = $2 RETURNING *",
+      [value.toFixed(2), id],
+    );
+    res.json({ success: true, source: result.rows[0] });
+  } catch (err) {
+    console.error("Update opening balance error:", err.message);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
 module.exports = {
   createSource,
   getSources,
   updateSource,
+  updateOpeningBalance,
   deleteSource,
 };

@@ -79,6 +79,7 @@ CREATE TABLE IF NOT EXISTS sources (
     user_id INTEGER REFERENCES users(id),
     name VARCHAR(100) NOT NULL,
     is_sample BOOLEAN DEFAULT FALSE,
+    opening_balance NUMERIC(14,2) NOT NULL DEFAULT 0,
     UNIQUE(user_id, name)
 );
 

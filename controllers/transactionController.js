@@ -7,6 +7,7 @@ const cache = require("../services/cache");
 const { getAccessibleUserIds, validateAsUserId, getSharingPermissionMeta, getUsersSharedWithOwner } = require("../utils/access");
 const { createMirror, syncMirrorOnUpdate, deleteMirror } = require("../utils/transactionMirror");
 const { parseSourceIds, buildSourceFilterClause } = require("../utils/sourceFilter");
+const { buildBalancesQuery, rowToBalance, sumTotal } = require("../utils/accountBalance");
 const { buildTransactionOrderBy } = require("../utils/transactionSort");
 
 // Create transaction
@@ -1161,6 +1162,26 @@ const getDashboardData = async (req, res) => {
 };
 
 /**
+ * Per-account balances: opening balance + all-time net. See utils/accountBalance.js for the
+ * sign convention. withSynced:false — this repo has no SimpleFIN and no synced_balance column.
+ */
+const getAccountBalances = async (req, res) => {
+  try {
+    let userIds = await getAccessibleUserIds(req.user.id, "all");
+    if (!Array.isArray(userIds) || userIds.length === 0) userIds = [req.user.id];
+
+    const { text, values } = buildBalancesQuery(userIds, { withSynced: false });
+    const result = await db.query(text, values);
+    const balances = result.rows.map(rowToBalance);
+
+    res.json({ success: true, balances, total: sumTotal(balances) });
+  } catch (err) {
+    console.error("Get account balances error:", err.message);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+/**
  * Get net worth data (all-time income - expenses with monthly trend)
  * Used for the Net Worth dashboard card
  */
@@ -1470,6 +1491,7 @@ module.exports = {
   deleteTransaction,
   getDashboardData,
   getNetWorth,
+  getAccountBalances,
   getSafeToSpend,
   getSpendingPace,
 };

@@ -7,6 +7,7 @@ const {
   deleteTransaction,
   getDashboardData,
   getNetWorth,
+  getAccountBalances,
   getSafeToSpend,
   getSpendingPace,
 } = require("../controllers/transactionController");
@@ -29,6 +30,7 @@ router.get("/dashboard", validateQuery(dashboardQuerySchema), getDashboardData);
 
 // Get net worth data (all-time income - expenses with trend)
 router.get("/net-worth", getNetWorth);
+router.get("/balances", getAccountBalances);
 
 // Get safe to spend (remaining budget for the month)
 router.get("/safe-to-spend", getSafeToSpend);
