@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## [v1.3.1] - 2026-08-22
+
+### Fixed
+- **Account balances no longer list the people who pay you.** Recording an income also creates a `sources` row for the payer, so `GET /transactions/balances` reported employers and refund senders as accounts holding a negative balance. A source is now listed only when it is used like an account: spent from (the source of at least one expense), receiving income through its same-named `targets` row, or carrying a non-zero opening balance. An account you only ever pay into still appears; a brand-new account with no transactions and a zero opening balance stays hidden until it has either.
+
 ## [v1.3.0] - 2026-08-22
 
 ### Added
