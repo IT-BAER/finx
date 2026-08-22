@@ -78,6 +78,17 @@ const speechResponseSchema = z.object({
   goal_deadline: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
 });
 
+const chatMessageSchema = z.object({
+  role: z.enum(["user", "assistant"]),
+  content: z.string().min(1).max(4000),
+});
+
+const chatRequestSchema = z
+  .object({
+    messages: z.array(chatMessageSchema).min(1).max(20),
+  })
+  .strip();
+
 module.exports = {
   parseRequestSchema,
   parseResponseSchema,
@@ -85,4 +96,5 @@ module.exports = {
   MAX_IMAGE_B64_LEN,
   speechRequestSchema,
   speechResponseSchema,
+  chatRequestSchema,
 };

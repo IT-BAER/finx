@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented in this file.
 
+## [v1.3.2] - 2026-08-22
+
+### Added
+- **AI financial chat.** `POST /api/ai/chat` answers read-only questions about your own transactions, category spending and account balances, running a tool-calling agent loop (query transactions, category breakdown, account balances) scoped to the authed user plus anyone who shared with them, capped at 5 tool round-trips per message. Gated the same way as the other AI endpoints here — admin-only by default, or every user when `AI_ALLOW_NON_ADMIN=true` — since this is self-hosted with your own OpenRouter key. Nothing is persisted; the client resends the thread each turn.
+
+### Fixed
+- **`GET /transactions` now honors `category_id`.** The filter was accepted by the controller but silently stripped by request validation before it arrived, so filtering the transaction list by category over the API had no effect.
+
 ## [v1.3.1] - 2026-08-22
 
 ### Fixed

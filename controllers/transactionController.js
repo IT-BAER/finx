@@ -243,7 +243,7 @@ const createTransaction = async (req, res) => {
 const getTransactions = async (req, res) => {
   try {
     // Optional filter to view as a specific accessible user
-    const { asUserId, limit, offset, q, startDate, endDate, type, source_ids, sort, order } = req.query;
+    const { asUserId, limit, offset, q, startDate, endDate, type, category_id, source_ids, sort, order } = req.query;
     const sourceIds = parseSourceIds(source_ids);
     const validAsUserId = await validateAsUserId(req.user.id, asUserId, "all");
 
@@ -316,6 +316,14 @@ const getTransactions = async (req, res) => {
       searchCondition += ` AND t.type = $${paramIndex}`;
       queryParams.push(type);
       paramIndex++;
+    }
+    if (category_id) {
+      const categoryIdNum = Number.parseInt(category_id, 10);
+      if (Number.isInteger(categoryIdNum) && categoryIdNum > 0) {
+        searchCondition += ` AND t.category_id = $${paramIndex}`;
+        queryParams.push(categoryIdNum);
+        paramIndex++;
+      }
     }
 
     // Source filter: match the selected accounts on either the source (expense) or target

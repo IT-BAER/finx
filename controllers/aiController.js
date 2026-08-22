@@ -1,7 +1,12 @@
 const logger = require('../utils/logger');
-const { parseRequestSchema, ocrRequestSchema, speechRequestSchema } = require('../utils/aiSchemas');
+const { parseRequestSchema, ocrRequestSchema, speechRequestSchema, chatRequestSchema } = require('../utils/aiSchemas');
 const { sanitizeText, sanitizeStringArray } = require('../utils/aiSanitize');
 const { callAiProxy } = require('../services/aiProxy');
+const { runChatTurn, makeRealDeps } = require('../services/aiChat');
+
+// Function references only — see services/aiChat.js: building this object never touches the
+// DB, only calling a function inside it does (first real chat request, not module load).
+const chatDeps = makeRealDeps();
 
 const parseNotification = async (req, res) => {
   const parsed = parseRequestSchema.safeParse(req.body || {});
@@ -108,4 +113,29 @@ const parseSpeech = async (req, res) => {
   }
 };
 
-module.exports = { parseNotification, parseReceipt, parseSpeech };
+const chat = async (req, res) => {
+  const parsed = chatRequestSchema.safeParse(req.body || {});
+  if (!parsed.success) {
+    return res.status(400).json({
+      message: parsed.error.issues[0]?.message || 'invalid request body',
+      code: 'AI_BAD_REQUEST',
+    });
+  }
+  try {
+    const { reply, toolCallsUsed } = await runChatTurn({
+      messages: parsed.data.messages,
+      userId: req.user?.id,
+      deps: chatDeps,
+    });
+    return res.json({ success: true, reply, toolCallsUsed });
+  } catch (err) {
+    // Never log message content — metadata only, mirrors the other AI purposes.
+    logger.error('AI chat failed (user=' + (req.user?.id) + '): ' + err.message);
+    const status = err.status || 502;
+    return res
+      .status(status)
+      .json({ message: status === 503 ? 'AI not configured' : 'AI chat unavailable' });
+  }
+};
+
+module.exports = { parseNotification, parseReceipt, parseSpeech, chat };

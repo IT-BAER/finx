@@ -3,7 +3,7 @@ const router = express.Router();
 const auth = require("../middleware/auth");
 const isAdmin = require("../middleware/isAdmin");
 const { perUserHourly, perUserDaily } = require("../middleware/aiRateLimit");
-const { parseNotification, parseReceipt, parseSpeech } = require("../controllers/aiController");
+const { parseNotification, parseReceipt, parseSpeech, chat } = require("../controllers/aiController");
 
 // 32 KB body cap applied before parsing JSON in this route.
 const aiBodyJson = express.json({ limit: "32kb" });
@@ -46,6 +46,18 @@ router.post(
   perUserDaily({ limit: 60 }),
   ocrBodyJson,
   parseReceipt,
+);
+
+// POST /api/ai/chat — read-only financial Q&A (server-side tool-calling agent loop).
+// No requireSubscription here (self-hosted, no Pro tier) — same admin/AI_ALLOW_NON_ADMIN gate.
+router.post(
+  "/chat",
+  auth,
+  gate,
+  perUserHourly({ limit: 10 }),
+  perUserDaily({ limit: 10 }),
+  aiBodyJson,
+  chat,
 );
 
 // Map body-parser entity.too.large to our standard 413 response so the

@@ -1,6 +1,44 @@
 const logger = require("../utils/logger");
 const { parseResponseSchema, speechResponseSchema } = require("../utils/aiSchemas");
 
+const OPENROUTER_CHAT_URL = "https://openrouter.ai/api/v1/chat/completions";
+
+/**
+ * POST a chat-completions body to OpenRouter with the shared headers/provider-deny/timeout
+ * policy. Callers pass model/messages/tools/etc; this only adds auth + egress policy and
+ * returns the parsed JSON body (no response-shape validation — callers extract what they need).
+ * Shared by every AI purpose here AND services/aiChat.js — do not fork this block.
+ */
+const postOpenRouter = async (body) => {
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  if (!apiKey) {
+    const err = new Error("AI parsing not configured on this server");
+    err.status = 503;
+    throw err;
+  }
+  const response = await fetch(OPENROUTER_CHAT_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+      "HTTP-Referer": "https://myfinx.app",
+      "X-Title": "FinX",
+    },
+    body: JSON.stringify({
+      ...body,
+      reasoning: { exclude: true },
+      provider: { data_collection: "deny" },
+    }),
+    signal: AbortSignal.timeout(30000),
+  });
+  if (!response.ok) {
+    const err = new Error(`OpenRouter HTTP ${response.status}`);
+    err.status = 502;
+    throw err;
+  }
+  return response.json();
+};
+
 const PURPOSES = Object.freeze({
   NOTIFICATION_PARSE: {
     id: "NOTIFICATION_PARSE",
@@ -172,30 +210,12 @@ const callAiProxy = async ({ purpose, vars, userId }) => {
   }
 
   const attemptModel = async (model) => {
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-        "HTTP-Referer": "https://myfinx.app",
-        "X-Title": "FinX",
-      },
-      body: JSON.stringify({
-        model,
-        messages,
-        max_tokens: cfg.maxTokens,
-        temperature: cfg.temperature,
-        reasoning: { exclude: true },
-        provider: { data_collection: "deny" },
-      }),
-      signal: AbortSignal.timeout(30000),
+    const data = await postOpenRouter({
+      model,
+      messages,
+      max_tokens: cfg.maxTokens,
+      temperature: cfg.temperature,
     });
-    if (!response.ok) {
-      const err = new Error(`OpenRouter HTTP ${response.status}`);
-      err.status = 502;
-      throw err;
-    }
-    const data = await response.json();
     const chosenModel = data?.model ?? model;
     const content = data?.choices?.[0]?.message?.content;
     if (!content) throw new Error(`Empty response from model ${chosenModel}`);
@@ -245,4 +265,4 @@ const callAiProxy = async ({ purpose, vars, userId }) => {
   return await attemptModel(cfg.model);
 };
 
-module.exports = { PURPOSES, buildPromptFor, callAiProxy };
+module.exports = { PURPOSES, buildPromptFor, callAiProxy, postOpenRouter };
