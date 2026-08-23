@@ -41,6 +41,7 @@ test("buildChatSystemPrompt includes today's date and is finance-scoped", () => 
   assert.match(prompt, /2026-08-22/);
   assert.match(prompt, /finance/i);
   assert.match(prompt, /not a financial, tax, or legal advisor/);
+  assert.match(prompt, /Affordability and budget-planning questions/);
 });
 
 test("buildChatSystemPrompt tells the model to use the informal register and to resolve category names via list_categories", () => {
