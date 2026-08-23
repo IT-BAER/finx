@@ -49,6 +49,12 @@ test("buildChatSystemPrompt tells the model to use the informal register and to 
   assert.match(prompt, /list_categories/);
 });
 
+test("buildChatSystemPrompt tells the model how to attribute shared rows via owner/by_owner", () => {
+  const prompt = buildChatSystemPrompt({ today: "2026-08-22" });
+  assert.match(prompt, /by_owner/);
+  assert.match(prompt, /`owner` field/);
+});
+
 test("CHAT_TOOLS exposes the 4 frozen tool schemas by exact name", () => {
   const names = CHAT_TOOLS.map((t) => t.function.name);
   assert.deepEqual(names, ["query_transactions", "get_category_breakdown", "get_account_balances", "list_categories"]);
@@ -382,6 +388,86 @@ test("C1. realQueryTransactions drops a sharer whose permission has a source_fil
   assert.ok(mainSelect, "expected the main select to run");
   assert.ok(mainSelect.params.includes(1), "requester must stay in scope");
   assert.ok(!mainSelect.params.includes(2), "scoped sharer must be excluded from the aggregate query");
+});
+
+// Owner attribution: query_transactions must join users and attribute shared rows so the
+// model can tell "your" spend apart from a sharer's, instead of silently summing both.
+test("Owner attribution: realQueryTransactions joins users and tags rows/by_owner for a shared query", async () => {
+  const calls = [];
+  require.cache[require.resolve("../config/db")] = {
+    exports: {
+      query: async (text, params) => {
+        calls.push({ text, params });
+        if (text.includes("SELECT owner_user_id, source_filter")) {
+          // requester (1) has one unrestricted sharer (owner 2)
+          return { rows: [{ owner_user_id: 2, source_filter: null }] };
+        }
+        if (text.includes("SELECT permission_level, source_filter")) {
+          return { rows: [{ permission_level: "read", source_filter: null }] };
+        }
+        if (text.includes("GROUP BY t.user_id, owner_name")) {
+          return {
+            rows: [
+              { user_id: 1, owner_name: "you", income: "0", expense: "972" },
+              { user_id: 2, owner_name: "Bob", income: "0", expense: "52" },
+            ],
+          };
+        }
+        if (text.includes("COALESCE(SUM(CASE WHEN t.type = 'income'")) {
+          return { rows: [{ income: "0", expense: "1024" }] };
+        }
+        // main list select
+        return {
+          rows: [
+            { date: "2026-08-20", amount: "52", type: "expense", category: "Auto", source: "Cash", target: "Shop", description: "x", user_id: 2, owner_name: "Bob" },
+          ],
+        };
+      },
+    },
+  };
+  delete require.cache[require.resolve("../services/aiChat")];
+  delete require.cache[require.resolve("../utils/access")];
+  const { makeRealDeps } = require("../services/aiChat");
+
+  const out = await makeRealDeps().queryTransactions({ userId: 1, category_id: undefined });
+
+  const mainSelect = calls.find((c) => c.text.includes("FROM transactions t") && c.text.includes("LIMIT $"));
+  assert.ok(mainSelect);
+  assert.match(mainSelect.text, /JOIN users u/);
+  assert.doesNotMatch(mainSelect.text, /email/i);
+  assert.equal(out.transactions[0].owner, "Bob");
+
+  const byOwnerSelect = calls.find((c) => c.text.includes("GROUP BY t.user_id, owner_name"));
+  assert.ok(byOwnerSelect);
+  assert.match(byOwnerSelect.text, /JOIN users u/);
+  assert.doesNotMatch(byOwnerSelect.text, /email/i);
+  assert.deepEqual(out.by_owner, [
+    { owner: "you", total_income: 0, total_expense: 972 },
+    { owner: "Bob", total_income: 0, total_expense: 52 },
+  ]);
+
+  delete require.cache[require.resolve("../config/db")];
+  delete require.cache[require.resolve("../services/aiChat")];
+});
+
+test("Owner attribution: realQueryTransactions omits by_owner when the user has no unrestricted sharers", async () => {
+  require.cache[require.resolve("../config/db")] = {
+    exports: {
+      query: async (text) => {
+        if (text.includes("sharing_permissions")) return { rows: [] };
+        if (text.includes("COALESCE(SUM(CASE WHEN t.type = 'income'")) return { rows: [{ income: "0", expense: "0" }] };
+        return { rows: [] };
+      },
+    },
+  };
+  delete require.cache[require.resolve("../services/aiChat")];
+  delete require.cache[require.resolve("../utils/access")];
+  const { makeRealDeps } = require("../services/aiChat");
+  const result = await makeRealDeps().queryTransactions({ userId: 1 });
+  assert.equal("by_owner" in result, false);
+
+  delete require.cache[require.resolve("../config/db")];
+  delete require.cache[require.resolve("../services/aiChat")];
 });
 
 // I2 fix: get_category_breakdown must not silently answer all-time when a bound is missing.

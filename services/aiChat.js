@@ -63,6 +63,7 @@ const buildChatSystemPrompt = ({ today, language }) => [
   `Answer in the user's language when it is detectable from their message; default to ${language || "English"} otherwise.`,
   "Use the informal register (German: du, not Sie; French: tu; Spanish/Portuguese/Italian: tú/tu; Dutch: je; Polish: ty; Russian: ты) — the app speaks to the user as a friend.",
   "Category names are NOT ids: when the user names a category (e.g. \"Auto\"), call list_categories first to resolve the id, or filter with the free-text `q` parameter. If a filtered query returns 0 rows, retry once with `q` before telling the user there is no data.",
+  "Transactions may include rows shared with the user by other people: each row has an `owner` field (\"you\" or the other person's name) and `by_owner` gives per-person totals. When any rows are not the user's own, say so and state the user's own share and the other person's share separately.",
   "State amounts with the currency symbol exactly as stored — never convert currencies.",
   `Today's date is ${today}.`,
   "Be concise and factual.",
@@ -209,18 +210,45 @@ const realQueryTransactions = async ({ userId, start_date, end_date, type, categ
     LEFT JOIN categories c ON t.category_id = c.id
     LEFT JOIN sources s ON t.source_id = s.id
     LEFT JOIN targets tg ON t.target_id = tg.id
+    JOIN users u ON u.id = t.user_id
     WHERE t.user_id IN (${placeholders}) ${where}
   `;
   const aggResult = await db.query(aggQuery, [...userIds, ...filterParams]);
   const agg = aggResult.rows[0] || {};
 
+  let by_owner;
+  if (userIds.length > 1) {
+    const byOwnerQuery = `
+      SELECT
+        t.user_id,
+        COALESCE(NULLIF(TRIM(CONCAT_WS(' ', u.first_name, u.last_name)), ''), CONCAT('User #', u.id)) AS owner_name,
+        COALESCE(SUM(CASE WHEN t.type = 'income' THEN t.amount ELSE 0 END), 0) AS income,
+        COALESCE(SUM(CASE WHEN t.type = 'expense' THEN t.amount ELSE 0 END), 0) AS expense
+      FROM transactions t
+      LEFT JOIN categories c ON t.category_id = c.id
+      LEFT JOIN sources s ON t.source_id = s.id
+      LEFT JOIN targets tg ON t.target_id = tg.id
+      JOIN users u ON u.id = t.user_id
+      WHERE t.user_id IN (${placeholders}) ${where}
+      GROUP BY t.user_id, owner_name
+    `;
+    const byOwnerResult = await db.query(byOwnerQuery, [...userIds, ...filterParams]);
+    by_owner = byOwnerResult.rows.map((r) => ({
+      owner: Number(r.user_id) === Number(userId) ? "you" : r.owner_name,
+      total_income: Number.parseFloat(r.income) || 0,
+      total_expense: Number.parseFloat(r.expense) || 0,
+    }));
+  }
+
   const lim = Math.min(Math.max(Number.isInteger(limit) ? limit : 20, 1), QUERY_TRANSACTIONS_MAX_LIMIT);
   const listQuery = `
-    SELECT t.date, t.amount, t.type, c.name AS category, s.name AS source, tg.name AS target, t.description
+    SELECT t.date, t.amount, t.type, c.name AS category, s.name AS source, tg.name AS target, t.description,
+      t.user_id, COALESCE(NULLIF(TRIM(CONCAT_WS(' ', u.first_name, u.last_name)), ''), CONCAT('User #', u.id)) AS owner_name
     FROM transactions t
     LEFT JOIN categories c ON t.category_id = c.id
     LEFT JOIN sources s ON t.source_id = s.id
     LEFT JOIN targets tg ON t.target_id = tg.id
+    JOIN users u ON u.id = t.user_id
     WHERE t.user_id IN (${placeholders}) ${where}
     ORDER BY t.date DESC, t.id DESC
     LIMIT $${idx}
@@ -236,10 +264,12 @@ const realQueryTransactions = async ({ userId, start_date, end_date, type, categ
       source: r.source,
       target: r.target,
       description: r.description,
+      owner: Number(r.user_id) === Number(userId) ? "you" : r.owner_name,
     })),
     total_income: Number.parseFloat(agg.income) || 0,
     total_expense: Number.parseFloat(agg.expense) || 0,
     count: listResult.rows.length,
+    ...(by_owner ? { by_owner } : {}),
   };
 };
 
