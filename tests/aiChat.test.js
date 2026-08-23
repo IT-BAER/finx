@@ -14,6 +14,7 @@ const fakeDeps = (overrides = {}) => ({
   queryTransactions: async () => ({ transactions: [], total_income: 0, total_expense: 0, count: 0 }),
   getBreakdown: async () => ({ expense_by_category: [] }),
   getBalances: async () => ({ balances: [], total: 0 }),
+  listCategories: async () => ({ categories: [] }),
   recordUsage: async () => {},
   ...overrides,
 });
@@ -41,9 +42,21 @@ test("buildChatSystemPrompt includes today's date and is finance-scoped", () => 
   assert.match(prompt, /finance/i);
 });
 
-test("CHAT_TOOLS exposes the 3 frozen tool schemas by exact name", () => {
+test("buildChatSystemPrompt tells the model to use the informal register and to resolve category names via list_categories", () => {
+  const prompt = buildChatSystemPrompt({ today: "2026-08-22" });
+  assert.match(prompt, /du, not Sie/);
+  assert.match(prompt, /list_categories/);
+});
+
+test("CHAT_TOOLS exposes the 4 frozen tool schemas by exact name", () => {
   const names = CHAT_TOOLS.map((t) => t.function.name);
-  assert.deepEqual(names, ["query_transactions", "get_category_breakdown", "get_account_balances"]);
+  assert.deepEqual(names, ["query_transactions", "get_category_breakdown", "get_account_balances", "list_categories"]);
+});
+
+test("CHAT_TOOLS[3] (list_categories) takes no parameters", () => {
+  const tool = CHAT_TOOLS[3];
+  assert.equal(tool.function.name, "list_categories");
+  assert.deepEqual(tool.function.parameters, { type: "object", properties: {} });
 });
 
 test("1. no tools needed -> single model call -> reply passthrough", async () => {
@@ -105,11 +118,11 @@ test("2. tool call -> executor result fed back -> final answer", async () => {
   assert.equal(queryArgs.start_date, "2026-08-01");
 });
 
-test("3. 3-iteration cap -> forced final call without tools", async () => {
+test("3. 4-iteration cap -> forced final call without tools", async () => {
   let calls = 0;
   const chatModel = async (body) => {
     calls++;
-    if (calls <= 3) {
+    if (calls <= 4) {
       assert.ok(body.tools, `call ${calls} should still offer tools`);
       assert.equal(body.max_tokens, 500, "max_tokens must be the tightened 500 bound");
       return {
@@ -124,7 +137,7 @@ test("3. 3-iteration cap -> forced final call without tools", async () => {
         usage: {},
       };
     }
-    // 4th call is the forced final without tools
+    // 5th call is the forced final without tools
     assert.equal(body.tools, undefined);
     return { model: "test/model", choices: [{ message: { role: "assistant", content: "Final answer." } }], usage: {} };
   };
@@ -133,9 +146,49 @@ test("3. 3-iteration cap -> forced final call without tools", async () => {
     userId: 1,
     deps: { ...fakeDeps(), chatModel },
   });
-  assert.equal(calls, 4);
+  assert.equal(calls, 5);
   assert.equal(out.reply, "Final answer.");
-  assert.equal(out.toolCallsUsed, 3);
+  assert.equal(out.toolCallsUsed, 4);
+});
+
+test("9. list_categories tool call routes to deps.listCategories and feeds JSON back", async () => {
+  let calls = 0;
+  const chatModel = async (body) => {
+    calls++;
+    if (calls === 1) {
+      return {
+        model: "test/model",
+        choices: [{
+          message: {
+            role: "assistant",
+            content: null,
+            tool_calls: [{ id: "call_1", type: "function", function: { name: "list_categories", arguments: "{}" } }],
+          },
+        }],
+        usage: {},
+      };
+    }
+    const toolMsg = body.messages.find((m) => m.role === "tool");
+    assert.deepEqual(JSON.parse(toolMsg.content), { categories: [{ id: 3, name: "Auto" }] });
+    return { model: "test/model", choices: [{ message: { role: "assistant", content: "Category id 3." } }], usage: {} };
+  };
+  let listCategoriesCalledWith = null;
+  const out = await runChatTurn({
+    messages: [{ role: "user", content: "what's the id for Auto?" }],
+    userId: 1,
+    deps: {
+      ...fakeDeps({
+        listCategories: async (args) => {
+          listCategoriesCalledWith = args;
+          return { categories: [{ id: 3, name: "Auto" }] };
+        },
+      }),
+      chatModel,
+    },
+  });
+  assert.equal(calls, 2);
+  assert.equal(out.reply, "Category id 3.");
+  assert.deepEqual(listCategoriesCalledWith, { userId: 1 });
 });
 
 test("4. unknown tool name from model -> error result row, loop continues", async () => {
@@ -546,6 +599,37 @@ test("bounds: query_transactions clamps an oversized limit to 30, not 50", async
   const listSelect = calls.find((c) => c.text.includes("FROM transactions t") && c.text.includes("LIMIT $"));
   assert.ok(listSelect);
   assert.equal(listSelect.params[listSelect.params.length - 1], 30);
+
+  delete require.cache[require.resolve("../config/db")];
+  delete require.cache[require.resolve("../services/aiChat")];
+});
+
+// Correction 1: categories are per-user rows (UNIQUE(user_id, name)) — an exact category_id
+// match misses the requester's own row when list_categories resolved a different user's row of
+// the same name. Filter must expand to every category id sharing that name.
+test("Correction 1: realQueryTransactions expands category_id to a same-name subquery, not an exact match", async () => {
+  const calls = [];
+  require.cache[require.resolve("../config/db")] = {
+    exports: {
+      query: async (text, params) => {
+        calls.push({ text, params });
+        if (text.includes("sharing_permissions")) return { rows: [] };
+        if (text.includes("COALESCE(SUM(CASE WHEN t.type = 'income'")) {
+          return { rows: [{ income: "0", expense: "0" }] };
+        }
+        return { rows: [] };
+      },
+    },
+  };
+  delete require.cache[require.resolve("../services/aiChat")];
+  const { makeRealDeps } = require("../services/aiChat");
+
+  await makeRealDeps().queryTransactions({ userId: 1, category_id: 5 });
+
+  const listSelect = calls.find((c) => c.text.includes("FROM transactions t") && c.text.includes("LIMIT $"));
+  assert.ok(listSelect);
+  assert.match(listSelect.text, /IN \(SELECT id FROM categories WHERE LOWER\(TRIM\(name\)\) = \(SELECT LOWER\(TRIM\(name\)\) FROM categories WHERE id = \$\d+\)\)/);
+  assert.ok(listSelect.params.includes(5));
 
   delete require.cache[require.resolve("../config/db")];
   delete require.cache[require.resolve("../services/aiChat")];

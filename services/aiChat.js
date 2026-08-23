@@ -3,7 +3,7 @@ const { postOpenRouter } = require("./aiProxy");
 const { parseSourceIds, buildSourceFilterClause } = require("../utils/sourceFilter");
 const { buildBalancesQuery, rowToBalance, sumTotal } = require("../utils/accountBalance");
 
-const MAX_TOOL_ITERATIONS = 3;
+const MAX_TOOL_ITERATIONS = 4;
 const CHAT_MAX_TOKENS = 500;
 const CHAT_TEMPERATURE = 0.3;
 // Schema still allows up to 20 client messages; only the last N feed the model context, to
@@ -60,6 +60,8 @@ const buildChatSystemPrompt = ({ today, language }) => [
   "Always call a tool to fetch real data before stating a number — never guess or invent amounts.",
   "Politely refuse questions unrelated to personal finance and steer the conversation back.",
   `Answer in the user's language when it is detectable from their message; default to ${language || "English"} otherwise.`,
+  "Use the informal register (German: du, not Sie; French: tu; Spanish/Portuguese/Italian: tú/tu; Dutch: je; Polish: ty; Russian: ты) — the app speaks to the user as a friend.",
+  "Category names are NOT ids: when the user names a category (e.g. \"Auto\"), call list_categories first to resolve the id, or filter with the free-text `q` parameter. If a filtered query returns 0 rows, retry once with `q` before telling the user there is no data.",
   "State amounts with the currency symbol exactly as stored — never convert currencies.",
   `Today's date is ${today}.`,
   "Be concise and factual.",
@@ -107,6 +109,14 @@ const CHAT_TOOLS = [
     function: {
       name: "get_account_balances",
       description: "Current balance of every one of the user's accounts, plus the total.",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "list_categories",
+      description: "List the user's categories (id, name). Call this to resolve a category name mentioned by the user into a category_id before filtering query_transactions by category.",
       parameters: { type: "object", properties: {} },
     },
   },
@@ -168,7 +178,7 @@ const realQueryTransactions = async ({ userId, start_date, end_date, type, categ
     idx++;
   }
   if (Number.isInteger(category_id) && category_id > 0) {
-    where += ` AND t.category_id = $${idx}`;
+    where += ` AND t.category_id IN (SELECT id FROM categories WHERE LOWER(TRIM(name)) = (SELECT LOWER(TRIM(name)) FROM categories WHERE id = $${idx}))`;
     filterParams.push(category_id);
     idx++;
   }
@@ -307,11 +317,31 @@ const realGetMonthlyCostUsd = async (userId) => {
   return Number.parseFloat(result.rows[0].cost_usd) || 0;
 };
 
+const realListCategories = async ({ userId }) => {
+  const db = require("../config/db");
+  const result = await db.query(
+    "SELECT id, TRIM(name) AS name, (user_id = $1) AS own FROM categories ORDER BY TRIM(name) ASC, own DESC, id ASC",
+    [userId],
+  );
+  const seen = new Set();
+  const deduped = [];
+  for (const row of result.rows) {
+    const key = String(row.name || "").trim().toLowerCase();
+    if (!key) continue;
+    if (!seen.has(key)) {
+      seen.add(key);
+      deduped.push({ id: Number(row.id), name: row.name });
+    }
+  }
+  return { categories: deduped };
+};
+
 /** Deps object for production use — see the module doc above for the lazy-require rationale. */
 const makeRealDeps = () => ({
   queryTransactions: realQueryTransactions,
   getBreakdown: realGetBreakdown,
   getBalances: realGetBalances,
+  listCategories: realListCategories,
   recordUsage: realRecordUsage,
 });
 
@@ -319,6 +349,7 @@ const TOOL_EXECUTORS = {
   query_transactions: (args, deps, userId) => deps.queryTransactions({ ...args, userId }),
   get_category_breakdown: (args, deps, userId) => deps.getBreakdown({ ...args, userId }),
   get_account_balances: (args, deps, userId) => deps.getBalances({ userId }),
+  list_categories: (args, deps, userId) => deps.listCategories({ userId }),
 };
 
 /**
@@ -375,7 +406,7 @@ const callModelOnce = async (chatModel, model, convo, { withTools }) => {
  * history). Accumulates token usage across every model call this turn and UPSERTs it into the
  * per-user monthly ledger before returning (see realRecordUsage).
  * @param {{messages: Array<{role: string, content: string}>, userId: number, deps: object}} args
- *        deps = { queryTransactions, getBreakdown, getBalances, chatModel?, recordUsage? } —
+ *        deps = { queryTransactions, getBreakdown, getBalances, listCategories, chatModel?, recordUsage? } —
  *        chatModel/recordUsage default to the real OpenRouter call / ledger write; tests inject
  *        fakes to avoid network + DB access.
  */
