@@ -2,6 +2,19 @@
 
 All notable changes to this project are documented in this file.
 
+## [v1.3.4] - 2026-09-04
+
+### Security
+- **Dependency refresh across both lockfiles.** Clears the `form-data` CRLF injection (high), `brace-expansion` denial of service (high) and `js-yaml` quadratic CPU consumption (high) advisories, among others. The frontend now reports no known advisories. `qs` is the exception: `express` and `body-parser` both require `qs ~6.15.1`, so the fixed 6.16.0 cannot be reached from a lockfile-only change and three moderate advisories remain until those packages are bumped. No `package.json` changes and no direct-dependency major bumps.
+
+### Added
+- **Owner attribution in AI chat.** `query_transactions` rows now carry the owner, and shared data also returns `by_owner` totals, so a question about a shared account can be answered per person.
+- **Not-financial-advice line in the chat system prompt.**
+
+### Fixed
+- **Chat category lookups returned nothing.** The model guessed category ids because no tool listed them, so a filtered query matched no rows and the answer claimed there had been no spending. Chat now has a `list_categories` tool, the `category_id` filter matches every category row with the same name, and the prompt uses the informal register.
+- **Affordability questions** are now answered from the user's own data instead of being deflected as advice.
+
 ## [v1.3.3] - 2026-08-22
 
 ### Added
