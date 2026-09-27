@@ -165,6 +165,7 @@ app.use("/api/transactions", transactionWriteLimiter, require("./routes/transact
 app.use("/api/recurring-transactions", transactionWriteLimiter, require("./routes/recurring-transactions"));
 app.use("/api/sources", require("./routes/source"));
 app.use("/api/targets", require("./routes/target"));
+app.use("/api/merchant-rules", require("./routes/merchantRule"));
 app.use("/api/sharing", require("./routes/sharing"));
 app.use("/api/users", require("./routes/user"));
 app.use("/api/admin", require("./routes/admin"));

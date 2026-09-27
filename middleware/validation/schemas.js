@@ -129,6 +129,35 @@ const createTargetSchema = z.object({
 const updateTargetSchema = createTargetSchema;
 
 // ============================================
+// Merchant Rule Schemas
+// ============================================
+
+const merchantRuleKeyParamSchema = z.object({
+  key: z.string().trim().toLowerCase().min(1).max(100),
+});
+
+const merchantRuleTypeSchema = z.enum(['expense', 'income']).nullable();
+
+const merchantRuleBodySchema = z.object({
+  category_id: idSchema.optional().nullable(),
+  source_name: z.string().max(100).nullable().optional(),
+  target_name: z.string().max(100).nullable().optional(),
+  type: merchantRuleTypeSchema.optional(),
+});
+
+const merchantRuleImportRowSchema = z.object({
+  merchant_normalized: z.string().trim().toLowerCase().min(1).max(100),
+  category_id: idSchema.optional().nullable(),
+  source_name: z.string().max(100).nullable().optional(),
+  target_name: z.string().max(100).nullable().optional(),
+  type: merchantRuleTypeSchema.optional(),
+});
+
+const merchantRuleImportSchema = z.object({
+  rules: z.array(merchantRuleImportRowSchema).max(500),
+});
+
+// ============================================
 // Goal Schemas
 // ============================================
 
@@ -286,7 +315,12 @@ module.exports = {
   // Targets
   createTargetSchema,
   updateTargetSchema,
-  
+
+  // Merchant Rules
+  merchantRuleKeyParamSchema,
+  merchantRuleBodySchema,
+  merchantRuleImportSchema,
+
   // Goals
   createGoalSchema,
   updateGoalSchema,
