@@ -831,3 +831,34 @@ test("I3. chat() skips the monthly-cost pre-flight query entirely when the cap i
   delete require.cache[require.resolve("../services/aiChat")];
   delete require.cache[require.resolve("../controllers/aiController")];
 });
+
+// The model sends multi-word q ("tanken tankstelle"); one LIKE over the whole phrase matched nothing.
+test("realQueryTransactions splits q into words and matches any of them", async () => {
+  const calls = [];
+  require.cache[require.resolve("../config/db")] = {
+    exports: {
+      query: async (text, params) => {
+        calls.push({ text, params });
+        if (text.includes("sharing_permissions")) return { rows: [] };
+        if (text.includes("COALESCE(SUM(CASE WHEN t.type = 'income'")) {
+          return { rows: [{ income: "0", expense: "0" }] };
+        }
+        return { rows: [] };
+      },
+    },
+  };
+  delete require.cache[require.resolve("../services/aiChat")];
+  const { makeRealDeps } = require("../services/aiChat");
+
+  await makeRealDeps().queryTransactions({ userId: 1, q: "  tanken   tankstelle " });
+
+  const listSelect = calls.find((c) => c.text.includes("FROM transactions t") && c.text.includes("LIMIT $"));
+  assert.ok(listSelect);
+  assert.ok(listSelect.params.includes("%tanken%"));
+  assert.ok(listSelect.params.includes("%tankstelle%"));
+  assert.ok(!listSelect.params.some((p) => typeof p === "string" && p.includes(" ")));
+  assert.match(listSelect.text, /LIKE LOWER\(\$\d+\)[\s\S]*\)\s*OR\s*\(/);
+
+  delete require.cache[require.resolve("../config/db")];
+  delete require.cache[require.resolve("../services/aiChat")];
+});

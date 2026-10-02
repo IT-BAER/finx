@@ -192,15 +192,15 @@ const realQueryTransactions = async ({ userId, start_date, end_date, type, categ
     filterParams.push(...srcFilter.values);
     idx = srcFilter.nextIndex;
   }
-  if (q && String(q).trim()) {
-    where += ` AND (
-      LOWER(t.description) LIKE LOWER($${idx})
-      OR LOWER(c.name) LIKE LOWER($${idx})
-      OR LOWER(s.name) LIKE LOWER($${idx})
-      OR LOWER(tg.name) LIKE LOWER($${idx})
-    )`;
-    filterParams.push(`%${String(q).trim()}%`);
-    idx++;
+  // Any word matches: the model sends multi-word q ("tanken tankstelle") that never occurs as one phrase.
+  const words = q ? String(q).trim().split(/\s+/).filter(Boolean) : [];
+  if (words.length) {
+    const ors = words.map((w) => {
+      filterParams.push(`%${w}%`);
+      const p = `$${idx++}`;
+      return `(LOWER(t.description) LIKE LOWER(${p}) OR LOWER(c.name) LIKE LOWER(${p}) OR LOWER(s.name) LIKE LOWER(${p}) OR LOWER(tg.name) LIKE LOWER(${p}))`;
+    });
+    where += ` AND (${ors.join(" OR ")})`;
   }
 
   const aggQuery = `

@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented in this file.
 
+## [v1.4.0] - 2026-10-02
+
+### Added
+- **Vendor rules are stored on the server.** New `merchant_rules` table (migration 021) and `/api/merchant-rules`: `GET /` lists the rules, `PUT`/`DELETE /:key` create, update or remove one rule by its normalized vendor key (idempotent, key trimmed and lowercased, max 100 characters), `POST /import` uploads up to 500 existing device rules once (existing server rules win). The Android app uses them to pick the category for a known vendor automatically.
+
+### Fixed
+- **AI chat found no transactions for multi-word searches.** The model often sends a search like "tanken tankstelle", and `query_transactions` matched that whole phrase as one substring, so it returned 0 rows and the chat claimed there had been no spending. The `q` filter now splits the search into words and matches a transaction when any word appears in its description, category, source or target.
+
 ## [v1.3.4] - 2026-09-04
 
 ### Security
