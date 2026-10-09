@@ -12,6 +12,7 @@ import AnimatedAreaChart from "../components/AnimatedAreaChart.jsx";
 import { LazyPie as Pie } from "../components/LazyChart.jsx";
 import { useTranslation } from "../hooks/useTranslation";
 import { getLocaleString } from "../utils/locale";
+import { assignCategoryColors, categoryChipStyle } from "../utils/categoryColors";
 import { useAuth } from "../contexts/AuthContext";
 import { useTheme } from "../contexts/ThemeContext.jsx";
 import { motion } from "framer-motion";
@@ -1074,16 +1075,9 @@ const Dashboard = () => {
                 return name !== "" ? name : (t("uncategorized") || "Uncategorized");
               });
               const catValues = expenseByCategoryData.map((item) => parseFloat(item.total));
-              const catColors = [
-                "rgba(248, 113, 113, 0.85)",
-                "rgba(96, 165, 250, 0.85)",
-                "rgba(251, 191, 36, 0.85)",
-                "rgba(139, 92, 246, 0.85)",
-                "rgba(16, 185, 129, 0.85)",
-                "rgba(244, 114, 182, 0.85)",
-                "rgba(209, 213, 219, 0.85)",
-                "rgba(139, 69, 19, 0.85)",
-              ];
+              // Colour by category name (stable across the donut, its legend and re-sorts).
+              const catColorMap = assignCategoryColors(catLabels);
+              const catColors = catLabels.map((l) => catColorMap.get(l));
 
               return expenseByCategoryData.length > 0 ? (
                 <>
@@ -1362,7 +1356,7 @@ const Dashboard = () => {
                         </div>
                         {tx.category_name && (
                           <div className="text-sm">
-                            <span className="badge badge-primary">{tx.category_name}</span>
+                            <span className="badge badge-category" style={categoryChipStyle(tx.category_name)}>{tx.category_name}</span>
                           </div>
                         )}
                       </div>
@@ -1404,7 +1398,7 @@ const Dashboard = () => {
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap text-sm text-app">
                           {tx.category_name ? (
-                            <span className="badge badge-primary">{tx.category_name}</span>
+                            <span className="badge badge-category" style={categoryChipStyle(tx.category_name)}>{tx.category_name}</span>
                           ) : (
                             <span className="text-muted">—</span>
                           )}
@@ -1559,7 +1553,7 @@ const Dashboard = () => {
                               {formatDate(transaction.date)}
                             </div>
                             <div className="text-sm">
-                              <span className="badge badge-primary">
+                              <span className="badge badge-category" style={categoryChipStyle(transaction.category_name)}>
                                 {transaction.category_name}
                               </span>
                             </div>
@@ -1607,7 +1601,7 @@ const Dashboard = () => {
 {transaction.description || transaction.category_name || transaction.category || (t("uncategorized") || "Uncategorized")}
                             </td>
                             <td className="px-4 py-3 whitespace-nowrap text-sm text-app">
-                              <span className="badge badge-primary">
+                              <span className="badge badge-category" style={categoryChipStyle(transaction.category_name)}>
                                 {transaction.category_name}
                               </span>
                             </td>

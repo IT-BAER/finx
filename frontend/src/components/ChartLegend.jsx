@@ -1,20 +1,9 @@
 import React from "react";
+import { CATEGORY_RAMP } from "../utils/categoryColors";
 
 // Small reusable legend used for mobile views to ensure consistency
 export default function ChartLegend({ labels = [], values = [], backgroundColor = [], formatCurrency = (v) => v }) {
-  // Fallback palette when chart dataset doesn't provide colors
-  const fallback = [
-    "rgba(255, 99, 132, 0.7)",
-    "rgba(54, 162, 235, 0.7)",
-    "rgba(255, 205, 86, 0.7)",
-    "rgba(75, 192, 192, 0.7)",
-    "rgba(153, 102, 255, 0.7)",
-    "rgba(255, 159, 64, 0.7)",
-    "rgba(199, 199, 199, 0.7)",
-    "rgba(83, 102, 255, 0.7)",
-  ];
-
-  const getColor = (i) => (backgroundColor && backgroundColor[i]) || fallback[i % fallback.length];
+  const getColor = (i) => (backgroundColor && backgroundColor[i]) || CATEGORY_RAMP[i % CATEGORY_RAMP.length];
 
   return (
     <div className="mt-4 w-full max-h-48 overflow-y-auto scrollbar-thin-modern divide-y divide-line/20">

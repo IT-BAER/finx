@@ -68,28 +68,11 @@ export default function SourceCategoryBarChart({ selectedSources, sources }) {
       });
       const sourceNames = Array.from(sourceSet).slice(0, 5); // Limit to top 5 sources
       
-      const palette = [
-        "rgba(96, 165, 250, 0.8)", // blue
-        "rgba(248, 113, 113, 0.8)", // red
-        "rgba(52, 211, 153, 0.8)", // green
-        "rgba(251, 191, 36, 0.8)",  // amber
-        "rgba(139, 92, 246, 0.8)",  // purple
-      ];
-
-      const borderPalette = [
-        "rgba(96, 165, 250, 1)", // blue
-        "rgba(248, 113, 113, 1)", // red
-        "rgba(52, 211, 153, 1)", // green
-        "rgba(251, 191, 36, 1)",  // amber
-        "rgba(139, 92, 246, 1)",  // purple
-      ];
-      
-      const datasets = sourceNames.map((src, i) => ({
+      // Colours are assigned by AnimatedBarChart from the shared ramp (per dataset index);
+      // this component only supplies labels + data.
+      const datasets = sourceNames.map((src) => ({
         label: src,
         data: topCategories.map((cat) => categoryMap.get(cat)?.[src] || 0),
-        backgroundColor: palette[i % palette.length],
-        borderColor: borderPalette[i % borderPalette.length],
-        borderWidth: 1,
         stack: "sources",
       }));
       

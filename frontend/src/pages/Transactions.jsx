@@ -13,6 +13,8 @@ import { AnimatedPage, AnimatedSection } from "../components/AnimatedPage";
 import { useInfiniteTransactions, useDeleteTransaction } from "../hooks/useQueries";
 
 import Card from "../components/Card";
+import { categoryChipStyle } from "../utils/categoryColors.js";
+
 const Transactions = () => {
   const navigate = useNavigate();
   const { isDarkMode, language, user } = useAuth();
@@ -746,7 +748,13 @@ const Transactions = () => {
                                           </div>
                                         ) : null}
                                         <div className="flex items-center gap-2 mt-1">
-                                          <span className="badge badge-primary text-xs">
+                                          <span
+                                            className="badge badge-category text-xs"
+                                            style={categoryChipStyle(
+                                              transaction.category_name ||
+                                                transaction.category,
+                                            )}
+                                          >
                                             {transaction.category_name ||
                                               transaction.category}
                                           </span>
@@ -966,7 +974,12 @@ const Transactions = () => {
                                   ) : null}
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-app">
-                                  <span className="badge badge-primary">
+                                  <span
+                                    className="badge badge-category"
+                                    style={categoryChipStyle(
+                                      transaction.category_name || transaction.category,
+                                    )}
+                                  >
                                     {transaction.category_name || transaction.category}
                                   </span>
                                 </td>

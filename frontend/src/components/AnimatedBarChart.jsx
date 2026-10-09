@@ -2,17 +2,7 @@ import { useState, useRef, useEffect, useMemo, useCallback, useLayoutEffect, use
 import { motion } from "framer-motion";
 import { useTheme } from "../contexts/ThemeContext.jsx";
 
-/* ─── Color palette ───────────────────────────────────────────────── */
-const CHART_COLORS = [
-  { main: "rgba(96, 165, 250, 0.85)", hover: "rgba(96, 165, 250, 1)", rgb: "96, 165, 250" },
-  { main: "rgba(248, 113, 113, 0.85)", hover: "rgba(248, 113, 113, 1)", rgb: "248, 113, 113" },
-  { main: "rgba(52, 211, 153, 0.85)", hover: "rgba(52, 211, 153, 1)", rgb: "52, 211, 153" },
-  { main: "rgba(251, 191, 36, 0.85)", hover: "rgba(251, 191, 36, 1)", rgb: "251, 191, 36" },
-  { main: "rgba(167, 139, 250, 0.85)", hover: "rgba(167, 139, 250, 1)", rgb: "167, 139, 250" },
-  { main: "rgba(244, 114, 182, 0.85)", hover: "rgba(244, 114, 182, 1)", rgb: "244, 114, 182" },
-  { main: "rgba(56, 189, 248, 0.85)", hover: "rgba(56, 189, 248, 1)", rgb: "56, 189, 248" },
-  { main: "rgba(251, 146, 60, 0.85)", hover: "rgba(251, 146, 60, 1)", rgb: "251, 146, 60" },
-];
+import { CATEGORY_SWATCHES as CHART_COLORS } from "../utils/categoryColors";
 
 /* ─── Theme helpers ───────────────────────────────────────────────── */
 function colors(dark) {

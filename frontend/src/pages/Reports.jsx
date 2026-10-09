@@ -4,6 +4,7 @@ import {
 } from "../components/LazyChart.jsx";
 import { useTranslation } from "../hooks/useTranslation";
 import { getLocaleString } from "../utils/locale";
+import { assignCategoryColors, categoryChipStyle } from "../utils/categoryColors";
 import DateRangeToggle from "../components/DateRangeToggle.jsx";
 import { useAuth } from "../contexts/AuthContext";
 import { useTheme } from "../contexts/ThemeContext.jsx";
@@ -838,6 +839,9 @@ const Reports = () => {
         );
 
         // Create labels without percentages (percentages are shown in chart segments)
+        // Colour by category name (stable across the donut and re-sorts).
+        const categoryColorMap = assignCategoryColors(categoryLabels);
+        const categoryColors = categoryLabels.map((l) => categoryColorMap.get(l));
         const processedCategoryData = {
           labels: categoryLabels,
           datasets: [
@@ -845,26 +849,8 @@ const Reports = () => {
               label: t("expensesByCategory"),
               data: categoryValues,
               radius: "85%",
-              backgroundColor: [
-                "rgba(248, 113, 113, 0.8)",
-                "rgba(96, 165, 250, 0.8)",
-                "rgba(251, 191, 36, 0.8)",
-                "rgba(139, 92, 246, 0.8)",
-                "rgba(16, 185, 129, 0.8)",
-                "rgba(244, 114, 182, 0.8)",
-                "rgba(209, 213, 219, 0.8)",
-                "rgba(139, 69, 19, 0.8)",
-              ],
-              borderColor: [
-                "rgba(248, 113, 113, 1)",
-                "rgba(96, 165, 250, 1)",
-                "rgba(251, 191, 36, 1)",
-                "rgba(139, 92, 246, 1)",
-                "rgba(16, 185, 129, 1)",
-                "rgba(244, 114, 182, 1)",
-                "rgba(209, 213, 219, 1)",
-                "rgba(139, 69, 19, 1)",
-              ],
+              backgroundColor: categoryColors,
+              borderColor: categoryColors.map((c) => c.replace("0.85", "1")),
               borderWidth: 1,
               hoverOffset: 12,
             },
@@ -1910,7 +1896,7 @@ const Reports = () => {
                           </div>
                           {tx.category_name && (
                             <div className="text-sm">
-                              <span className="badge badge-primary">{tx.category_name}</span>
+                              <span className="badge badge-category" style={categoryChipStyle(tx.category_name)}>{tx.category_name}</span>
                             </div>
                           )}
                         </div>
@@ -1940,7 +1926,7 @@ const Reports = () => {
                           <td className="px-4 py-3 text-sm text-app max-w-xs truncate">{tx.description || tx.category_name || tx.category || (t("uncategorized") || "Uncategorized")}</td>
                           <td className="px-4 py-3 whitespace-nowrap text-sm text-app">
                             {tx.category_name ? (
-                              <span className="badge badge-primary">{tx.category_name}</span>
+                              <span className="badge badge-category" style={categoryChipStyle(tx.category_name)}>{tx.category_name}</span>
                             ) : (
                               <span className="text-muted">—</span>
                             )}

@@ -1240,6 +1240,19 @@ footer {
   @apply bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200;
 }
 
+/* Category chip: one hue per category name, its own tint as the ground. The three custom
+   properties come from `categorySwatch(name)`; the label colour is pre-darkened for light and
+   pre-lifted for dark so both clear WCAG AA against that tint. */
+.badge-category {
+  background-color: rgba(var(--cat-rgb), 0.16);
+  color: rgb(var(--cat-fg-light));
+}
+
+.dark .badge-category {
+  background-color: rgba(var(--cat-rgb), 0.18);
+  color: rgb(var(--cat-fg-dark));
+}
+
 .badge-success {
   @apply bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200;
 }
