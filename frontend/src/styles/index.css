@@ -1122,7 +1122,13 @@ footer {
 }
 
 .floating-label {
-  @apply absolute left-4 top-2.5 text-gray-500 dark:text-gray-400 transition-all duration-200 pointer-events-none;
+  @apply absolute left-3 -top-3 px-1 text-gray-500 dark:text-gray-400 transition-all duration-200 pointer-events-none;
+  /* Notch: card colour down to just below the input's top border, so the border never crosses the text. */
+  background: linear-gradient(
+    to bottom,
+    var(--floating-label-bg, var(--surface)) calc(50% + 1px),
+    transparent calc(50% + 1px)
+  );
 }
 
 .floating-input:focus + .floating-label,
@@ -1442,6 +1448,8 @@ body {
 :root[data-theme="wednesday"].dark .card {
   background-color: rgba(0, 0, 0, 0.8);
   border-color: rgb(31, 41, 55);
+  /* Opaque equivalent of the card over the page, for the floating-label notch. */
+  --floating-label-bg: color-mix(in srgb, #000 80%, var(--bg));
 }
 
 /* Rose light mode — softer card */
