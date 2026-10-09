@@ -2,8 +2,8 @@
  * One categorical colour ramp for the whole app, so a category is the same colour in the
  * donut, the bar and the table chip — and the same colour the Android app shows. Colour is
  * theme-invariant (a category's identity does not change with the palette), so this is a plain
- * JS ramp rather than a CSS token — it also has to feed a chart.js <canvas>, which cannot
- * resolve CSS `var()`.
+ * JS ramp rather than a CSS token — it also feeds SVG `fill` attributes, which cannot resolve
+ * CSS `var()`.
  *
  * The seven swatches and their order mirror `FinxChartPalettes.category` in the Android app
  * (`core/design/.../FinxColors.kt`); the last one is the "unknown category" grey. Changing
@@ -19,7 +19,7 @@ const RAMP_RGB = [
   "209, 213, 219", // grey — also the blank-name fallback
 ];
 
-/** rgba(...,0.85) strings — the default fill used by the donut, legend chips and canvas Pie. */
+/** rgba(...,0.85) strings — the default fill used by the donut, legend dots and chips. */
 export const CATEGORY_RAMP = RAMP_RGB.map((rgb) => `rgba(${rgb}, 0.85)`);
 
 /**

@@ -9,10 +9,11 @@ import MultiCheckboxDropdown from "../components/MultiCheckboxDropdown.jsx";
 
 import AnimatedBarChart from "../components/AnimatedBarChart.jsx";
 import AnimatedAreaChart from "../components/AnimatedAreaChart.jsx";
-import { LazyPie as Pie } from "../components/LazyChart.jsx";
+import SvgDonut from "../components/SvgDonut.jsx";
 import { useTranslation } from "../hooks/useTranslation";
 import { getLocaleString } from "../utils/locale";
 import { assignCategoryColors, categoryChipStyle } from "../utils/categoryColors";
+import { percentShares } from "../utils/percentShares";
 import { useAuth } from "../contexts/AuthContext";
 import { useTheme } from "../contexts/ThemeContext.jsx";
 import { motion } from "framer-motion";
@@ -157,7 +158,7 @@ async function loadDashboardData() {
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const { t, language, formatCurrency, formatDate } = useTranslation();
+  const { t, language, formatCurrency, formatDate, formatPercent } = useTranslation();
   const { user } = useAuth();
   const { dark } = useTheme();
 
@@ -1078,45 +1079,21 @@ const Dashboard = () => {
               // Colour by category name (stable across the donut, its legend and re-sorts).
               const catColorMap = assignCategoryColors(catLabels);
               const catColors = catLabels.map((l) => catColorMap.get(l));
+              // Integer shares that sum to exactly 100, shown in the donut centre, legend and table.
+              const catShares = percentShares(catValues);
+              const catSubLabels = catValues.map((v, i) => `${formatCurrency(v)} · ${formatPercent(catShares[i], 0)}`);
 
               return expenseByCategoryData.length > 0 ? (
                 <>
                   {/* Mobile: donut + scrollable legend */}
                   <div className="md:hidden">
                     <div className="w-full h-44">
-                      <Pie
-                        data={{
-                          labels: catLabels,
-                          datasets: [{
-                            data: catValues,
-                            backgroundColor: catColors,
-                            borderColor: catColors.map(c => c.replace("0.85", "1")),
-                            borderWidth: 1,
-                            hoverOffset: 12,
-                          }],
-                        }}
-                        options={{
-                          responsive: true,
-                          maintainAspectRatio: false,
-                          layout: { padding: 8 },
-                          plugins: {
-                            legend: { display: false },
-                            title: { display: false },
-                            datalabels: {
-                              color: "#fff",
-                              font: { weight: "bold", size: 12 },
-                              formatter: (value, context) => {
-                                const total = context.dataset.data.reduce((acc, v) => acc + v, 0);
-                                const pct = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
-                                return pct > 5 ? `${pct}%` : "";
-                              },
-                              anchor: "center",
-                              align: "center",
-                              clip: true,
-                            },
-                          },
-                          cutout: "60%",
-                        }}
+                      <SvgDonut
+                        values={catValues}
+                        colors={catColors}
+                        borderColors={catColors.map(c => c.replace("0.85", "1"))}
+                        labels={catLabels}
+                        subLabels={catSubLabels}
                       />
                     </div>
                     <ChartLegend
@@ -1124,51 +1101,25 @@ const Dashboard = () => {
                       values={catValues}
                       backgroundColor={catColors}
                       formatCurrency={formatCurrency}
+                      percentages={catShares}
+                      formatPercent={formatPercent}
                     />
                   </div>
 
                   {/* Desktop: donut + right-side table legend */}
                   <div className="hidden md:flex items-center gap-6 w-full flex-1 h-full">
                     <div className="flex-2 h-full flex-1 min-w-0 overflow-hidden p-2 flex items-center justify-center" style={{ minHeight: 0 }}>
-                      <Pie
-                        data={{
-                          labels: catLabels,
-                          datasets: [{
-                            data: catValues,
-                            backgroundColor: catColors,
-                            borderColor: catColors.map(c => c.replace("0.85", "1")),
-                            borderWidth: 1,
-                            hoverOffset: 12,
-                          }],
-                        }}
-                        options={{
-                          responsive: true,
-                          maintainAspectRatio: false,
-                          layout: { padding: 12 },
-                          radius: "100%",
-                          plugins: {
-                            legend: { display: false },
-                            title: { display: false },
-                            datalabels: {
-                              color: "#fff",
-                              font: { weight: "bold", size: 12 },
-                              formatter: (value, context) => {
-                                const total = context.dataset.data.reduce((acc, val) => acc + val, 0);
-                                const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
-                                return percentage > 5 ? `${percentage}%` : "";
-                              },
-                              anchor: "center",
-                              align: "center",
-                              clip: true,
-                            },
-                          },
-                          cutout: "60%",
-                        }}
-                        style={{ height: "260px", width: "260px", margin: "0 auto" }}
+                      <SvgDonut
+                        values={catValues}
+                        colors={catColors}
+                        borderColors={catColors.map(c => c.replace("0.85", "1"))}
+                        labels={catLabels}
+                        subLabels={catSubLabels}
+                        style={{ maxHeight: "260px", maxWidth: "260px", margin: "0 auto" }}
                       />
                     </div>
 
-                    <div className="w-52 max-h-[260px] overflow-y-auto pt-1 self-center scrollbar-thin-modern">
+                    <div className="w-60 max-h-[260px] overflow-y-auto pt-1 self-center scrollbar-thin-modern">
                       <table className="w-full text-sm">
                         <tbody>
                           {expenseByCategoryData.map((item, idx) => {
@@ -1184,7 +1135,7 @@ const Dashboard = () => {
                                   </div>
                                 </td>
                                 <td className="text-right align-middle text-muted font-medium whitespace-nowrap">
-                                  {formatCurrency(amount)}
+                                  {formatCurrency(amount)} · {formatPercent(catShares[idx] || 0, 0)}
                                 </td>
                               </tr>
                             );

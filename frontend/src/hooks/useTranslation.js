@@ -112,5 +112,18 @@ export const useTranslation = () => {
     };
   }, [language]);
 
-  return { t, language, formatDate, formatCurrency };
+  // Percent formatting; `value` is a share in 0..100 (e.g. 55 -> "55 %" in de)
+  const formatPercent = useMemo(() => {
+    return (value, fractionDigits = 1) => {
+      const n = Number(value);
+      if (!Number.isFinite(n)) return "";
+      return new Intl.NumberFormat(locales[language] || "en-US", {
+        style: "percent",
+        minimumFractionDigits: fractionDigits,
+        maximumFractionDigits: fractionDigits,
+      }).format(n / 100);
+    };
+  }, [language]);
+
+  return { t, language, formatDate, formatCurrency, formatPercent };
 };

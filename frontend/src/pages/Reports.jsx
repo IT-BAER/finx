@@ -1,10 +1,9 @@
 import { useState, useEffect, useRef } from "react";
-import {
-  LazyPie as Pie,
-} from "../components/LazyChart.jsx";
+import SvgDonut from "../components/SvgDonut.jsx";
 import { useTranslation } from "../hooks/useTranslation";
 import { getLocaleString } from "../utils/locale";
 import { assignCategoryColors, categoryChipStyle } from "../utils/categoryColors";
+import { percentShares } from "../utils/percentShares";
 import DateRangeToggle from "../components/DateRangeToggle.jsx";
 import { useAuth } from "../contexts/AuthContext";
 import { useTheme } from "../contexts/ThemeContext.jsx";
@@ -107,7 +106,7 @@ const getEmptyReportData = () => ({
 const Reports = () => {
   // Hooks that provide user/theme/i18n must be called before using their values
   const { isIncomeTrackingDisabled, user } = useAuth();
-  const { t, formatCurrency, formatDate, language } = useTranslation();
+  const { t, formatCurrency, formatDate, language, formatPercent } = useTranslation();
   const { dark } = useTheme();
 
   const [sources, setSources] = useState([]);
@@ -1748,80 +1747,47 @@ const Reports = () => {
         <div className="card md:h-[370px]">
           <div className="card-body h-full flex flex-col min-h-0">
             <h3 className="text-xl font-semibold mb-6">{t("expensesByCategory")}</h3>
-            {reportData?.category?.labels?.length > 0 ? (
+            {reportData?.category?.labels?.length > 0 ? (() => {
+              const catLabels = reportData.category.labels || [];
+              const catData = (reportData.category.datasets?.[0]?.data || []).map((v) => Number(v || 0));
+              const catColors = reportData.category.datasets?.[0]?.backgroundColor || [];
+              // Integer shares that sum to exactly 100, shown in the donut centre, legend and table.
+              const catShares = percentShares(catData);
+              const catSubLabels = catData.map((v, i) => `${formatCurrency(v)} · ${formatPercent(catShares[i], 0)}`);
+              return (
               <>
                 {/* Mobile: custom scrollable legend with amounts */}
                 <div className="md:hidden">
                   <motion.div key={`category-chart-mobile-${timeRange}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }} className="w-full h-44">
-                    <Pie
-                      data={reportData.category}
-                      options={{
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        layout: { padding: 8 },
-                        plugins: {
-                          legend: { display: false },
-                          title: { display: false },
-                          datalabels: {
-                            color: "#fff",
-                            font: { weight: "bold", size: 12 },
-                            formatter: (value, context) => {
-                              const total = context.dataset.data.reduce((acc, v) => acc + v, 0);
-                              const pct = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
-                              return pct > 5 ? `${pct}%` : "";
-                            },
-                            anchor: "center",
-                            align: "center",
-                            clip: true,
-                          },
-                        },
-                        cutout: "60%",
-                      }}
+                    <SvgDonut
+                      values={catData}
+                      colors={catColors}
+                      labels={catLabels}
+                      subLabels={catSubLabels}
                     />
                   </motion.div>
-                  <ChartLegend labels={reportData.category.labels} values={reportData.category.datasets?.[0]?.data} backgroundColor={reportData.category.datasets?.[0]?.backgroundColor} formatCurrency={formatCurrency} />
+                  <ChartLegend labels={catLabels} values={catData} backgroundColor={catColors} formatCurrency={formatCurrency} percentages={catShares} formatPercent={formatPercent} />
                 </div>
 
-                {/* Desktop: pie + custom right-side table legend */}
+                {/* Desktop: donut + custom right-side table legend */}
                 <div className="hidden md:flex items-center gap-6 h-full flex-1">
                   <motion.div key={`category-chart-desktop-${timeRange}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }} className="flex-2 flex-1 h-full min-w-0 overflow-hidden p-2 flex items-center justify-center" style={{ minHeight: 0 }}>
-                    <Pie
-                      data={reportData.category}
-                      options={{
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        layout: { padding: 12 },
-                        radius: "100%",
-                        plugins: {
-                          legend: { display: false },
-                          title: { display: false },
-                          datalabels: {
-                            color: "#fff",
-                            font: { weight: "bold", size: 12 },
-                            formatter: (value, context) => {
-                              const total = context.dataset.data.reduce((acc, val) => acc + val, 0);
-                              const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
-                              return percentage > 5 ? `${percentage}%` : "";
-                            },
-                            anchor: "center",
-                            align: "center",
-                            clip: true,
-                          },
-                        },
-                        cutout: "60%",
-                      }}
-                      style={{ height: "260px", width: "260px", margin: "0 auto" }}
+                    <SvgDonut
+                      values={catData}
+                      colors={catColors}
+                      labels={catLabels}
+                      subLabels={catSubLabels}
+                      style={{ maxHeight: "260px", maxWidth: "260px", margin: "0 auto" }}
                     />
                   </motion.div>
 
                   {/* Right-side table legend */}
-                  <div className="w-52 max-h-[260px] overflow-y-auto pt-1 self-center scrollbar-thin-modern">
+                  <div className="w-60 max-h-[260px] overflow-y-auto pt-1 self-center scrollbar-thin-modern">
                     <table className="w-full text-sm">
                       <tbody>
-                        {reportData.category.labels.map((label, idx) => {
-                          const amount = Number(reportData.category.datasets?.[0]?.data?.[idx] || 0);
-                          const bg = reportData.category.datasets?.[0]?.backgroundColor || [];
-                          const color = bg[idx % bg.length] || "#999";
+                        {catLabels.map((label, idx) => {
+                          const amount = catData[idx] || 0;
+                          const color = catColors[idx % catColors.length] || "#999";
                           return (
                             <tr key={`${label}-${idx}`} className="h-9">
                               <td className="align-middle pr-3">
@@ -1830,7 +1796,7 @@ const Reports = () => {
                                   <span className="text-app truncate">{label}</span>
                                 </div>
                               </td>
-                              <td className="text-right align-middle text-muted font-medium whitespace-nowrap">{formatCurrency(amount)}</td>
+                              <td className="text-right align-middle text-muted font-medium whitespace-nowrap">{formatCurrency(amount)} · {formatPercent(catShares[idx] || 0, 0)}</td>
                             </tr>
                           );
                         })}
@@ -1839,7 +1805,8 @@ const Reports = () => {
                   </div>
                 </div>
               </>
-            ) : (
+              );
+            })() : (
               <motion.div key={`category-empty-${timeRange}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }} className="text-center py-8 text-muted">{t("noDataAvailable")}</motion.div>
             )}
           </div>

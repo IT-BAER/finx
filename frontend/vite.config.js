@@ -54,11 +54,6 @@ export default defineConfig(({ mode }) => {
         output: {
           manualChunks: {
             react: ["react", "react-dom"],
-            charts: [
-              "chart.js",
-              "react-chartjs-2",
-              "chartjs-plugin-datalabels",
-            ],
             motion: ["framer-motion"],
             vendor: ["axios"],
           },
