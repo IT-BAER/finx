@@ -300,7 +300,7 @@ const AmbientBackground = () => {
             position: "fixed",
             width: "4px",
             height: "4px",
-            borderRadius: "50%",
+            borderRadius: "var(--radius-full)",
             left: `${r.x}px`,
             top: `${r.y}px`,
             transform: "translate(-50%, -50%)",

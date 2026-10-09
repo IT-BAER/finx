@@ -1,3 +1,5 @@
+@import './tokens.css' layer(base);
+
 /* Tailwind base includes a modern reset.css for consistent styling across browsers */
 @import 'tailwindcss';
 
@@ -257,6 +259,36 @@
   --text-2xl--line-height: 2rem;
   --text-3xl--line-height: 2.25rem;
   --text-4xl--line-height: 2.5rem;
+}
+
+/* Inline: utilities read the palette vars directly, so every data-theme and .dark switch applies. */
+@theme inline {
+  /* Every rounded-* class collapses onto the three-step scale in tokens.css (except full, see below). */
+  --radius-*: initial;
+  --radius: var(--radius-1);
+  --radius-xs: var(--radius-1);
+  --radius-sm: var(--radius-1);
+  --radius-md: var(--radius-1);
+  --radius-lg: var(--radius-1);
+  --radius-xl: var(--radius-2);
+  --radius-2xl: var(--radius-2);
+  --radius-3xl: var(--radius-2);
+  /* No --radius-full here: the theme layer beats tokens.css, so it would reference itself.
+     rounded-full keeps Tailwind's static value. */
+
+  --color-app: var(--text);
+  --color-muted: var(--muted);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-surface-base: var(--bg);
+  --color-line: var(--border);
+  --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-600);
+  --color-accent-soft: var(--accent-400);
+  --color-accent-contrast: var(--accent-contrast);
+  --color-ok: var(--success);
+  --color-warn: var(--warning);
+  --color-bad: var(--danger);
 }
 
 /*
@@ -822,7 +854,7 @@ footer {
   max-width: 220px;
   height: 40px;
   padding: 0 28px;
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
   border: 1px solid var(--neon-border, transparent);
   background-color: var(--neon-bg, transparent);
   color: var(--text);
@@ -945,7 +977,7 @@ footer {
 /* Modern Card Styles — flat, static, no animations */
 .card {
   @apply overflow-hidden;
-  border-radius: 0.5rem;
+  border-radius: var(--radius-2);
   background-color: var(--surface);
   border: 1px solid var(--border);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
@@ -975,7 +1007,7 @@ footer {
 /* Insight card — flat, static */
 .insight-card {
   @apply overflow-hidden relative;
-  border-radius: 0.5rem;
+  border-radius: var(--radius-2);
   background-color: var(--surface);
   border: 1px solid var(--border);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
@@ -1646,7 +1678,7 @@ body {
 }
 .scrollbar-thin-modern::-webkit-scrollbar-thumb {
   background-color: rgba(100, 116, 139, 0.25);
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
   border: 2px solid transparent; /* creates a thin pill and keeps thumb off edges */
   background-clip: content-box;
 }

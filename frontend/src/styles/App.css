@@ -39,7 +39,7 @@
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
-  border-radius: 12px; /* default rounded rectangle */
+  border-radius: var(--radius-2); /* default rounded rectangle */
   background-color: rgba(229, 231, 235, 1); /* gray-200 */
 }
 .dark .icon-wrap {
@@ -61,7 +61,7 @@
 } /* 32px icon */
 
 .icon-wrap-circle {
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
 } /* make it a perfect circle */
 
 /* Theme-tintable icons:

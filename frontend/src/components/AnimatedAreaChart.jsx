@@ -138,7 +138,7 @@ function DatePill({ label, x, parentRef, dark: isDark }) {
     >
       <div style={{
         background: c.pillBg, color: c.pillText,
-        borderRadius: 999, padding: "3px 14px",
+        borderRadius: "var(--radius-full)", padding: "3px 14px",
         fontSize: 12, fontWeight: 500, whiteSpace: "nowrap",
         boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
       }}>
@@ -184,7 +184,7 @@ function Tooltip({ index, label, series, formatValue, dark: isDark, containerRef
       }}
     >
       <div style={{
-        borderRadius: 8, padding: "10px 14px",
+        borderRadius: "var(--radius-2)", padding: "10px 14px",
         background: isDark ? "#1e293b" : "#ffffff",
         border: `1px solid ${c.tooltipBorder}`, boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
       }}>
@@ -195,7 +195,7 @@ function Tooltip({ index, label, series, formatValue, dark: isDark, containerRef
           {rows.map((row, i) => (
             <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ width: 10, height: 10, borderRadius: "50%", backgroundColor: row.color, display: "inline-block", flexShrink: 0 }} />
+                <span style={{ width: 10, height: 10, borderRadius: "var(--radius-full)", backgroundColor: row.color, display: "inline-block", flexShrink: 0 }} />
                 <span style={{ fontSize: 13, color: c.tooltipLabel }}>{row.label}</span>
               </div>
               <span style={{ fontSize: 13, fontWeight: 600, color: c.tooltipValue, fontVariantNumeric: "tabular-nums" }}>
@@ -489,7 +489,7 @@ export default function AnimatedAreaChart({
         <div style={{ display: "flex", flexWrap: "wrap", gap: "12px 20px", marginTop: 8, justifyContent: "center" }}>
           {allSeries.map((series, idx) => (
             <div key={idx} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <span style={{ width: 10, height: 10, borderRadius: "50%", backgroundColor: series.lineColor, display: "inline-block" }} />
+              <span style={{ width: 10, height: 10, borderRadius: "var(--radius-full)", backgroundColor: series.lineColor, display: "inline-block" }} />
               <span style={{ fontSize: 12, color: c.text }}>{series.label}</span>
             </div>
           ))}

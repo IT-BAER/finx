@@ -67,7 +67,7 @@ function BarTooltip({ bar, datasets, formatValue, dark: isDark, containerRef, ba
       }}
     >
       <div style={{
-        borderRadius: 8, padding: "10px 14px",
+        borderRadius: "var(--radius-2)", padding: "10px 14px",
         background: isDark ? "#1e293b" : "#ffffff",
         border: `1px solid ${c.tooltipBorder}`, boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
       }}>
@@ -77,7 +77,7 @@ function BarTooltip({ bar, datasets, formatValue, dark: isDark, containerRef, ba
             datasets.map((ds, dsIdx) => (
               <div key={dsIdx} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ width: 10, height: 10, borderRadius: "50%", backgroundColor: CHART_COLORS[dsIdx % CHART_COLORS.length].hover, flexShrink: 0 }} />
+                  <span style={{ width: 10, height: 10, borderRadius: "var(--radius-full)", backgroundColor: CHART_COLORS[dsIdx % CHART_COLORS.length].hover, flexShrink: 0 }} />
                   <span style={{ fontSize: 13, color: c.tooltipLabel }}>{ds.label}</span>
                 </div>
                 <span style={{ fontSize: 13, fontWeight: 600, color: c.tooltipValue, fontVariantNumeric: "tabular-nums" }}>
@@ -88,7 +88,7 @@ function BarTooltip({ bar, datasets, formatValue, dark: isDark, containerRef, ba
           ) : (
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ width: 10, height: 10, borderRadius: "50%", backgroundColor: CHART_COLORS[bar.colorIdx % CHART_COLORS.length].hover, flexShrink: 0 }} />
+                <span style={{ width: 10, height: 10, borderRadius: "var(--radius-full)", backgroundColor: CHART_COLORS[bar.colorIdx % CHART_COLORS.length].hover, flexShrink: 0 }} />
                 <span style={{ fontSize: 13, color: c.tooltipLabel }}>{bar.datasetLabel}</span>
               </div>
               <span style={{ fontSize: 13, fontWeight: 600, color: c.tooltipValue, fontVariantNumeric: "tabular-nums" }}>
@@ -335,7 +335,7 @@ export default function AnimatedBarChart({
           >
             <div style={{
               background: c.pillBg, color: c.pillText,
-              borderRadius: 999, padding: "3px 14px",
+              borderRadius: "var(--radius-full)", padding: "3px 14px",
               fontSize: 12, fontWeight: 500, whiteSpace: "nowrap",
               boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
             }}>
@@ -367,7 +367,7 @@ export default function AnimatedBarChart({
         <div style={{ display: "flex", flexWrap: "wrap", gap: "12px 20px", marginTop: 8, justifyContent: "center" }}>
           {datasets.map((ds, i) => (
             <div key={i} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <span style={{ width: 10, height: 10, borderRadius: 3, backgroundColor: CHART_COLORS[i % CHART_COLORS.length].hover, display: "inline-block" }} />
+              <span style={{ width: 10, height: 10, borderRadius: "var(--radius-full)", backgroundColor: CHART_COLORS[i % CHART_COLORS.length].hover, display: "inline-block" }} />
               <span style={{ fontSize: 12, color: c.text }}>{ds.label}</span>
             </div>
           ))}

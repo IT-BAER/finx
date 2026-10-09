@@ -1,0 +1,7 @@
+/* The radius scale. Three steps, same as myfinx.app.
+   Step 1 = dense/utility, step 2 = containers, full = shape carries meaning. */
+:root {
+  --radius-1: 6px;
+  --radius-2: 12px;
+  --radius-full: 9999px;
+}

@@ -543,7 +543,7 @@ const Navbar = () => {
                 }
               }}
               className="w-16 h-16 flex items-center justify-center shadow-2xl -mt-12 btn btn-primary mx-auto self-center"
-              style={{ borderRadius: "50%", boxShadow: "rgba(2, 6, 23, 0.5) 0px 0px 15px" }}
+              style={{ borderRadius: "var(--radius-full)", boxShadow: "rgba(2, 6, 23, 0.5) 0px 0px 15px" }}
               aria-label="Add transaction"
               title="Add transaction"
             >

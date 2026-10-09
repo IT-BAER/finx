@@ -23,7 +23,7 @@ export default function SummaryCards({
     >
       {!incomeTrackingDisabled && (
         <AnimatedItem>
-        <Card style={{ borderColor: "rgba(52, 211, 153, 0.18)", borderRadius: "2.5rem" }}>
+        <Card style={{ borderColor: "rgba(52, 211, 153, 0.18)", }}>
           <div className="md:px-4 md:py-3">
             <div className="flex items-center">
               <div className="p-2 rounded-full bg-green-100 dark:bg-green-900/30 mr-3">
@@ -44,7 +44,7 @@ export default function SummaryCards({
       )}
 
       <AnimatedItem>
-      <Card style={{ borderColor: "rgba(248, 113, 113, 0.18)", borderRadius: "2.5rem" }}>
+      <Card style={{ borderColor: "rgba(248, 113, 113, 0.18)", }}>
         <div className="md:px-4 md:py-3">
           <div className="flex items-center">
             <div className="p-2 rounded-full bg-red-100 dark:bg-red-900/30 mr-3">
@@ -65,7 +65,7 @@ export default function SummaryCards({
 
       {!incomeTrackingDisabled && (
         <AnimatedItem>
-        <Card style={{ borderColor: "rgba(168, 85, 247, 0.18)", borderRadius: "2.5rem" }}>
+        <Card style={{ borderColor: "rgba(168, 85, 247, 0.18)", }}>
           <div className="md:px-4 md:py-3">
             <div className="flex items-center">
               <div className="p-2 rounded-full bg-purple-100 dark:bg-purple-900/30 mr-3">
@@ -86,7 +86,7 @@ export default function SummaryCards({
       )}
 
       <AnimatedItem>
-      <Card style={{ borderColor: "rgba(249, 115, 22, 0.18)", borderRadius: "2.5rem" }}>
+      <Card style={{ borderColor: "rgba(249, 115, 22, 0.18)", }}>
         <div className="md:px-4 md:py-3">
           <div className="flex items-center">
             <div className="p-2 rounded-full bg-orange-100 dark:bg-orange-900/30 mr-3">
