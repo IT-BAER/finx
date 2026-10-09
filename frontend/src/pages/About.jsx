@@ -92,7 +92,7 @@ const About = () => {
 
         {/* Mission Statement */}
         <AnimatedSection delay={0.2}>
-          <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-2xl p-6 md:p-8 mb-8 border border-blue-100 dark:border-blue-800/30">
+          <div className="bg-linear-to-br/srgb from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-2xl p-6 md:p-8 mb-8 border border-blue-100 dark:border-blue-800/30">
             <h2 className="text-xl font-semibold mb-3 text-gray-900 dark:text-white">
               {getText("aboutMissionTitle", "Your Data, Your Control")}
             </h2>

@@ -295,7 +295,7 @@ const AdminTaxonomy = () => {
           }}
           className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all duration-200 ${
             activeTab === "categories"
-              ? "bg-white dark:bg-gray-700 shadow-sm text-blue-600 dark:text-blue-400"
+              ? "bg-white dark:bg-gray-700 shadow-xs text-blue-600 dark:text-blue-400"
               : "text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
           }`}
           whileTap={{ scale: 0.98 }}
@@ -310,7 +310,7 @@ const AdminTaxonomy = () => {
           }}
           className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all duration-200 ${
             activeTab === "sources"
-              ? "bg-white dark:bg-gray-700 shadow-sm text-blue-600 dark:text-blue-400"
+              ? "bg-white dark:bg-gray-700 shadow-xs text-blue-600 dark:text-blue-400"
               : "text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
           }`}
           whileTap={{ scale: 0.98 }}
@@ -325,7 +325,7 @@ const AdminTaxonomy = () => {
           }}
           className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all duration-200 ${
             activeTab === "targets"
-              ? "bg-white dark:bg-gray-700 shadow-sm text-blue-600 dark:text-blue-400"
+              ? "bg-white dark:bg-gray-700 shadow-xs text-blue-600 dark:text-blue-400"
               : "text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
           }`}
           whileTap={{ scale: 0.98 }}
@@ -348,7 +348,7 @@ const AdminTaxonomy = () => {
                     getItems().length > 0
                   }
                   onChange={handleSelectAll}
-                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  className="rounded-sm border-gray-300 text-blue-600 focus:ring-blue-500"
                 />
                 <span className="text-sm text-gray-600 dark:text-gray-400">
                   {t("selectAll")}
@@ -387,7 +387,7 @@ const AdminTaxonomy = () => {
                       type="checkbox"
                       checked={selectedItems.includes(item.id)}
                       onChange={() => handleSelect(item.id)}
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 mr-3"
+                      className="rounded-sm border-gray-300 text-blue-600 focus:ring-blue-500 mr-3"
                     />
                     <div className="flex-1">
                       <div className="font-medium text-gray-900 dark:text-gray-100">

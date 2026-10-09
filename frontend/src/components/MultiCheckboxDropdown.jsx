@@ -171,7 +171,7 @@ export default function MultiCheckboxDropdown({
         whileTap={{ scale: 0.95 }}
         className={
           useIcon
-            ? "p-2 !pb-[4px] rounded-lg transition-colors focus:outline-none hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center"
+            ? "p-2 pb-[4px]! rounded-lg transition-colors focus:outline-hidden hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center"
             : `form-input w-full h-[45px] flex items-center justify-between cursor-pointer ${noBorder ? "border-b-0" : ""}`
         }
         onClick={() => setIsOpen((v) => !v)}
@@ -234,7 +234,7 @@ export default function MultiCheckboxDropdown({
               }}
             >
               <div
-                className="sticky top-0 px-4 h-[45px] flex items-center text-[var(--text)] hover:bg-[var(--accent)] hover:text-[var(--accent-contrast)] cursor-pointer transition-colors border-b"
+                className="sticky top-0 px-4 h-[45px] flex items-center text-(--text) hover:bg-(--accent) hover:text-(--accent-contrast) cursor-pointer transition-colors border-b"
                 style={{
                   backgroundColor: 'color-mix(in srgb, var(--surface) 95%, transparent)',
                   borderColor: 'var(--border)'
@@ -247,7 +247,7 @@ export default function MultiCheckboxDropdown({
                     onChange={() => handleToggle('__ALL__')}
                     className="form-checkbox h-4 w-4 text-blue-600"
                   />
-                  <span className="truncate font-medium text-[var(--text)]">{allLabel}</span>
+                  <span className="truncate font-medium text-(--text)">{allLabel}</span>
                 </label>
               </div>
               <div>
@@ -256,7 +256,7 @@ export default function MultiCheckboxDropdown({
                   return (
                     <div
                       key={opt.id}
-                      className="px-4 h-[45px] flex items-center text-[var(--text)] hover:bg-[var(--accent)] hover:text-[var(--accent-contrast)] cursor-pointer transition-colors border-b last:border-b-0"
+                      className="px-4 h-[45px] flex items-center text-(--text) hover:bg-(--accent) hover:text-(--accent-contrast) cursor-pointer transition-colors border-b last:border-b-0"
                       style={{
                         borderColor: 'var(--border)'
                       }}
@@ -269,7 +269,7 @@ export default function MultiCheckboxDropdown({
                         readOnly
                         className="form-checkbox h-4 w-4 text-blue-600 mr-2"
                       />
-                      <span className="truncate text-sm text-[var(--text)]">{opt.displayName || opt.name || opt.label || opt.source_name || opt.id}</span>
+                      <span className="truncate text-sm text-(--text)">{opt.displayName || opt.name || opt.label || opt.source_name || opt.id}</span>
                     </div>
                   );
                 })}

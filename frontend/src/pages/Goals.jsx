@@ -352,7 +352,7 @@ const Goals = () => {
               whileTap={{ scale: 0.9 }}
               onClick={() => openDeleteModal(goal)}
               className={`p-2 rounded-full transition-colors ${
-                dark ? "hover:bg-gray-700 hover:bg-opacity-50" : "hover:bg-red-50"
+                dark ? "hover:bg-gray-700/50" : "hover:bg-red-50"
               }`}
               title={t("delete") || "Delete"}
             >
@@ -395,7 +395,7 @@ const Goals = () => {
               type="checkbox"
               checked={goal.is_completed}
               onChange={() => toggleGoalCompletion(goal)}
-              className="w-5 h-5 rounded border-gray-300 text-cyan-600 focus:ring-cyan-500 mr-2"
+              className="w-5 h-5 rounded-sm border-gray-300 text-cyan-600 focus:ring-cyan-500 mr-2"
             />
             <span className={`text-sm ${goal.is_completed ? "text-green-500" : "text-gray-500 dark:text-gray-400"}`}>
               {goal.is_completed ? (t("goalCompleted") || "Goal completed! 🎉") : (t("markAsComplete") || "Mark as complete")}
@@ -584,7 +584,7 @@ const Goals = () => {
             type="checkbox"
             checked={showCompleted}
             onChange={(e) => setShowCompleted(e.target.checked)}
-            className="w-4 h-4 rounded border-gray-300 text-cyan-600 focus:ring-cyan-500 mr-2"
+            className="w-4 h-4 rounded-sm border-gray-300 text-cyan-600 focus:ring-cyan-500 mr-2"
           />
           <span className="text-sm text-gray-600 dark:text-gray-400">
             {t("showCompleted") || "Show completed"}

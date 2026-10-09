@@ -51,7 +51,7 @@ function SimpleToggle({ checked, onChange, disabled = false }) {
   return (
     <button
       type="button"
-      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 theme-accent-ring ${
+      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-hidden focus:ring-2 focus:ring-offset-2 theme-accent-ring ${
         checked ? "theme-accent-bg" : "bg-gray-200 dark:bg-gray-700"
       } ${disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
       onClick={() => !disabled && onChange(!checked)}
@@ -589,7 +589,7 @@ const AdminDashboard = () => {
                 {database.topTables.map((tbl) => (
                   <div
                     key={tbl.table}
-                    className="flex justify-between items-center py-1.5 px-3 rounded bg-gray-50 dark:bg-gray-800"
+                    className="flex justify-between items-center py-1.5 px-3 rounded-sm bg-gray-50 dark:bg-gray-800"
                   >
                     <span className="text-sm font-mono text-gray-700 dark:text-gray-300">
                       {tbl.table}

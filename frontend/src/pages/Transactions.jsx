@@ -575,7 +575,7 @@ const Transactions = () => {
     <AnimatedPage>
       <div className="container mx-auto px-4 pt-4 md:pt-0 pb-4 min-h-0">
         <motion.div
-          className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6 min-h-[3rem]"
+          className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6 min-h-12"
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.1 }}
@@ -596,7 +596,7 @@ const Transactions = () => {
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               placeholder={t("search") || "Search"}
-              className={`form-input-with-prefix pr-10 h-10 rounded-xl bg-[var(--surface)] border border-[color-mix(in_srgb,var(--accent)_10%,transparent)]
+              className={`form-input-with-prefix pr-10 h-10 rounded-xl bg-(--surface) border border-[color-mix(in_srgb,var(--accent)_10%,transparent)]
               focus:ring-2 focus:ring-[color-mix(in_srgb,var(--accent)_40%,transparent)] focus:border-transparent`}
               aria-label={t("searchTransactions") || "Search transactions"}
               autoComplete="off"
@@ -605,7 +605,7 @@ const Transactions = () => {
               <button
                 type="button"
                 onClick={() => setSearchInput("")}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-sm rounded-full px-2 py-1 text-[var(--muted-text)] hover:text-[var(--text)] focus:outline-none"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-sm rounded-full px-2 py-1 text-(--muted-text) hover:text-(--text) focus:outline-hidden"
                 aria-label={t("clear") || "Clear"}
               >
                 ×
@@ -888,7 +888,7 @@ const Transactions = () => {
                                     )}
                                   </div>
                                 </td>
-                                <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-200 md:table-cell break-words max-w-xs">
+                                <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-200 md:table-cell wrap-break-word max-w-xs">
                                   <div className="flex items-center gap-2">
                                     <span>{transaction.description || transaction.category_name || transaction.category || (t("uncategorized") || "Uncategorized")}</span>
                                     {transaction._isOffline && (

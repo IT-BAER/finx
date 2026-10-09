@@ -61,7 +61,7 @@ export default function DateRangeToggle({
             aria-selected={isActive}
             onClick={() => onChange && onChange(opt.key)}
             onKeyDown={(e) => handleKeyDown(e, i)}
-            className={`w-full rounded-lg shadow-sm px-3 h-10 flex items-center justify-center text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+            className={`w-full rounded-lg shadow-xs px-3 h-10 flex items-center justify-center text-sm transition-colors focus:outline-hidden focus:ring-2 focus:ring-offset-2 ${
               isActive
                 ? "theme-accent-bg text-white font-medium"
                 : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"

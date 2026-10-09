@@ -1630,7 +1630,7 @@ const Reports = () => {
     <div className="container mx-auto px-4 pt-4 md:pt-0 pb-4 min-h-0">
       {/* ...existing report UI... */}
       <motion.div 
-        className="flex flex-col md:flex-row md:justify-between mb-8 gap-4 min-h-[3rem]"
+        className="flex flex-col md:flex-row md:justify-between mb-8 gap-4 min-h-12"
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: 0.1 }}
@@ -1676,7 +1676,7 @@ const Reports = () => {
                 e.target.style.background = `linear-gradient(to right, var(--accent-600), var(--accent))`;
               }}
             >
-              <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-200"></div>
+              <div className="absolute inset-0 bg-linear-to-r from-white/20 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-200"></div>
               <img
                 src="/icons/back.svg"
                 alt=""
@@ -1705,7 +1705,7 @@ const Reports = () => {
                 e.target.style.background = `linear-gradient(to left, var(--accent-600), var(--accent))`;
               }}
             >
-              <div className="absolute inset-0 bg-gradient-to-l from-white/20 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-200"></div>
+              <div className="absolute inset-0 bg-linear-to-l from-white/20 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-200"></div>
               <img
                 src="/icons/forward.svg"
                 alt=""
@@ -1798,7 +1798,7 @@ const Reports = () => {
 
                 {/* Desktop: pie + custom right-side table legend */}
                 <div className="hidden md:flex items-center gap-6 h-full flex-1">
-                  <motion.div key={`category-chart-desktop-${timeRange}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }} className="flex-[2] flex-1 h-full min-w-0 overflow-hidden p-2 flex items-center justify-center" style={{ minHeight: 0 }}>
+                  <motion.div key={`category-chart-desktop-${timeRange}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }} className="flex-2 flex-1 h-full min-w-0 overflow-hidden p-2 flex items-center justify-center" style={{ minHeight: 0 }}>
                     <Pie
                       data={reportData.category}
                       options={{
@@ -1840,7 +1840,7 @@ const Reports = () => {
                             <tr key={`${label}-${idx}`} className="h-9">
                               <td className="align-middle pr-3">
                                 <div className="flex items-center min-w-0">
-                                  <span className="inline-block h-2.5 w-2.5 rounded-full mr-3 flex-shrink-0" style={{ backgroundColor: color }} aria-hidden="true" />
+                                  <span className="inline-block h-2.5 w-2.5 rounded-full mr-3 shrink-0" style={{ backgroundColor: color }} aria-hidden="true" />
                                   <span className="text-gray-700 dark:text-gray-300 truncate">{label}</span>
                                 </div>
                               </td>

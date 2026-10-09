@@ -288,7 +288,7 @@ const DropdownWithInput = ({
           filteredOptions.map((option, index) => (
                     <div
                       key={index}
-                      className="px-4 h-[45px] flex items-center text-[var(--text)] hover:bg-[var(--accent)] hover:text-[var(--accent-contrast)] cursor-pointer transition-colors border-b last:border-b-0"
+                      className="px-4 h-[45px] flex items-center text-(--text) hover:bg-(--accent) hover:text-(--accent-contrast) cursor-pointer transition-colors border-b last:border-b-0"
                       style={{ borderColor: "var(--border)" }}
                       onMouseDown={(e) => e.preventDefault()}
                       onClick={() => {

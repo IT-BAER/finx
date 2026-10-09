@@ -25,7 +25,7 @@ export default function ChartLegend({ labels = [], values = [], backgroundColor 
           <div key={`${label}-${idx}`} className="py-2 flex items-center justify-between h-9">
             <div className="flex items-center gap-3 min-w-0">
               <span
-                className="inline-block h-3 w-3 rounded-full flex-shrink-0"
+                className="inline-block h-3 w-3 rounded-full shrink-0"
                 style={{ backgroundColor: color }}
                 aria-hidden="true"
               />

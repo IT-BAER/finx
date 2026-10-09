@@ -353,7 +353,7 @@ const Settings = () => {
                     }`}
                 >
                   <div className="flex items-start flex-1 min-w-0">
-                    <div className="mr-3 mt-0.5 flex-shrink-0">
+                    <div className="mr-3 mt-0.5 shrink-0">
                       <span className="icon-wrap icon-wrap-md icon-wrap-circle">
                         <Icon
                           src="/icons/currency-euro.svg"
@@ -371,7 +371,7 @@ const Settings = () => {
                   </div>
                   <motion.button
                     onClick={toggleIncomeTracking}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none flex-shrink-0 ${isIncomeTrackingDisabled ? "bg-gray-300" : "bg-blue-600"
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-hidden shrink-0 ${isIncomeTrackingDisabled ? "bg-gray-300" : "bg-blue-600"
                       }`}
                     whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.95 }}
@@ -766,7 +766,7 @@ const SimpleToggle = ({ checked, onChange, disabled = false }) => {
   return (
     <button
       type="button"
-      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 ${checked ? "bg-cyan-600" : "bg-gray-200 dark:bg-gray-700"
+      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-hidden focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 ${checked ? "bg-cyan-600" : "bg-gray-200 dark:bg-gray-700"
         } ${disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
       onClick={() => !disabled && onChange(!checked)}
       disabled={disabled}

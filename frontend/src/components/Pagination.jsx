@@ -21,7 +21,7 @@ const Pagination = ({ currentPage, totalPages, onPageChange }) => {
       <button
         onClick={handlePrevious}
         disabled={currentPage === 1}
-        className="relative w-14 h-14 p-3 md:w-auto md:h-auto md:p-2 rounded-lg overflow-hidden active:scale-95 transition-all duration-200 shadow-lg hover:shadow-xl focus:outline-none"
+        className="relative w-14 h-14 p-3 md:w-auto md:h-auto md:p-2 rounded-lg overflow-hidden active:scale-95 transition-all duration-200 shadow-lg hover:shadow-xl focus:outline-hidden"
         style={{
           background: `linear-gradient(to right, var(--accent-600), var(--accent))`,
         }}
@@ -32,7 +32,7 @@ const Pagination = ({ currentPage, totalPages, onPageChange }) => {
           e.currentTarget.style.background = `linear-gradient(to right, var(--accent-600), var(--accent))`;
         }}
       >
-        <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-200"></div>
+        <div className="absolute inset-0 bg-linear-to-r from-white/20 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-200"></div>
         <img
           src="/icons/back.svg"
           alt={t("previous")}
@@ -45,7 +45,7 @@ const Pagination = ({ currentPage, totalPages, onPageChange }) => {
       <button
         onClick={handleNext}
         disabled={currentPage === totalPages}
-        className="relative w-14 h-14 p-3 md:w-auto md:h-auto md:p-2 rounded-lg overflow-hidden active:scale-95 transition-all duration-200 shadow-lg hover:shadow-xl focus:outline-none"
+        className="relative w-14 h-14 p-3 md:w-auto md:h-auto md:p-2 rounded-lg overflow-hidden active:scale-95 transition-all duration-200 shadow-lg hover:shadow-xl focus:outline-hidden"
         style={{
           background: `linear-gradient(to left, var(--accent-600), var(--accent))`,
         }}
@@ -56,7 +56,7 @@ const Pagination = ({ currentPage, totalPages, onPageChange }) => {
           e.currentTarget.style.background = `linear-gradient(to left, var(--accent-600), var(--accent))`;
         }}
       >
-        <div className="absolute inset-0 bg-gradient-to-l from-white/20 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-200"></div>
+        <div className="absolute inset-0 bg-linear-to-l from-white/20 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-200"></div>
         <img
           src="/icons/forward.svg"
           alt={t("next")}

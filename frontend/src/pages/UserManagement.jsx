@@ -15,7 +15,7 @@ const SimpleToggle = ({ checked, onChange, disabled = false }) => {
   return (
     <button
       type="button"
-      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 ${
+      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-hidden focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 ${
         checked ? "bg-cyan-600" : "bg-gray-200 dark:bg-gray-700"
       } ${disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
       onClick={() => !disabled && onChange(!checked)}

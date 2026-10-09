@@ -156,7 +156,7 @@ const Dropdown = ({
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: -10, scale: 0.95 }}
                 transition={{ duration: 0.15, ease: "easeOut" }}
-                className="fixed z-[99999] shadow-2xl rounded-lg overflow-auto scrollbar-thin-modern ring-1 ring-black/5 dark:ring-white/10"
+                className="fixed z-99999 shadow-2xl rounded-lg overflow-auto scrollbar-thin-modern ring-1 ring-black/5 dark:ring-white/10"
                 style={{
                   left: "0px",
                   top: "0px",
@@ -171,9 +171,9 @@ const Dropdown = ({
                 {options.map((option) => (
                   <div
                     key={option.value}
-                    className={`px-4 py-2 cursor-pointer transition-colors text-[var(--text)] hover:bg-[var(--accent)] hover:text-[var(--accent-contrast)] ${
+                    className={`px-4 py-2 cursor-pointer transition-colors text-(--text) hover:bg-(--accent) hover:text-(--accent-contrast) ${
                       option.value === value
-                        ? "bg-[var(--accent)] text-[var(--accent-contrast)]"
+                        ? "bg-(--accent) text-(--accent-contrast)"
                         : ""
                     }`}
                     onMouseDown={(e) => e.preventDefault()}

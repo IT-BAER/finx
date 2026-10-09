@@ -914,7 +914,7 @@ const Dashboard = () => {
   <AnimatedPage>
   <div className="dashboard-page container mx-auto px-4 pt-4 md:pt-0 pb-4 min-h-0">
     <motion.div 
-      className="flex flex-row items-center justify-between mb-8 gap-4 min-h-[3rem]"
+      className="flex flex-row items-center justify-between mb-8 gap-4 min-h-12"
       initial={{ opacity: 0, y: -10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay: 0.1 }}
@@ -1135,7 +1135,7 @@ const Dashboard = () => {
 
                   {/* Desktop: donut + right-side table legend */}
                   <div className="hidden md:flex items-center gap-6 w-full flex-1 h-full">
-                    <div className="flex-[2] h-full flex-1 min-w-0 overflow-hidden p-2 flex items-center justify-center" style={{ minHeight: 0 }}>
+                    <div className="flex-2 h-full flex-1 min-w-0 overflow-hidden p-2 flex items-center justify-center" style={{ minHeight: 0 }}>
                       <Pie
                         data={{
                           labels: catLabels,
@@ -1185,7 +1185,7 @@ const Dashboard = () => {
                               <tr key={`${name}-${idx}`} className="h-9">
                                 <td className="align-middle pr-3">
                                   <div className="flex items-center min-w-0">
-                                    <span className="inline-block h-2.5 w-2.5 rounded-full mr-3 flex-shrink-0" style={{ backgroundColor: color }} aria-hidden="true" />
+                                    <span className="inline-block h-2.5 w-2.5 rounded-full mr-3 shrink-0" style={{ backgroundColor: color }} aria-hidden="true" />
                                     <span className="text-gray-700 dark:text-gray-300 truncate">{name}</span>
                                   </div>
                                 </td>
@@ -1339,7 +1339,7 @@ const Dashboard = () => {
       <AnimatedSection delay={0.6} scrollTriggered={false}>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
         <Card>
-          <div className="card-body !p-4">
+          <div className="card-body p-4!">
           <div className="flex justify-between items-center mb-3">
             <h2 className="text-xl font-semibold">{t("largestExpenses")}</h2>
           </div>
@@ -1457,7 +1457,7 @@ const Dashboard = () => {
 
   {/* Recent Transactions */}
   <Card>
-        <div className="card-body !p-4">
+        <div className="card-body p-4!">
           <div className="flex justify-between items-center mb-3">
             <h2 className="text-xl font-semibold">{t("recentTransactions")}</h2>
             <motion.div

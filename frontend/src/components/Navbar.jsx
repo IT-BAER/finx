@@ -762,7 +762,7 @@ const NavDropdownItem = ({
         <img
           src={icon}
           alt=""
-          className={`w-5 h-5 ${disabled ? "opacity-50" : danger ? "opacity-90 dark:opacity-100 dark:brightness-0 dark:invert dark:hue-rotate-[280deg] dark:saturate-150" : "opacity-80 dark:opacity-90 dark:brightness-0 dark:invert"}`}
+          className={`w-5 h-5 ${disabled ? "opacity-50" : danger ? "opacity-90 dark:opacity-100 dark:brightness-0 dark:invert dark:hue-rotate-280 dark:saturate-150" : "opacity-80 dark:opacity-90 dark:brightness-0 dark:invert"}`}
           aria-hidden="true"
           onError={(e) => {
             // Fallback to data URL if icon fails to load (e.g., when offline)
