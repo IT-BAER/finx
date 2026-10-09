@@ -4,6 +4,7 @@ const db = require("../config/db");
 const bcrypt = require("bcryptjs");
 const refreshTokenUtil = require("../utils/refreshToken");
 const logger = require("../utils/logger");
+const { deleteUserWithData } = require("../utils/deleteUserWithData");
 
 // Access token lifetime: 1 hour (increased for better mobile UX - reduces refresh frequency)
 const ACCESS_TOKEN_EXPIRY_SECONDS = 60 * 60;
@@ -357,19 +358,14 @@ const deleteAccount = async (req, res) => {
     const { revokeRefreshToken } = require("../utils/refreshToken");
     await revokeRefreshToken(req.user.id);
 
-    // Delete user from database
-    const result = await db.query(
-      "DELETE FROM users WHERE id = $1 RETURNING *",
-      [req.user.id],
-    );
-
-    if (result.rows.length === 0) {
+    const deleted = await deleteUserWithData(req.user.id);
+    if (!deleted) {
       return res.status(404).json({ message: "User not found" });
     }
 
     res.json({ success: true, message: "Account deleted successfully" });
   } catch (err) {
-    logger.error("Delete account error:", err.message);
+    logger.error(`Delete account error: ${err.message}`);
     res.status(500).json({ message: "Server error" });
   }
 };

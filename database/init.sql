@@ -67,7 +67,7 @@ END $$;
 -- Categories table (idempotent creation) with sample flag
 CREATE TABLE IF NOT EXISTS categories (
     id SERIAL PRIMARY KEY,
-    user_id INTEGER REFERENCES users(id),
+    user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
     name VARCHAR(50) NOT NULL,
     is_sample BOOLEAN DEFAULT FALSE,
     UNIQUE(user_id, name)  -- Prevent duplicate categories per user
@@ -76,7 +76,7 @@ CREATE TABLE IF NOT EXISTS categories (
 -- Sources table (idempotent creation) with sample flag
 CREATE TABLE IF NOT EXISTS sources (
     id SERIAL PRIMARY KEY,
-    user_id INTEGER REFERENCES users(id),
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
     name VARCHAR(100) NOT NULL,
     is_sample BOOLEAN DEFAULT FALSE,
     opening_balance NUMERIC(14,2) NOT NULL DEFAULT 0,
@@ -86,7 +86,7 @@ CREATE TABLE IF NOT EXISTS sources (
 -- Targets table (idempotent creation) with sample flag
 CREATE TABLE IF NOT EXISTS targets (
     id SERIAL PRIMARY KEY,
-    user_id INTEGER REFERENCES users(id),
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
     name VARCHAR(100) NOT NULL,
     is_sample BOOLEAN DEFAULT FALSE,
     UNIQUE(user_id, name)
@@ -95,7 +95,7 @@ CREATE TABLE IF NOT EXISTS targets (
 -- Transactions table (idempotent creation) with sample flag
 CREATE TABLE IF NOT EXISTS transactions (
     id SERIAL PRIMARY KEY,
-    user_id INTEGER REFERENCES users(id),
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
     category_id INTEGER REFERENCES categories(id),
     source_id INTEGER REFERENCES sources(id),
     target_id INTEGER REFERENCES targets(id),

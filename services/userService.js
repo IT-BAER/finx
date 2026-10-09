@@ -1,6 +1,7 @@
 const User = require("../models/User");
 const db = require("../config/db");
 const { revokeRefreshToken } = require("../utils/refreshToken");
+const { deleteUserWithData } = require("../utils/deleteUserWithData");
 
 class UserService {
   static async getAllUsers(adminUserId) {
@@ -136,15 +137,12 @@ class UserService {
     // Revoke all refresh tokens for the user being deleted
     await revokeRefreshToken(parseInt(userId));
 
-    // Delete user
-    const query = "DELETE FROM users WHERE id = $1 RETURNING *;";
-    const result = await db.query(query, [userId]);
-    
-    if (result.rows.length === 0) {
+    const deleted = await deleteUserWithData(parseInt(userId));
+    if (!deleted) {
       throw new Error("User not found");
     }
 
-    return result.rows[0];
+    return deleted;
   }
 }
 

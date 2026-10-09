@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## [v1.4.2] - 2026-10-09
+
+### Fixed
+- **Deleting an account failed with HTTP 500 for every user who had data.** The `user_id` foreign keys on transactions, sources, targets and categories were `NO ACTION`, so the database refused to delete the user. Migration 022 changes them: a user's transactions, sources and targets are now deleted with the account. Categories are a shared list used by all users, so they stay and only lose their owner (`ON DELETE SET NULL`); other users' transactions and vendor rules keep their category. If another user's transaction (shared account) points at a deleted user's source or target, that link is cleared and the transaction stays. Account self-deletion and admin user deletion both run in one database transaction. Error logs for these paths now include the database message.
+
 ## [v1.4.1] - 2026-10-09
 
 ### Fixed

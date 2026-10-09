@@ -60,7 +60,7 @@ const deleteUser = async (req, res) => {
 
 // Handle errors consistently
 function handleError(res, err) {
-  console.error("User controller error:", err.message);
+  console.error(`User controller error: ${err.message}`);
   const statusMap = {
     "Access denied": 403,
     "User not found": 404,
