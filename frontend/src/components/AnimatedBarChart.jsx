@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { useTheme } from "../contexts/ThemeContext.jsx";
 
 import { CATEGORY_SWATCHES as CHART_COLORS } from "../utils/categoryColors";
+import { niceScale } from "../utils/niceScale";
 
 /* ─── Theme helpers ───────────────────────────────────────────────── */
 function colors(dark) {
@@ -150,15 +151,16 @@ export default function AnimatedBarChart({
       datasets.forEach(ds => ds.data.forEach(v => { mx = Math.max(mx, Math.abs(v || 0)); }));
     }
     if (mx === 0) mx = 1;
-    mx *= 1.1;  // 10% headroom
-    const step = mx / 4;
-    const ticks = Array.from({ length: 5 }, (_, i) => step * i);
-    return { maxValue: mx, yTicks: ticks };
+    // Round top + round ticks; the ceil to a nice number is the headroom.
+    const { max, ticks } = niceScale(0, mx);
+    return { maxValue: max, yTicks: ticks };
   }, [labels, datasets, stacked]);
 
   // Bar layout
   const barLayout = useMemo(() => {
-    if (!labels.length || !datasets.length || innerW <= 0 || innerH <= 0) return { bars: [], groupCenters: [] };
+    if (!labels.length || !datasets.length || innerW <= 0 || innerH <= 0) {
+      return { bars: [], groupCenters: [], stackExtents: [] };
+    }
 
     const numBars = labels.length;
     const numDs = datasets.length;
@@ -166,6 +168,11 @@ export default function AnimatedBarChart({
     const groupWidth = (innerW - groupGap * (numBars + 1)) / numBars;
     const bars = [];
     const groupCenters = [];
+    const stackExtents = [];
+
+    // A non-zero slice never renders thinner than this, so a small share stays a visible band.
+    const MIN_SLICE_H = 3;
+    const sliceHeight = (value) => (value ? Math.max(MIN_SLICE_H, (value / maxValue) * innerH) : 0);
 
     for (let bi = 0; bi < numBars; bi++) {
       const groupX = groupGap + bi * (groupWidth + groupGap);
@@ -174,22 +181,23 @@ export default function AnimatedBarChart({
       if (stacked) {
         let stackY = 0;
         datasets.forEach((ds, dsIdx) => {
-          const value = Math.abs(ds.data[bi] || 0);
-          const h = (value / maxValue) * innerH;
+          const h = sliceHeight(Math.abs(ds.data[bi] || 0));
           bars.push({ x: groupX, y: innerH - stackY - h, width: groupWidth, height: h, value: ds.data[bi] || 0, datasetIdx: dsIdx, barIdx: bi, label: labels[bi], datasetLabel: ds.label, colorIdx: dsIdx });
           stackY += h;
         });
+        // One rounded outline per stack clips its slices: only the outer edges round, joins stay square.
+        stackExtents.push({ x: groupX, y: innerH - stackY, width: groupWidth, height: stackY });
       } else {
         const barW = numDs > 1 ? (groupWidth - (numDs - 1) * 2) / numDs : groupWidth;
         datasets.forEach((ds, dsIdx) => {
-          const value = Math.abs(ds.data[bi] || 0);
-          const h = (value / maxValue) * innerH;
+          const h = sliceHeight(Math.abs(ds.data[bi] || 0));
           const x = numDs > 1 ? groupX + dsIdx * (barW + 2) : groupX;
           bars.push({ x, y: innerH - h, width: barW, height: h, value: ds.data[bi] || 0, datasetIdx: dsIdx, barIdx: bi, label: labels[bi], datasetLabel: ds.label, colorIdx: dsIdx });
         });
+        stackExtents.push(null);
       }
     }
-    return { bars, groupCenters };
+    return { bars, groupCenters, stackExtents };
   }, [labels, datasets, innerW, innerH, stacked, maxValue]);
 
   const handleBarEnter = useCallback((barIdx) => setHoveredBarIdx(barIdx), []);
@@ -259,6 +267,25 @@ export default function AnimatedBarChart({
             <rect x={crosshairX - 0.5} y={0} width={1} height={innerH} fill={`url(#${uid}-bar-crosshair-fade)`} />
           )}
 
+          {stacked && (
+            <defs>
+              {barLayout.stackExtents.map((ext, bi) =>
+                ext && ext.height > 0 ? (
+                  <clipPath key={`stack-clip-${bi}`} id={`${uid}-stack-${bi}`}>
+                    <rect
+                      x={ext.x}
+                      y={ext.y}
+                      width={Math.max(0, ext.width)}
+                      height={ext.height}
+                      rx={Math.min(6, ext.width / 2)}
+                      ry={Math.min(6, ext.width / 2)}
+                    />
+                  </clipPath>
+                ) : null,
+              )}
+            </defs>
+          )}
+
           {/* Bars with entrance animation */}
           {barLayout.bars.map((bar, i) => {
             const isGroupHovered = hoveredBarIdx === bar.barIdx;
@@ -271,17 +298,20 @@ export default function AnimatedBarChart({
                 key={`bar-${bar.barIdx}-${bar.datasetIdx}`}
                 x={bar.x}
                 width={Math.max(0, bar.width)}
-                rx={Math.min(6, bar.width / 2)}
-                ry={Math.min(6, bar.width / 2)}
+                rx={stacked ? 0 : Math.min(6, bar.width / 2)}
+                ry={stacked ? 0 : Math.min(6, bar.width / 2)}
+                clipPath={stacked ? `url(#${uid}-stack-${bar.barIdx})` : undefined}
                 fill={`url(#${uid}-bar-g-${bar.colorIdx % CHART_COLORS.length})`}
-                initial={{ y: innerH, height: 0 }}
+                // attrY, not y: motion reads `y` as a translate transform, which moves the rect
+                // but not its clip region, so a clipped stack slice would paint outside its clip.
+                initial={{ attrY: innerH, height: 0 }}
                 animate={{
-                  y: isLoaded ? bar.y : innerH,
+                  attrY: isLoaded ? bar.y : innerH,
                   height: isLoaded ? Math.max(0, bar.height) : 0,
                   opacity: dimmed ? 0.35 : 1,
                 }}
                 transition={{
-                  y: { duration: 0.4, ease: "easeOut" },
+                  attrY: { duration: 0.4, ease: "easeOut" },
                   height: { duration: 0.4, ease: "easeOut" },
                   opacity: { duration: 0.2 },
                 }}

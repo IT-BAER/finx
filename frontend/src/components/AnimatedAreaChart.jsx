@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useMemo, useCallback, useLayoutEffect, useId } from "react";
 import { motion } from "framer-motion";
 import { useTheme } from "../contexts/ThemeContext.jsx";
+import { areaDomain } from "../utils/areaDomain";
 
 /* ─── Color palette ───────────────────────────────────────────────── */
 const CHART_COLORS = [
@@ -261,22 +262,16 @@ export default function AnimatedAreaChart({
   const innerW = width - margin.left - margin.right;
   const innerH = height - margin.top - margin.bottom;
 
-  // Y-axis scale
+  // Y-axis scale: rounded domain, with extra headroom when every series is flat.
   const { minVal, maxVal, yTicks } = useMemo(() => {
-    let mn = Infinity, mx = -Infinity;
-    for (const ds of datasets) for (const v of ds.data || []) {
-      if (typeof v === "number" && isFinite(v)) { if (v < mn) mn = v; if (v > mx) mx = v; }
-    }
-    if (!isFinite(mn)) { mn = 0; mx = 100; }
-    if (mn === mx) { mn -= 1; mx += 1; }
-    const range = mx - mn; const pad = range * 0.1;
-    mn -= pad; mx += pad;
-    const step = (mx - mn) / 4;
-    const ticks = Array.from({ length: 5 }, (_, i) => mn + step * i);
-    return { minVal: mn, maxVal: mx, yTicks: ticks };
+    const { min, max, ticks } = areaDomain(datasets);
+    return { minVal: min, maxVal: max, yTicks: ticks };
   }, [datasets]);
 
   const scaleY = useCallback((v) => maxVal === minVal ? innerH / 2 : innerH - ((v - minVal) / (maxVal - minVal)) * innerH, [innerH, minVal, maxVal]);
+  // Areas fill to the zero line (clamped into the plot), so balances that straddle zero read as
+  // bands around it; all-positive data far from zero falls back to the frame bottom.
+  const baselineY = Math.max(0, Math.min(innerH, scaleY(0)));
   const scaleX = useCallback((i, total) => total <= 1 ? innerW / 2 : (i / (total - 1)) * innerW, [innerW]);
 
   // Series data
@@ -399,7 +394,7 @@ export default function AnimatedAreaChart({
                 {[...allSeries].reverse().map((series, _rIdx) => {
                   const idx = allSeries.length - 1 - _rIdx;
                   if (series.pts.length < 2) return null;
-                  return <path key={`area-${idx}`} d={buildAreaPath(series.pts, innerH)} fill={`url(#${uid}-area-g-${idx})`} />;
+                  return <path key={`area-${idx}`} d={buildAreaPath(series.pts, baselineY)} fill={`url(#${uid}-area-g-${idx})`} />;
                 })}
               </g>
             </motion.g>
