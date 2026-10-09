@@ -1341,32 +1341,6 @@ body {
   transform: scale(0.95);
 }
 
-/* Smooth transitions */
-.transition-all {
-  transition: all cubic-bezier(0.4, 0, 0.2, 1);
-  transition-duration: 150ms;
-}
-
-.transition-colors {
-  transition:
-    background-color,
-    border-color,
-    color,
-    fill,
-    stroke cubic-bezier(0.4, 0, 0.2, 1);
-  transition-duration: 150ms;
-}
-
-.transition-opacity {
-  transition: opacity cubic-bezier(0.4, 0, 0.2, 1);
-  transition-duration: 150ms;
-}
-
-.transition-transform {
-  transition: transform cubic-bezier(0.4, 0, 0.2, 1);
-  transition-duration: 150ms;
-}
-
 /* Specific background color transition for table rows */
 .table-row {
   transition: background-color 150ms cubic-bezier(0.4, 0, 0.2, 1);
