@@ -33,14 +33,16 @@ const parseResponseSchema = z.object({
   // so the response passes schema validation in those cases.
   amount: z.coerce.number().positive().nullable(),
   type: z.enum(["expense", "income"]).nullable(),
-  description: z.string().max(80).nullable(),
-  category: z.string().max(64).nullable(),
-  source: z.string().max(64).nullable(),
-  target: z.string().max(64).nullable(),
+  // Models drop keys whose template value is a constant null (receipt `source`); missing = null.
+  description: z.string().max(80).nullable().default(null),
+  category: z.string().max(64).nullable().default(null),
+  source: z.string().max(64).nullable().default(null),
+  target: z.string().max(64).nullable().default(null),
   date: z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/)
-    .nullable(),
+    .nullable()
+    .default(null),
   currency: z.string().max(8).nullable().optional(),
 });
 

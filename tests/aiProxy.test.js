@@ -85,3 +85,29 @@ test("callAiProxy RECEIPT_OCR sends an image_url data URL and returns parsed", a
     if (prevKey === undefined) delete process.env.OPENROUTER_API_KEY; else process.env.OPENROUTER_API_KEY = prevKey;
   }
 });
+
+test("RECEIPT_OCR prompt takes the total due, not cash tendered or change", async () => {
+  const { callAiProxy } = require("../services/aiProxy");
+  const prevKey = process.env.OPENROUTER_API_KEY;
+  const prevFetch = global.fetch;
+  process.env.OPENROUTER_API_KEY = "test-key";
+  let sentBody = null;
+  global.fetch = async (_url, opts) => {
+    sentBody = JSON.parse(opts.body);
+    return {
+      ok: true,
+      json: async () => ({ choices: [{ message: { content: '{"is_receipt":true,"amount":11.36,"type":"expense","description":"BILLA AG","category":null,"target":"BILLA AG","date":null}' } }], usage: {} }),
+    };
+  };
+  try {
+    const out = await callAiProxy({ purpose: "RECEIPT_OCR", vars: { image: "QUJD", mime: "image/jpeg", categories: [] }, userId: 7 });
+    assert.equal(out.parsed.source, null);
+    const text = sentBody.messages[0].content.find((p) => p.type === "text").text;
+    assert.match(text, /SUMME/);
+    assert.match(text, /BAR/);
+    assert.match(text, /RUECKGELD/);
+  } finally {
+    global.fetch = prevFetch;
+    if (prevKey === undefined) delete process.env.OPENROUTER_API_KEY; else process.env.OPENROUTER_API_KEY = prevKey;
+  }
+});

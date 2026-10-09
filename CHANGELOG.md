@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented in this file.
 
+## [v1.4.1] - 2026-10-09
+
+### Fixed
+- **Receipt scan failed on real receipts.** OCR models leave out the `source` field in their answer, because the prompt lists it as a fixed null. The response check required that field, so the scan was rejected with HTTP 502 and the app showed "receipt not readable". Missing description, category, source, target and date fields now count as null. Amount and type are still required.
+- **Receipt scan could take the cash amount handed over instead of the total.** The prompt now names the total due (SUMME/TOTAL/GESAMT) and excludes the cash or card amount tendered (BAR/GEGEBEN) and the change (RUECKGELD).
+
 ## [v1.4.0] - 2026-10-02
 
 ### Added

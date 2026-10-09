@@ -89,3 +89,20 @@ test("ocrRequestSchema defaults categories to empty array", () => {
   assert.equal(r.success, true);
   assert.deepEqual(r.data.categories, []);
 });
+
+test("parseResponseSchema reads omitted optional text fields as null (model drops constant-null keys)", () => {
+  // OCR models omit `source` (prompt template value is a literal null) on real receipts.
+  const r = parseResponseSchema.safeParse({
+    is_receipt: true, amount: 11.36, currency: "EUR", type: "expense",
+    description: "BILLA AG", category: "Lebensmittel", target: "BILLA AG", date: "2026-10-09",
+  });
+  assert.equal(r.success, true);
+  assert.equal(r.data.source, null);
+  const bare = parseResponseSchema.safeParse({ amount: 5, type: "expense" });
+  assert.equal(bare.success, true);
+  assert.deepEqual(
+    [bare.data.description, bare.data.category, bare.data.source, bare.data.target, bare.data.date],
+    [null, null, null, null, null],
+  );
+  assert.equal(parseResponseSchema.safeParse({ type: "expense" }).success, false);
+});
