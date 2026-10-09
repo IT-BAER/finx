@@ -102,7 +102,7 @@ export default function SourceCategoryBarChart({ selectedSources, sources }) {
 
   if (loading || !chartData) {
     return (
-      <div style={{ minHeight: 180 }} className="flex items-center justify-center text-gray-400">
+      <div style={{ minHeight: 180 }} className="flex items-center justify-center text-muted">
         Loading...
       </div>
     );

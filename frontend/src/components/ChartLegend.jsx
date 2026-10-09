@@ -17,7 +17,7 @@ export default function ChartLegend({ labels = [], values = [], backgroundColor 
   const getColor = (i) => (backgroundColor && backgroundColor[i]) || fallback[i % fallback.length];
 
   return (
-    <div className="mt-4 w-full max-h-48 overflow-y-auto scrollbar-thin-modern divide-y divide-gray-800/20 dark:divide-gray-700">
+    <div className="mt-4 w-full max-h-48 overflow-y-auto scrollbar-thin-modern divide-y divide-line/20">
       {labels.map((label, idx) => {
         const amount = Number(values?.[idx] || 0);
         const color = getColor(idx);
@@ -29,9 +29,9 @@ export default function ChartLegend({ labels = [], values = [], backgroundColor 
                 style={{ backgroundColor: color }}
                 aria-hidden="true"
               />
-              <span className="text-sm text-gray-200 dark:text-gray-300 font-medium truncate">{label}</span>
+              <span className="text-sm text-app font-medium truncate">{label}</span>
             </div>
-            <span className="text-sm text-gray-400 dark:text-gray-400 font-medium whitespace-nowrap">{formatCurrency(amount)}</span>
+            <span className="text-sm text-muted font-medium whitespace-nowrap">{formatCurrency(amount)}</span>
           </div>
         );
       })}

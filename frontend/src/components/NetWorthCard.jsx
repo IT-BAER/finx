@@ -69,11 +69,11 @@ export default function NetWorthCard({ className = "" }) {
   }, [sparklinePath, data?.trend]);
 
   const trendInfo = useMemo(() => {
-    if (!data?.change) return { direction: "neutral", color: "text-gray-500", stroke: "#9ca3af", fill: "rgba(156,163,175,0.1)" };
+    if (!data?.change) return { direction: "neutral", color: "text-muted", stroke: "#9ca3af", fill: "rgba(156,163,175,0.1)" };
     const amount = data.change.amount || 0;
     if (amount > 0) return { direction: "up", color: "text-emerald-500", stroke: "#10b981", fill: "rgba(16,185,129,0.1)" };
     if (amount < 0) return { direction: "down", color: "text-red-500", stroke: "#ef4444", fill: "rgba(239,68,68,0.1)" };
-    return { direction: "neutral", color: "text-gray-500", stroke: "#9ca3af", fill: "rgba(156,163,175,0.1)" };
+    return { direction: "neutral", color: "text-muted", stroke: "#9ca3af", fill: "rgba(156,163,175,0.1)" };
   }, [data?.change]);
 
   if (loading) {
@@ -123,10 +123,10 @@ export default function NetWorthCard({ className = "" }) {
               </svg>
             </div>
             <div className="min-w-0">
-              <p className="text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-400 mb-0.5">
+              <p className="text-xs font-medium uppercase tracking-wider text-muted mb-0.5">
                 {t("netWorth") || "Net Worth"}
               </p>
-              <p className={`text-2xl font-bold insight-value ${netWorth >= 0 ? "text-gray-900 dark:text-white" : "text-red-600 dark:text-red-400"}`}>
+              <p className={`text-2xl font-bold insight-value ${netWorth >= 0 ? "text-app dark:text-white" : "text-red-600 dark:text-red-400"}`}>
                 {formatCurrency(netWorth)}
               </p>
               {changeAmount !== 0 && (
@@ -135,7 +135,7 @@ export default function NetWorthCard({ className = "" }) {
                     {trendInfo.direction === "up" ? "↑" : "↓"}
                   </span>
                   <span>{formatCurrency(Math.abs(changeAmount))}</span>
-                  <span className="text-gray-400">({changePercent > 0 ? "+" : ""}{changePercent.toFixed(1)}%)</span>
+                  <span className="text-muted">({changePercent > 0 ? "+" : ""}{changePercent.toFixed(1)}%)</span>
                 </div>
               )}
             </div>

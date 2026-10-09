@@ -192,8 +192,8 @@ const EditSharing = () => {
 
       <div className="card max-w-2xl mx-auto">
         <div className="card-body">
-          <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-            <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">
+          <div className="mb-6 p-4 bg-surface-muted rounded-lg">
+            <div className="text-sm text-muted mb-1">
               {t("sharingWith")}
             </div>
             <div className="font-medium">
@@ -217,7 +217,7 @@ const EditSharing = () => {
                   />
                   <label htmlFor="read" className="flex-1">
                     <div className="font-medium">{t("read")}</div>
-                    <div className="text-sm text-gray-600 dark:text-gray-400">
+                    <div className="text-sm text-muted">
                       {t("readPermissionDescription")}
                     </div>
                   </label>
@@ -235,7 +235,7 @@ const EditSharing = () => {
                   />
                   <label htmlFor="read_write" className="flex-1">
                     <div className="font-medium">{t("readWrite")}</div>
-                    <div className="text-sm text-gray-600 dark:text-gray-400">
+                    <div className="text-sm text-muted">
                       {t("readWritePermissionDescription")}
                     </div>
                   </label>
@@ -260,7 +260,7 @@ const EditSharing = () => {
                 }}
                 placeholder={t("allSources")}
               />
-              <div className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+              <div className="text-sm text-muted mt-2">
                 {t("sourceToShareDescription")}
               </div>
             </div>

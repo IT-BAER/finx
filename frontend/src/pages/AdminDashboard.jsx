@@ -52,7 +52,7 @@ function SimpleToggle({ checked, onChange, disabled = false }) {
     <button
       type="button"
       className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-hidden focus:ring-2 focus:ring-offset-2 theme-accent-ring ${
-        checked ? "theme-accent-bg" : "bg-gray-200 dark:bg-gray-700"
+        checked ? "theme-accent-bg" : "bg-surface-muted"
       } ${disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
       onClick={() => !disabled && onChange(!checked)}
       disabled={disabled}
@@ -74,17 +74,17 @@ function StatCard({ label, value, accent = false }) {
       className={`rounded-xl p-4 ${
         accent
           ? "theme-accent-soft-bg border theme-accent-border"
-          : "bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
+          : "bg-surface-muted border border-line"
       }`}
     >
-      <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+      <p className="text-xs font-medium text-muted uppercase tracking-wider">
         {label}
       </p>
       <p
         className={`text-2xl font-bold mt-1 ${
           accent
             ? "theme-accent"
-            : "text-gray-900 dark:text-gray-100"
+            : "text-app"
         }`}
       >
         {value}
@@ -233,13 +233,13 @@ const AdminDashboard = () => {
       </AnimatedStagger>
 
       {/* Remove Sample Data */}
-      <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+      <div className="mt-6 pt-6 border-t border-line">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+            <h3 className="text-sm font-semibold text-app">
               {t("removeSampleData") || "Remove Sample Data"}
             </h3>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+            <p className="text-xs text-muted mt-0.5">
               {t("removeSampleDataDescription") || "Clean database from sample transactions and categories"}
             </p>
           </div>
@@ -284,7 +284,7 @@ const AdminDashboard = () => {
       <div className="space-y-4">
         {/* Header with add button */}
         <div className="flex justify-between items-center">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+          <h3 className="text-lg font-semibold text-app">
             {t("manageUsers")}
           </h3>
           <Button
@@ -306,7 +306,7 @@ const AdminDashboard = () => {
             {managedUsers.map((u) => (
               <div
                 key={u.id}
-                className="flex items-center gap-4 p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer"
+                className="flex items-center gap-4 p-3 rounded-lg border border-line hover:bg-surface-muted transition-colors cursor-pointer"
                 onClick={() => {
                   setEditingUser({
                     id: u.id,
@@ -320,7 +320,7 @@ const AdminDashboard = () => {
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="font-medium text-gray-900 dark:text-gray-100 truncate">
+                    <span className="font-medium text-app truncate">
                       {u.first_name && u.last_name
                         ? `${u.first_name} ${u.last_name}`
                         : u.first_name || u.last_name || "—"}
@@ -331,11 +331,11 @@ const AdminDashboard = () => {
                       </span>
                     )}
                   </div>
-                  <div className="text-sm text-gray-500 dark:text-gray-400 truncate">
+                  <div className="text-sm text-muted truncate">
                     {u.email}
                   </div>
                 </div>
-                <div className="text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap hidden md:block">
+                <div className="text-sm text-muted whitespace-nowrap hidden md:block">
                   {new Date(u.created_at).toLocaleDateString(t("locale"), {
                     day: "2-digit",
                     month: "2-digit",
@@ -523,7 +523,7 @@ const AdminDashboard = () => {
       <div className="space-y-6">
         {/* Server */}
         <div>
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">
+          <h3 className="text-lg font-semibold text-app mb-3">
             Server
           </h3>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
@@ -551,7 +551,7 @@ const AdminDashboard = () => {
 
         {/* Process */}
         <div>
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">
+          <h3 className="text-lg font-semibold text-app mb-3">
             {t("processMemory")}
           </h3>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -566,7 +566,7 @@ const AdminDashboard = () => {
 
         {/* Database */}
         <div>
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">
+          <h3 className="text-lg font-semibold text-app mb-3">
             Database
           </h3>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">
@@ -582,19 +582,19 @@ const AdminDashboard = () => {
           </div>
           {database.topTables?.length > 0 && (
             <div>
-              <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
+              <h4 className="text-sm font-medium text-muted mb-2">
                 {t("topTables")}
               </h4>
               <div className="space-y-1">
                 {database.topTables.map((tbl) => (
                   <div
                     key={tbl.table}
-                    className="flex justify-between items-center py-1.5 px-3 rounded-sm bg-gray-50 dark:bg-gray-800"
+                    className="flex justify-between items-center py-1.5 px-3 rounded-sm bg-surface-muted"
                   >
-                    <span className="text-sm font-mono text-gray-700 dark:text-gray-300">
+                    <span className="text-sm font-mono text-app">
                       {tbl.table}
                     </span>
-                    <span className="text-sm text-gray-500 dark:text-gray-400">
+                    <span className="text-sm text-muted">
                       {tbl.rows.toLocaleString()} rows
                     </span>
                   </div>
@@ -614,10 +614,10 @@ const AdminDashboard = () => {
         {/* Transactions per day mini chart */}
         {activity.transactionsPerDay?.length > 0 && (
           <div>
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">
+            <h3 className="text-lg font-semibold text-app mb-3">
               {t("transactionsPerDay")}
             </h3>
-            <div className="flex items-end gap-1 h-32 bg-gray-50 dark:bg-gray-800 rounded-xl p-4 overflow-x-auto">
+            <div className="flex items-end gap-1 h-32 bg-surface-muted rounded-xl p-4 overflow-x-auto">
               {(() => {
                 const max = Math.max(
                   ...activity.transactionsPerDay.map((d) => d.count),
@@ -647,19 +647,19 @@ const AdminDashboard = () => {
         {/* Top users */}
         {activity.topUsersByTransactions?.length > 0 && (
           <div>
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">
+            <h3 className="text-lg font-semibold text-app mb-3">
               {t("topUsersByActivity")}
             </h3>
             <div className="space-y-2">
               {activity.topUsersByTransactions.map((u) => (
                 <div
                   key={u.id}
-                  className="flex justify-between items-center py-2 px-3 rounded-lg bg-gray-50 dark:bg-gray-800"
+                  className="flex justify-between items-center py-2 px-3 rounded-lg bg-surface-muted"
                 >
-                  <span className="text-sm text-gray-700 dark:text-gray-300 truncate max-w-[200px]">
+                  <span className="text-sm text-app truncate max-w-[200px]">
                     {u.name}
                   </span>
-                  <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                  <span className="text-sm font-medium text-app">
                     {u.count} txns
                   </span>
                 </div>
@@ -671,19 +671,19 @@ const AdminDashboard = () => {
         {/* Top categories */}
         {activity.topCategories?.length > 0 && (
           <div>
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">
+            <h3 className="text-lg font-semibold text-app mb-3">
               {t("topCategories")}
             </h3>
             <div className="space-y-2">
               {activity.topCategories.map((c) => (
                 <div
                   key={c.name}
-                  className="flex justify-between items-center py-2 px-3 rounded-lg bg-gray-50 dark:bg-gray-800"
+                  className="flex justify-between items-center py-2 px-3 rounded-lg bg-surface-muted"
                 >
-                  <span className="text-sm text-gray-700 dark:text-gray-300">
+                  <span className="text-sm text-app">
                     {c.name}
                   </span>
-                  <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                  <span className="text-sm font-medium text-app">
                     {c.count}
                   </span>
                 </div>
@@ -713,7 +713,7 @@ const AdminDashboard = () => {
               setAuditFilter(e.target.value);
               setAuditOffset(0);
             }}
-            className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-700 dark:text-gray-200"
+            className="rounded-lg border border-line bg-surface text-sm px-3 py-2 text-app"
           >
             <option value="">{t("allActions")}</option>
             {actionTypes.map((a) => (
@@ -722,33 +722,33 @@ const AdminDashboard = () => {
               </option>
             ))}
           </select>
-          <span className="text-xs text-gray-400">
+          <span className="text-xs text-muted">
             {auditLogs.total} total
           </span>
         </div>
 
         {auditLogs.logs.length === 0 ? (
-          <p className="text-gray-500 dark:text-gray-400">
+          <p className="text-muted">
             {t("noAuditLogs")}
           </p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-200 dark:border-gray-700 text-left">
-                  <th className="py-2 px-2 text-gray-500 dark:text-gray-400 font-medium">
+                <tr className="border-b border-line text-left">
+                  <th className="py-2 px-2 text-muted font-medium">
                     {t("timestamp")}
                   </th>
-                  <th className="py-2 px-2 text-gray-500 dark:text-gray-400 font-medium">
+                  <th className="py-2 px-2 text-muted font-medium">
                     {t("action")}
                   </th>
-                  <th className="py-2 px-2 text-gray-500 dark:text-gray-400 font-medium">
+                  <th className="py-2 px-2 text-muted font-medium">
                     Email
                   </th>
-                  <th className="py-2 px-2 text-gray-500 dark:text-gray-400 font-medium hidden md:table-cell">
+                  <th className="py-2 px-2 text-muted font-medium hidden md:table-cell">
                     {t("ipAddress")}
                   </th>
-                  <th className="py-2 px-2 text-gray-500 dark:text-gray-400 font-medium">
+                  <th className="py-2 px-2 text-muted font-medium">
                     Status
                   </th>
                 </tr>
@@ -757,9 +757,9 @@ const AdminDashboard = () => {
                 {auditLogs.logs.map((log) => (
                   <tr
                     key={log.id}
-                    className="border-b border-gray-100 dark:border-gray-800"
+                    className="border-b border-line"
                   >
-                    <td className="py-2 px-2 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                    <td className="py-2 px-2 text-xs text-muted whitespace-nowrap">
                       {formatDate(log.created_at)}
                     </td>
                     <td className="py-2 px-2">
@@ -775,10 +775,10 @@ const AdminDashboard = () => {
                         {log.action}
                       </span>
                     </td>
-                    <td className="py-2 px-2 text-gray-700 dark:text-gray-300 text-xs truncate max-w-[150px]">
+                    <td className="py-2 px-2 text-app text-xs truncate max-w-[150px]">
                       {log.email || "—"}
                     </td>
-                    <td className="py-2 px-2 text-gray-500 dark:text-gray-400 text-xs font-mono hidden md:table-cell">
+                    <td className="py-2 px-2 text-muted text-xs font-mono hidden md:table-cell">
                       {log.ip_address || "—"}
                     </td>
                     <td className="py-2 px-2">
@@ -853,7 +853,7 @@ const AdminDashboard = () => {
         )}
 
         {errorLogs.availableFiles?.length > 0 && (
-          <div className="text-xs text-gray-400 mt-4">
+          <div className="text-xs text-muted mt-4">
             Log files: {errorLogs.availableFiles.slice(0, 5).join(", ")}
             {errorLogs.availableFiles.length > 5 &&
               ` +${errorLogs.availableFiles.length - 5} more`}
@@ -882,11 +882,11 @@ const AdminDashboard = () => {
           <div className="flex items-center gap-3 mb-6">
             <button
               onClick={() => navigate("/settings")}
-              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              className="p-2 rounded-lg hover:bg-surface-muted transition-colors"
             >
               <Icon src="/icons/back.svg" size="sm" />
             </button>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+            <h1 className="text-2xl font-bold text-app">
               {t("adminDashboard") || "Admin Dashboard"}
             </h1>
           </div>
@@ -903,7 +903,7 @@ const AdminDashboard = () => {
                 className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
                   activeTab === tab
                     ? "theme-accent-soft-bg font-semibold"
-                    : "text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+                    : "text-muted hover:bg-surface-muted"
                 }`}
               >
                 {tabLabels[tab]}

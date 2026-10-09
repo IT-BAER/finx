@@ -165,13 +165,13 @@ export default function MultiCheckboxDropdown({
   // Style matches Dropdown.jsx (trigger kept minimal when icon)
   return (
     <div className="relative" ref={dropdownRef} style={{ minWidth: useIcon ? 40 : 180 }}>
-      {label && !useIcon && <label htmlFor={id} className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">{label}</label>}
+      {label && !useIcon && <label htmlFor={id} className="block mb-1 text-sm font-medium text-app">{label}</label>}
       <motion.button
         type="button"
         whileTap={{ scale: 0.95 }}
         className={
           useIcon
-            ? "p-2 pb-[4px]! rounded-lg transition-colors focus:outline-hidden hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center"
+            ? "p-2 pb-[4px]! rounded-lg transition-colors focus:outline-hidden hover:bg-surface-muted flex items-center justify-center"
             : `form-input w-full h-[45px] flex items-center justify-between cursor-pointer ${noBorder ? "border-b-0" : ""}`
         }
         onClick={() => setIsOpen((v) => !v)}

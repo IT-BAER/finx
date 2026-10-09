@@ -619,10 +619,10 @@ const Transactions = () => {
             <Card>
               <div className="card-body py-10 text-center">
                 <Icon src="/icons/search.svg" size="lg" variant="default" aria-hidden={true} className="mx-auto opacity-60" />
-                <h3 className="mt-4 text-lg font-medium text-gray-900 dark:text-gray-200">
+                <h3 className="mt-4 text-lg font-medium text-app">
                   {t("noResults") || "No matching transactions"}
                 </h3>
-                <p className="mt-2 text-gray-500 dark:text-gray-400">
+                <p className="mt-2 text-muted">
                   {t("tryDifferentSearch") || "Try a different keyword or clear the search."}
                 </p>
               </div>
@@ -670,7 +670,7 @@ const Transactions = () => {
                                         animatedIdsRef.current.add(txId);
                                       }
                                     }}
-                                    className={`border-b border-gray-200 dark:border-gray-700 pb-4 last:border-0 last:pb-0`}
+                                    className={`border-b border-line pb-4 last:border-0 last:pb-0`}
                                     onClick={(e) => {
                                       if (transaction.readOnly) {
                                         e.preventDefault();
@@ -685,7 +685,7 @@ const Transactions = () => {
                                   >
                                     <div className="flex justify-between items-start">
                                       <div className="flex-1 min-w-0 relative">
-                                        <div className="font-medium text-gray-900 dark:text-gray-200 truncate">
+                                        <div className="font-medium text-app truncate">
                                           {transaction.description || transaction.category_name || transaction.category || (t("uncategorized") || "Uncategorized")}
                                         </div>
                                         {(transaction.source_name ||
@@ -816,38 +816,38 @@ const Transactions = () => {
               <div className="hidden md:block card overflow-hidden">
                 <div className="card-body">
                   <div className="overflow-x-auto overflow-y-hidden">
-                    <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                      <thead className="bg-gray-50 dark:bg-gray-800/50">
+                    <table className="min-w-full divide-y divide-line">
+                      <thead className="bg-surface-muted">
                         <tr>
-                          <th className="px-6 py-2 text-left text-xs font-medium text-gray-600 dark:text-gray-300">
-                            <span className="inline-flex items-center gap-1 text-xs font-medium text-gray-600 dark:text-gray-300">
+                          <th className="px-6 py-2 text-left text-xs font-medium text-muted">
+                            <span className="inline-flex items-center gap-1 text-xs font-medium text-muted">
                               {t("date")}
                             </span>
                           </th>
-                          <th className="px-6 py-2 text-left text-xs font-medium text-gray-600 dark:text-gray-300">
-                            <span className="inline-flex items-center gap-1 text-xs font-medium text-gray-600 dark:text-gray-300">
+                          <th className="px-6 py-2 text-left text-xs font-medium text-muted">
+                            <span className="inline-flex items-center gap-1 text-xs font-medium text-muted">
                               {t("description")}
                             </span>
                           </th>
-                          <th className="px-6 py-2 text-left text-xs font-medium text-gray-600 dark:text-gray-300">
-                            <span className="inline-flex items-center gap-1 text-xs font-medium text-gray-600 dark:text-gray-300">
+                          <th className="px-6 py-2 text-left text-xs font-medium text-muted">
+                            <span className="inline-flex items-center gap-1 text-xs font-medium text-muted">
                               {t("category")}
                             </span>
                           </th>
-                          <th className="px-6 py-2 text-left text-xs font-medium text-gray-600 dark:text-gray-300">
-                            <span className="inline-flex items-center gap-1 text-xs font-medium text-gray-600 dark:text-gray-300">
+                          <th className="px-6 py-2 text-left text-xs font-medium text-muted">
+                            <span className="inline-flex items-center gap-1 text-xs font-medium text-muted">
                               {t("amount")}
                             </span>
                           </th>
-                          <th className="px-6 py-2 text-right text-xs font-medium text-gray-600 dark:text-gray-300">
-                            <span className="inline-flex items-center gap-1 text-xs font-medium text-gray-600 dark:text-gray-300">
+                          <th className="px-6 py-2 text-right text-xs font-medium text-muted">
+                            <span className="inline-flex items-center gap-1 text-xs font-medium text-muted">
                               {t("actions")}
                             </span>
                           </th>
                         </tr>
                       </thead>
                       <AnimatePresence mode="popLayout">
-                        <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                        <tbody className="divide-y divide-line">
                           {filteredTransactions.map((transaction, index) => {
                             const txId = transaction.id || transaction._tempId;
                             const shouldAnimate = newlyLoadedIds.has(txId) && !animatedIdsRef.current.has(txId);
@@ -875,7 +875,7 @@ const Transactions = () => {
                                 }}
                                 className={`table-row`}
                               >
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200">
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-app">
                                   <div className="flex items-center justify-between gap-2">
                                     <span>{formatDate(transaction.date)}</span>
                                     {transaction.recurring_id && (
@@ -888,7 +888,7 @@ const Transactions = () => {
                                     )}
                                   </div>
                                 </td>
-                                <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-200 md:table-cell wrap-break-word max-w-xs">
+                                <td className="px-6 py-4 text-sm text-app md:table-cell wrap-break-word max-w-xs">
                                   <div className="flex items-center gap-2">
                                     <span>{transaction.description || transaction.category_name || transaction.category || (t("uncategorized") || "Uncategorized")}</span>
                                     {transaction._isOffline && (
@@ -965,7 +965,7 @@ const Transactions = () => {
                                     </div>
                                   ) : null}
                                 </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200">
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-app">
                                   <span className="badge badge-primary">
                                     {transaction.category_name || transaction.category}
                                   </span>
@@ -1000,7 +1000,7 @@ const Transactions = () => {
                                           aria-disabled={transaction.readOnly}
                                           tabIndex={transaction.readOnly ? -1 : 0}
                                           className={`table-action-button flex items-center justify-center h-8 w-8 rounded-full ${transaction.readOnly
-                                              ? "text-gray-400 cursor-not-allowed pointer-events-none"
+                                              ? "text-muted cursor-not-allowed pointer-events-none"
                                               : "text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
                                             }`}
                                         >
@@ -1032,7 +1032,7 @@ const Transactions = () => {
                                           disabled={transaction.readOnly}
                                           aria-disabled={transaction.readOnly}
                                           className={`table-action-button flex items-center justify-center h-8 w-8 rounded-full ${transaction.readOnly
-                                              ? "text-gray-400 cursor-not-allowed"
+                                              ? "text-muted cursor-not-allowed"
                                               : "text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
                                             }`}
                                         >
@@ -1073,10 +1073,10 @@ const Transactions = () => {
                   aria-hidden={true}
                   className="mx-auto opacity-60"
                 />
-                <h3 className="mt-4 text-lg font-medium text-gray-900 dark:text-gray-200">
+                <h3 className="mt-4 text-lg font-medium text-app">
                   {t("noTransactions")}
                 </h3>
-                <p className="mt-2 text-gray-500 dark:text-gray-400">
+                <p className="mt-2 text-muted">
                   {t("getStartedAddTransaction")}
                 </p>
                 <div className="mt-6">

@@ -101,7 +101,7 @@ export default function QuickGoalsCard({ className = "" }) {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>
             </div>
-            <p className="text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500">
+            <p className="text-xs font-medium uppercase tracking-wider text-muted">
               {t("goalsProgress") || "Goals Progress"}
             </p>
           </div>
@@ -131,13 +131,13 @@ export default function QuickGoalsCard({ className = "" }) {
                 initial={{ opacity: 0, x: -8 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.3 + i * 0.05 }}
-                className="flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+                className="flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-surface-muted transition-colors"
               >
                 {/* Progress ring with emoji */}
                 <div className="relative shrink-0 flex items-center justify-center" style={{ width: 48, height: 48 }}>
                   <svg width="48" height="48" className="transform -rotate-90">
                     <circle cx="24" cy="24" r={ringRadius} fill="none" strokeWidth="3"
-                      className="stroke-gray-200 dark:stroke-gray-700" />
+                      className="stroke-line" />
                     <circle cx="24" cy="24" r={ringRadius} fill="none" strokeWidth="3"
                       stroke={progressColor} strokeLinecap="round"
                       strokeDasharray={circumference} strokeDashoffset={ringOffset}
@@ -148,19 +148,19 @@ export default function QuickGoalsCard({ className = "" }) {
 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between mb-0.5">
-                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300 truncate">
+                    <span className="text-sm font-medium text-app truncate">
                       {goal.name}
                     </span>
-                    <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 whitespace-nowrap ml-2">
+                    <span className="text-xs font-semibold text-muted whitespace-nowrap ml-2">
                       {progress}%
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] text-gray-400 dark:text-gray-500">
+                    <span className="text-[11px] text-muted">
                       {formatCurrency(goal.current_amount)} / {formatCurrency(goal.target_amount)}
                     </span>
                     {days !== null && (
-                      <span className={`text-[11px] ${days < 0 ? "text-red-500" : days < 30 ? "text-amber-500" : "text-gray-400 dark:text-gray-500"}`}>
+                      <span className={`text-[11px] ${days < 0 ? "text-red-500" : days < 30 ? "text-amber-500" : "text-muted"}`}>
                         {days < 0
                           ? `${Math.abs(days)} ${t("daysOverdue") || "days overdue"}`
                           : `${days}d`}

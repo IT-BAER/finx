@@ -63,7 +63,7 @@ const Register = () => {
 
           <Card>
             <div className="card-body text-center">
-              <p className="text-gray-600 dark:text-gray-300 py-8">
+              <p className="text-muted py-8">
                 {t("registrationDisabled")}
               </p>
               <div className="pt-4 flex justify-center">
@@ -83,7 +83,7 @@ const Register = () => {
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
           <h2 className="display-2 text-center mb-6">{t("createAccount")}</h2>
-          <p className="text-gray-600 dark:text-gray-300">
+          <p className="text-muted">
             {t("getStartedToday")}
           </p>
         </div>
@@ -156,7 +156,7 @@ const Register = () => {
             </form>
           </div>
           <div className="card-footer text-center">
-            <p className="text-gray-600 dark:text-gray-400">
+            <p className="text-muted">
               {t("alreadyHaveAccount")}{" "}
               <motion.span
                 whileHover={{ scale: 1.05 }}

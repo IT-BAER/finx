@@ -89,10 +89,10 @@ export default function UpcomingBillsCard({ days = 7, limit = 5, className = "" 
               </svg>
             </div>
             <div>
-              <p className="text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-400">
+              <p className="text-xs font-medium uppercase tracking-wider text-muted">
                 {t("upcomingBills") || "Upcoming Bills"}
               </p>
-              <p className="text-[11px] text-gray-400 dark:text-gray-400">
+              <p className="text-[11px] text-muted">
                 {totalExpenses > 0
                   ? `${formatCurrency(totalExpenses)} ${t("totalDue") || "due"}`
                   : (t("nextDays")?.replace("{days}", days) || `Next ${days} days`)}
@@ -110,12 +110,12 @@ export default function UpcomingBillsCard({ days = 7, limit = 5, className = "" 
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.15 + index * 0.04 }}
-                className="flex-1 min-w-0 flex flex-col items-center justify-center rounded-lg py-2 px-2 bg-gray-50/60 dark:bg-gray-800/40"
+                className="flex-1 min-w-0 flex flex-col items-center justify-center rounded-lg py-2 px-2 bg-surface-muted/60"
               >
-                <span className="text-[10px] font-medium text-gray-400 dark:text-gray-400 uppercase tracking-wide">
+                <span className="text-[10px] font-medium text-muted uppercase tracking-wide">
                   {formatRelativeDate(bill.days_until)}
                 </span>
-                <span className="text-xs font-semibold text-gray-800 dark:text-gray-200 truncate max-w-full mt-0.5">
+                <span className="text-xs font-semibold text-app truncate max-w-full mt-0.5">
                   {bill.title}
                 </span>
                 <span className={`text-xs font-bold mt-0.5 ${
@@ -126,7 +126,7 @@ export default function UpcomingBillsCard({ days = 7, limit = 5, className = "" 
               </motion.div>
             ))}
             {totalCount > bills.length && (
-              <div className="shrink-0 flex items-center justify-center w-8 text-[10px] text-gray-400 dark:text-gray-400 font-medium">
+              <div className="shrink-0 flex items-center justify-center w-8 text-[10px] text-muted font-medium">
                 +{totalCount - bills.length}
               </div>
             )}
@@ -139,10 +139,10 @@ export default function UpcomingBillsCard({ days = 7, limit = 5, className = "" 
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-300">
+              <p className="text-sm font-medium text-muted">
                 {t("noBillsDue") || "No bills due"}
               </p>
-              <p className="text-xs text-gray-400 dark:text-gray-400 mt-0.5">
+              <p className="text-xs text-muted mt-0.5">
                 {t("noBillsSubtext") || "You're all caught up!"}
               </p>
             </div>

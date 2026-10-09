@@ -32,7 +32,7 @@ export default function SummaryCards({
                 </svg>
               </div>
               <div className="min-w-0">
-                <h3 className="text-xs font-medium text-gray-500 dark:text-gray-400 truncate">{t("totalIncome")}</h3>
+                <h3 className="text-xs font-medium text-muted truncate">{t("totalIncome")}</h3>
                 <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }} className="text-base font-semibold text-green-600 dark:text-green-400 truncate">
                   {formatCurrency(totalIncome)}
                 </motion.p>
@@ -53,7 +53,7 @@ export default function SummaryCards({
               </svg>
             </div>
             <div className="min-w-0">
-              <h3 className="text-xs font-medium text-gray-500 dark:text-gray-400 truncate">{t("totalExpenses")}</h3>
+              <h3 className="text-xs font-medium text-muted truncate">{t("totalExpenses")}</h3>
               <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }} className="text-base font-semibold text-red-600 dark:text-red-400 truncate">
                 {formatCurrency(totalExpenses)}
               </motion.p>
@@ -74,7 +74,7 @@ export default function SummaryCards({
                 </svg>
               </div>
               <div className="min-w-0">
-                <h3 className="text-xs font-medium text-gray-500 dark:text-gray-400 truncate">{t("netSavings")}</h3>
+                <h3 className="text-xs font-medium text-muted truncate">{t("netSavings")}</h3>
                 <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }} className="text-base font-semibold text-purple-600 dark:text-purple-400 truncate">
                   {formatCurrency(netSavings)}
                 </motion.p>
@@ -95,7 +95,7 @@ export default function SummaryCards({
               </svg>
             </div>
             <div className="min-w-0">
-              <h3 className="text-xs font-medium text-gray-500 dark:text-gray-400 truncate">{`Ø ${avgLabel}`}</h3>
+              <h3 className="text-xs font-medium text-muted truncate">{`Ø ${avgLabel}`}</h3>
               <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }} className="text-base font-semibold text-orange-600 dark:text-orange-400 truncate">
                 {formatCurrency(averageExpense)}
               </motion.p>

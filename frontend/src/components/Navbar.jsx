@@ -95,7 +95,7 @@ const Navbar = () => {
 
   return (
     <>
-      <nav className="sticky top-0 z-50 transition-all duration-300 shadow-lg shadow-gray-300/50 dark:shadow-gray-900/50">
+      <nav className="sticky top-0 z-50 transition-all duration-300 shadow-lg shadow-line/50">
         <div className="container mx-auto px-4">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center overflow-hidden" style={{ marginLeft: "-1rem", paddingLeft: "1rem" }}>
@@ -147,7 +147,7 @@ const Navbar = () => {
                     </NavLink>
                   </div>
 
-                  <div className="flex items-center gap-4 ml-2 pl-4 border-l border-gray-200 dark:border-gray-700">
+                  <div className="flex items-center gap-4 ml-2 pl-4 border-l border-line">
                     <Switch
                       id={desktopSwitchId}
                       checked={!dark}
@@ -166,11 +166,11 @@ const Navbar = () => {
                           alt="User"
                           className="w-8 h-8 rounded-full icon-tint-accent"
                         />
-                        <span className="hidden lg:inline text-gray-700 dark:text-gray-300 font-medium">
+                        <span className="hidden lg:inline text-app font-medium">
                           Hey, {user.first_name || user.email.split("@")[0]}
                         </span>
                         <svg
-                          className="w-4 h-4 ml-2 text-gray-500 dark:text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors"
+                          className="w-4 h-4 ml-2 text-muted group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors"
                           fill="none"
                           stroke="currentColor"
                           viewBox="0 0 24 24"
@@ -239,7 +239,7 @@ const Navbar = () => {
                                 <span>{t("about") || "About"}</span>
                               </div>
                             </NavDropdownItem>
-                            <div className="border-b border-gray-200 dark:border-gray-700 mx-4 my-1"></div>
+                            <div className="border-b border-line mx-4 my-1"></div>
                             <NavDropdownItem
                               onClick={() => {
                                 closeDropdown();
@@ -334,7 +334,7 @@ const Navbar = () => {
                       className="w-10 h-10 rounded-full icon-tint-accent"
                     />
                     <svg
-                      className="w-5 h-5 text-gray-500 dark:text-gray-400"
+                      className="w-5 h-5 text-muted"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -400,7 +400,7 @@ const Navbar = () => {
                             <span>{t("about") || "About"}</span>
                           </div>
                         </NavDropdownItem>
-                        <div className="border-b border-gray-200 dark:border-gray-700 mx-4 my-1"></div>
+                        <div className="border-b border-line mx-4 my-1"></div>
                         <NavDropdownItem
                           onClick={() => {
                             closeDropdown();
@@ -668,7 +668,7 @@ const NavLink = ({
           className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors cursor-not-allowed ${
             isActive
               ? "text-blue-400 dark:text-blue-300 bg-blue-50/50 dark:bg-blue-900/10"
-              : "text-gray-400 dark:text-gray-500 bg-gray-100/50 dark:bg-gray-700/30"
+              : "text-muted bg-surface-muted/50"
           }`}
           title="This feature is not available offline"
         >
@@ -706,7 +706,7 @@ const NavLink = ({
         className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
           isActive
             ? "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20"
-            : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50"
+            : "text-app hover:bg-surface-muted"
         }`}
       >
         {icon && (
@@ -750,12 +750,12 @@ const NavDropdownItem = ({
     <motion.div
       whileTap={{ scale: disabled ? 1 : 0.96 }}
       transition={motionTheme.springs.press}
-      className={`flex items-center gap-3 px-4 py-2 text-sm transition-colors relative after:absolute after:bottom-0 after:left-1/2 after:-translate-x-1/2 after:w-3/4 after:border-b after:border-gray-200 dark:after:border-gray-700 last:after:border-b-0 ${
+      className={`flex items-center gap-3 px-4 py-2 text-sm transition-colors relative after:absolute after:bottom-0 after:left-1/2 after:-translate-x-1/2 after:w-3/4 after:border-b after:border-line last:after:border-b-0 ${
         disabled
-          ? "text-gray-400 dark:text-gray-500 cursor-not-allowed"
+          ? "text-muted cursor-not-allowed"
           : danger
             ? "text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 cursor-pointer"
-            : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50 cursor-pointer"
+            : "text-app hover:bg-surface-muted cursor-pointer"
       } ${disabled ? "opacity-60" : ""}`}
     >
       {icon && (

@@ -323,7 +323,7 @@ const Goals = () => {
                       ? "text-red-500"
                       : isNearDeadline
                         ? "text-yellow-500"
-                        : "text-gray-500 dark:text-gray-400"
+                        : "text-muted"
                   }`}
                 >
                   {isOverdue
@@ -341,9 +341,7 @@ const Goals = () => {
             <motion.button
               whileTap={{ scale: 0.9 }}
               onClick={() => openEditModal(goal)}
-              className={`p-2 rounded-full transition-colors ${
-                dark ? "hover:bg-gray-700" : "hover:bg-gray-100"
-              }`}
+              className={`p-2 rounded-full transition-colors hover:bg-surface-muted`}
               title={t("edit") || "Edit"}
             >
               <img src="/icons/edit.svg" alt="Edit" className="w-5 h-5 icon-tint-accent" />
@@ -352,7 +350,7 @@ const Goals = () => {
               whileTap={{ scale: 0.9 }}
               onClick={() => openDeleteModal(goal)}
               className={`p-2 rounded-full transition-colors ${
-                dark ? "hover:bg-gray-700/50" : "hover:bg-red-50"
+                "hover:bg-red-50 dark:hover:bg-red-900/20"
               }`}
               title={t("delete") || "Delete"}
             >
@@ -365,11 +363,11 @@ const Goals = () => {
         <div className="mb-3">
           <div className="flex justify-between text-sm mb-1">
             <span className="font-medium">{formatCurrency(goal.current_amount)}</span>
-            <span className="text-gray-500 dark:text-gray-400">
+            <span className="text-muted">
               {t("of") || "of"} {formatCurrency(goal.target_amount)}
             </span>
           </div>
-          <div className={`h-3 rounded-full overflow-hidden ${dark ? "bg-gray-700" : "bg-gray-200"}`}>
+          <div className={`h-3 rounded-full overflow-hidden bg-surface-muted`}>
             <motion.div
               initial={{ width: 0 }}
               animate={{ width: `${progress}%` }}
@@ -379,25 +377,25 @@ const Goals = () => {
             />
           </div>
           <div className="flex justify-between text-xs mt-1">
-            <span className="text-gray-500 dark:text-gray-400">
+            <span className="text-muted">
               {progress.toFixed(1)}% {t("complete") || "complete"}
             </span>
-            <span className="text-gray-500 dark:text-gray-400">
+            <span className="text-muted">
               {formatCurrency(goal.target_amount - goal.current_amount)} {t("remaining") || "remaining"}
             </span>
           </div>
         </div>
 
         {/* Completion checkbox */}
-        <div className="flex items-center mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+        <div className="flex items-center mt-4 pt-4 border-t border-line">
           <label className="flex items-center cursor-pointer">
             <input
               type="checkbox"
               checked={goal.is_completed}
               onChange={() => toggleGoalCompletion(goal)}
-              className="w-5 h-5 rounded-sm border-gray-300 text-cyan-600 focus:ring-cyan-500 mr-2"
+              className="w-5 h-5 rounded-sm border-line text-cyan-600 focus:ring-cyan-500 mr-2"
             />
-            <span className={`text-sm ${goal.is_completed ? "text-green-500" : "text-gray-500 dark:text-gray-400"}`}>
+            <span className={`text-sm ${goal.is_completed ? "text-green-500" : "text-muted"}`}>
               {goal.is_completed ? (t("goalCompleted") || "Goal completed! 🎉") : (t("markAsComplete") || "Mark as complete")}
             </span>
           </label>
@@ -436,25 +434,25 @@ const Goals = () => {
     return (
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <div className={`card p-4 ${dark ? "bg-cyan-900/20" : "bg-cyan-50"}`}>
-          <p className="text-sm text-gray-500 dark:text-gray-400">{t("totalSaved") || "Total Saved"}</p>
+          <p className="text-sm text-muted">{t("totalSaved") || "Total Saved"}</p>
           <p className="text-xl font-bold text-cyan-600 dark:text-cyan-400">
             {formatCurrency(parseFloat(summary.total_saved) || 0)}
           </p>
         </div>
         <div className={`card p-4 ${dark ? "bg-blue-900/20" : "bg-blue-50"}`}>
-          <p className="text-sm text-gray-500 dark:text-gray-400">{t("totalTarget") || "Total Target"}</p>
+          <p className="text-sm text-muted">{t("totalTarget") || "Total Target"}</p>
           <p className="text-xl font-bold text-blue-600 dark:text-blue-400">
             {formatCurrency(parseFloat(summary.total_target) || 0)}
           </p>
         </div>
         <div className={`card p-4 ${dark ? "bg-green-900/20" : "bg-green-50"}`}>
-          <p className="text-sm text-gray-500 dark:text-gray-400">{t("activeGoals") || "Active Goals"}</p>
+          <p className="text-sm text-muted">{t("activeGoals") || "Active Goals"}</p>
           <p className="text-xl font-bold text-green-600 dark:text-green-400">
             {summary.active_goals || 0}
           </p>
         </div>
         <div className={`card p-4 ${dark ? "bg-purple-900/20" : "bg-purple-50"}`}>
-          <p className="text-sm text-gray-500 dark:text-gray-400">{t("overallProgress") || "Overall Progress"}</p>
+          <p className="text-sm text-muted">{t("overallProgress") || "Overall Progress"}</p>
           <p className="text-xl font-bold text-purple-600 dark:text-purple-400">
             {totalProgress}%
           </p>
@@ -512,7 +510,7 @@ const Goals = () => {
               className={`p-2 text-xl rounded-lg transition-all ${
                 formData.icon === icon.id
                   ? "bg-cyan-100 dark:bg-cyan-900/30 ring-2 ring-cyan-500"
-                  : dark ? "bg-gray-700 hover:bg-gray-600" : "bg-gray-100 hover:bg-gray-200"
+                  : "bg-surface-muted hover:bg-line"
               }`}
               title={icon.label}
             >
@@ -532,7 +530,7 @@ const Goals = () => {
               type="button"
               onClick={() => setFormData({ ...formData, color })}
               className={`w-8 h-8 rounded-full transition-all ${
-                formData.color === color ? "ring-2 ring-offset-2 ring-gray-400 dark:ring-gray-500" : ""
+                formData.color === color ? "ring-2 ring-offset-2 ring-line" : ""
               }`}
               style={{ backgroundColor: color }}
             />
@@ -576,7 +574,7 @@ const Goals = () => {
 
       {/* Filter toggle */}
       <div className="flex items-center justify-between mb-4">
-        <p className="text-sm text-gray-500 dark:text-gray-400">
+        <p className="text-sm text-muted">
           {goals.length} {goals.length === 1 ? (t("goal") || "goal") : (t("goalsPlural") || "goals")}
         </p>
         <label className="flex items-center cursor-pointer">
@@ -584,9 +582,9 @@ const Goals = () => {
             type="checkbox"
             checked={showCompleted}
             onChange={(e) => setShowCompleted(e.target.checked)}
-            className="w-4 h-4 rounded-sm border-gray-300 text-cyan-600 focus:ring-cyan-500 mr-2"
+            className="w-4 h-4 rounded-sm border-line text-cyan-600 focus:ring-cyan-500 mr-2"
           />
-          <span className="text-sm text-gray-600 dark:text-gray-400">
+          <span className="text-sm text-muted">
             {t("showCompleted") || "Show completed"}
           </span>
         </label>
@@ -603,7 +601,7 @@ const Goals = () => {
           <h3 className="text-xl font-semibold mb-2">
             {t("noGoalsYet") || "No goals yet"}
           </h3>
-          <p className="text-gray-500 dark:text-gray-400 mb-4">
+          <p className="text-muted mb-4">
             {t("createYourFirstGoal") || "Create your first savings goal to start tracking your progress"}
           </p>
           <Button
@@ -711,12 +709,12 @@ const Goals = () => {
       >
         <form onSubmit={handleAddContribution} className="space-y-4">
           {selectedGoal && (
-            <div className={`p-4 rounded-lg ${dark ? "bg-gray-700/50" : "bg-gray-50"}`}>
+            <div className={`p-4 rounded-lg bg-surface-muted`}>
               <div className="flex items-center gap-2 mb-2">
                 <span className="text-xl">{getIconEmoji(selectedGoal.icon)}</span>
                 <span className="font-medium">{selectedGoal.name}</span>
               </div>
-              <div className="text-sm text-gray-500 dark:text-gray-400">
+              <div className="text-sm text-muted">
                 {t("currentProgress") || "Current progress"}: {formatCurrency(selectedGoal.current_amount)} / {formatCurrency(selectedGoal.target_amount)}
               </div>
             </div>
@@ -782,16 +780,16 @@ const Goals = () => {
         title={t("confirmDelete") || "Confirm Delete"}
       >
         <div className="space-y-4">
-          <p className="text-gray-600 dark:text-gray-400">
+          <p className="text-muted">
             {t("areYouSureYouWantToDeleteThisGoal") || "Are you sure you want to delete this goal? This action cannot be undone."}
           </p>
           {selectedGoal && (
-            <div className={`p-4 rounded-lg ${dark ? "bg-gray-700/50" : "bg-gray-50"}`}>
+            <div className={`p-4 rounded-lg bg-surface-muted`}>
               <div className="flex items-center gap-2">
                 <span className="text-xl">{getIconEmoji(selectedGoal.icon)}</span>
                 <span className="font-medium">{selectedGoal.name}</span>
               </div>
-              <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+              <div className="text-sm text-muted mt-1">
                 {formatCurrency(selectedGoal.current_amount)} / {formatCurrency(selectedGoal.target_amount)}
               </div>
             </div>

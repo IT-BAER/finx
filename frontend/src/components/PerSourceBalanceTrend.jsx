@@ -333,8 +333,8 @@ export default function PerSourceBalanceTrend({
                 {legend.map((item) => (
                   <div key={item.label} className="flex items-center space-x-2">
                     <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: item.color }} aria-hidden="true" />
-                    <span className="text-sm text-gray-700 dark:text-gray-300 font-medium">{item.label}</span>
-                    <span className="text-sm text-gray-500 dark:text-gray-400">• {formatCurrency(Number(item.total || 0))}</span>
+                    <span className="text-sm text-app font-medium">{item.label}</span>
+                    <span className="text-sm text-muted">• {formatCurrency(Number(item.total || 0))}</span>
                   </div>
                 ))}
               </div>
@@ -342,7 +342,7 @@ export default function PerSourceBalanceTrend({
           </div>
         </>
       ) : (
-        <div className="text-center py-8 text-gray-500">{t("noDataAvailable")}</div>
+        <div className="text-center py-8 text-muted">{t("noDataAvailable")}</div>
       )}
     </div>
   );

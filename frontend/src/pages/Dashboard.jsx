@@ -931,7 +931,7 @@ const Dashboard = () => {
           useIcon={true}
         />
       </div>
-      <div className="text-gray-500 dark:text-gray-400 text-base font-medium text-right whitespace-nowrap">
+      <div className="text-muted text-base font-medium text-right whitespace-nowrap">
         {new Date().toLocaleDateString(
           getLocaleString(language),
           { month: "long" },
@@ -1036,7 +1036,7 @@ const Dashboard = () => {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.3 }}
-                className="text-center py-8 text-gray-500"
+                className="text-center py-8 text-muted"
               >
                 {t("noDataAvailable")}
               </motion.div>
@@ -1186,10 +1186,10 @@ const Dashboard = () => {
                                 <td className="align-middle pr-3">
                                   <div className="flex items-center min-w-0">
                                     <span className="inline-block h-2.5 w-2.5 rounded-full mr-3 shrink-0" style={{ backgroundColor: color }} aria-hidden="true" />
-                                    <span className="text-gray-700 dark:text-gray-300 truncate">{name}</span>
+                                    <span className="text-app truncate">{name}</span>
                                   </div>
                                 </td>
-                                <td className="text-right align-middle text-gray-600 dark:text-gray-400 font-medium whitespace-nowrap">
+                                <td className="text-right align-middle text-muted font-medium whitespace-nowrap">
                                   {formatCurrency(amount)}
                                 </td>
                               </tr>
@@ -1201,7 +1201,7 @@ const Dashboard = () => {
                   </div>
                 </>
               ) : (
-                <div className="text-center py-8 text-gray-500">{t("noDataAvailable")}</div>
+                <div className="text-center py-8 text-muted">{t("noDataAvailable")}</div>
               );
             })()}
           </div>
@@ -1249,10 +1249,10 @@ const Dashboard = () => {
                             style={{ backgroundColor: item.color }}
                             aria-hidden="true"
                           />
-                          <span className="text-sm text-gray-700 dark:text-gray-300 font-medium">
+                          <span className="text-sm text-app font-medium">
                             {item.label}
                           </span>
-                          <span className="text-sm text-gray-500 dark:text-gray-400">• {formatCurrency(Number(item.total || 0))}</span>
+                          <span className="text-sm text-muted">• {formatCurrency(Number(item.total || 0))}</span>
                         </div>
                       ))}
                     </div>
@@ -1260,7 +1260,7 @@ const Dashboard = () => {
                 </div>
               </>
             ) : (
-              <div className="text-center py-8 text-gray-500">
+              <div className="text-center py-8 text-muted">
                 {t("noDataAvailable")}
               </div>
             )}
@@ -1316,10 +1316,10 @@ const Dashboard = () => {
                     style={{ backgroundColor: item.color }}
                     aria-hidden="true"
                   />
-                  <span className="text-sm text-gray-700 dark:text-gray-300 font-medium">
+                  <span className="text-sm text-app font-medium">
                     {item.label}
                   </span>
-                  <span className="text-sm text-gray-500 dark:text-gray-400">• {formatCurrency(Number(item.total || 0))}</span>
+                  <span className="text-sm text-muted">• {formatCurrency(Number(item.total || 0))}</span>
                 </div>
               ))}
             </div>
@@ -1327,7 +1327,7 @@ const Dashboard = () => {
         </div>
       </>
           ) : (
-            <div className="text-center py-8 text-gray-500">{t("noDataAvailable")}</div>
+            <div className="text-center py-8 text-muted">{t("noDataAvailable")}</div>
           )}
         </div>
       </div>
@@ -1350,14 +1350,14 @@ const Dashboard = () => {
                 {topExpenses.map((tx) => (
                   <div
                     key={tx.id}
-                    className="border-b border-gray-200 dark:border-gray-700 pb-4 last:border-0 last:pb-0"
+                    className="border-b border-line pb-4 last:border-0 last:pb-0"
                   >
                     <div className="flex justify-between items-start">
                       <div className="flex-1 min-w-0">
-                        <div className="font-medium text-gray-900 dark:text-gray-200 truncate">
+                        <div className="font-medium text-app truncate">
 {tx.description || tx.category_name || tx.category || (t("uncategorized") || "Uncategorized")}
                         </div>
-                        <div className="text-sm text-gray-500 dark:text-gray-400">
+                        <div className="text-sm text-muted">
                           {formatDate(tx.date)}
                         </div>
                         {tx.category_name && (
@@ -1376,37 +1376,37 @@ const Dashboard = () => {
 
               {/* Desktop view - Table */}
               <div className="hidden md:block [&_th]:py-2 [&_td]:py-2">
-                <table className="table w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <table className="table w-full divide-y divide-line">
                   <thead>
                     <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-muted uppercase tracking-wider">
                         {t("date")}
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-muted uppercase tracking-wider">
                         {t("description")}
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-muted uppercase tracking-wider">
                         {t("category")}
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-muted uppercase tracking-wider">
                         {t("amount")}
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                  <tbody className="divide-y divide-line">
                     {topExpenses.map((tx) => (
-                      <tr key={tx.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200">
+                      <tr key={tx.id} className="hover:bg-surface-muted">
+                        <td className="px-4 py-3 whitespace-nowrap text-sm text-app">
                           {formatDate(tx.date)}
                         </td>
-                        <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-200 max-w-xs truncate">
+                        <td className="px-4 py-3 text-sm text-app max-w-xs truncate">
 {tx.description || tx.category_name || tx.category || (t("uncategorized") || "Uncategorized")}
                         </td>
-                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200">
+                        <td className="px-4 py-3 whitespace-nowrap text-sm text-app">
                           {tx.category_name ? (
                             <span className="badge badge-primary">{tx.category_name}</span>
                           ) : (
-                            <span className="text-gray-400">—</span>
+                            <span className="text-muted">—</span>
                           )}
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-red-600 dark:text-red-400">
@@ -1421,7 +1421,7 @@ const Dashboard = () => {
           ) : (
             <div className="text-center py-12">
               <svg
-                className="mx-auto h-12 w-12 text-gray-400"
+                className="mx-auto h-12 w-12 text-muted"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -1434,10 +1434,10 @@ const Dashboard = () => {
                   d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
                 ></path>
               </svg>
-              <h2 className="mt-2 text-sm font-medium text-gray-900 dark:text-gray-200">
+              <h2 className="mt-2 text-sm font-medium text-app">
                 {t("noTransactions")}
               </h2>
-              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+              <p className="mt-1 text-sm text-muted">
                 {t("getStartedAddTransaction")}
               </p>
               <div className="mt-6">
@@ -1483,7 +1483,7 @@ const Dashboard = () => {
               return (
                 <div className="text-center py-12">
                   <svg
-                    className="mx-auto h-12 w-12 text-gray-400"
+                    className="mx-auto h-12 w-12 text-muted"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -1496,10 +1496,10 @@ const Dashboard = () => {
                       d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
                     ></path>
                   </svg>
-                  <h2 className="mt-2 text-sm font-medium text-gray-900 dark:text-gray-200">
+                  <h2 className="mt-2 text-sm font-medium text-app">
                     {t("noTransactions")}
                   </h2>
-                  <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                  <p className="mt-1 text-sm text-muted">
                     {t("getStartedAddTransaction")}
                   </p>
                   <div className="mt-6">
@@ -1527,10 +1527,10 @@ const Dashboard = () => {
             if (displayTransactions.length === 0) {
               return (
                 <div className="text-center py-12">
-                  <h2 className="text-sm font-medium text-gray-900 dark:text-gray-200">
+                  <h2 className="text-sm font-medium text-app">
                     {t("noTransactions")}
                   </h2>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                  <p className="text-sm text-muted">
                     {t("getStartedAddTransaction")}
                   </p>
                 </div>
@@ -1548,14 +1548,14 @@ const Dashboard = () => {
                     {displayTransactions.map((transaction) => (
                       <div
                         key={transaction.id}
-                        className="border-b border-gray-200 dark:border-gray-700 pb-4 last:border-0 last:pb-0"
+                        className="border-b border-line pb-4 last:border-0 last:pb-0"
                       >
                         <div className="flex justify-between items-start">
                           <div className="flex-1 min-w-0">
-                            <div className="font-medium text-gray-900 dark:text-gray-200 truncate">
+                            <div className="font-medium text-app truncate">
 {transaction.description || transaction.category_name || transaction.category || (t("uncategorized") || "Uncategorized")}
                             </div>
-                            <div className="text-sm text-gray-500 dark:text-gray-400">
+                            <div className="text-sm text-muted">
                               {formatDate(transaction.date)}
                             </div>
                             <div className="text-sm">
@@ -1577,36 +1577,36 @@ const Dashboard = () => {
 
                   {/* Desktop view - Table */}
                   <div className="hidden md:block [&_th]:py-2 [&_td]:py-2">
-                    <table className="table w-full divide-y divide-gray-200 dark:divide-gray-700">
+                    <table className="table w-full divide-y divide-line">
                       <thead>
                         <tr>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          <th className="px-4 py-3 text-left text-xs font-medium text-muted uppercase tracking-wider">
                             {t("date")}
                           </th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          <th className="px-4 py-3 text-left text-xs font-medium text-muted uppercase tracking-wider">
                             {t("description")}
                           </th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          <th className="px-4 py-3 text-left text-xs font-medium text-muted uppercase tracking-wider">
                             {t("category")}
                           </th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          <th className="px-4 py-3 text-left text-xs font-medium text-muted uppercase tracking-wider">
                             {t("amount")}
                           </th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                      <tbody className="divide-y divide-line">
                         {displayTransactions.map((transaction) => (
                           <tr
                             key={transaction.id}
-                            className="hover:bg-gray-50 dark:hover:bg-gray-700/50"
+                            className="hover:bg-surface-muted"
                           >
-                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200">
+                            <td className="px-4 py-3 whitespace-nowrap text-sm text-app">
                               {formatDate(transaction.date)}
                             </td>
-                            <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-200 max-w-xs truncate">
+                            <td className="px-4 py-3 text-sm text-app max-w-xs truncate">
 {transaction.description || transaction.category_name || transaction.category || (t("uncategorized") || "Uncategorized")}
                             </td>
-                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200">
+                            <td className="px-4 py-3 whitespace-nowrap text-sm text-app">
                               <span className="badge badge-primary">
                                 {transaction.category_name}
                               </span>

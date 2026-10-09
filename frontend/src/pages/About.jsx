@@ -74,7 +74,7 @@ const About = () => {
             />
             <h1 className="display-1 leading-none">FinX</h1>
           </div>
-          <p className="text-xl text-gray-600 dark:text-gray-400">
+          <p className="text-xl text-muted">
             {getText("aboutTagline", "Modern, cloud-hosted personal finance tracking")}
           </p>
           <div className="flex items-center justify-center gap-3 mt-4 flex-wrap">
@@ -93,10 +93,10 @@ const About = () => {
         {/* Mission Statement */}
         <AnimatedSection delay={0.2}>
           <div className="bg-linear-to-br/srgb from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-2xl p-6 md:p-8 mb-8 border border-blue-100 dark:border-blue-800/30">
-            <h2 className="text-xl font-semibold mb-3 text-gray-900 dark:text-white">
+            <h2 className="text-xl font-semibold mb-3 text-app dark:text-white">
               {getText("aboutMissionTitle", "Your Data, Your Control")}
             </h2>
-            <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
+            <p className="text-app leading-relaxed">
               {getText("aboutMissionText", "FinX is built with privacy in mind. Your financial data is securely hosted in the EU with encryption at rest and in transit. No third-party tracking, no data selling — just a powerful finance tool that respects your privacy.")}
             </p>
           </div>
@@ -104,7 +104,7 @@ const About = () => {
 
         {/* Features Grid */}
         <AnimatedSection delay={0.3}>
-          <h2 className="text-xl font-semibold mb-6 text-gray-900 dark:text-white">
+          <h2 className="text-xl font-semibold mb-6 text-app dark:text-white">
             {getText("aboutFeaturesTitle", "Key Features")}
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
@@ -125,10 +125,10 @@ const About = () => {
                     />
                   </div>
                   <div>
-                    <h3 className="font-medium text-gray-900 dark:text-white mb-1">
+                    <h3 className="font-medium text-app dark:text-white mb-1">
                       {feature.title}
                     </h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                    <p className="text-sm text-muted">
                       {feature.description}
                     </p>
                   </div>
@@ -140,18 +140,18 @@ const About = () => {
 
         {/* Tech Stack */}
         <AnimatedSection delay={0.4}>
-          <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">
+          <h2 className="text-xl font-semibold mb-4 text-app dark:text-white">
             {getText("aboutTechTitle", "Built With")}
           </h2>
           <div className="flex flex-wrap gap-3 mb-8">
             {techStack.map((tech) => (
               <div
                 key={tech.name}
-                className="px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
+                className="px-4 py-2 rounded-lg bg-surface-muted border border-line"
               >
-                <span className="font-medium text-gray-900 dark:text-white">{tech.name}</span>
-                <span className="text-gray-500 dark:text-gray-400 ml-2">•</span>
-                <span className="text-sm text-gray-600 dark:text-gray-400 ml-2">{tech.description}</span>
+                <span className="font-medium text-app dark:text-white">{tech.name}</span>
+                <span className="text-muted ml-2">•</span>
+                <span className="text-sm text-muted ml-2">{tech.description}</span>
               </div>
             ))}
           </div>
@@ -159,7 +159,7 @@ const About = () => {
 
         {/* FAQ Section */}
         <AnimatedSection delay={0.5}>
-          <h2 className="text-xl font-semibold mb-6 text-gray-900 dark:text-white">
+          <h2 className="text-xl font-semibold mb-6 text-app dark:text-white">
             {getText("faqTitle", "Frequently Asked Questions")}
           </h2>
           <div className="space-y-4 mb-8">
@@ -174,13 +174,13 @@ const About = () => {
             ].map((item, i) => (
               <motion.div
                 key={i}
-                className="p-5 rounded-xl bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700"
+                className="p-5 rounded-xl bg-surface border border-line"
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3, delay: 0.05 * i }}
               >
-                <h3 className="font-medium text-gray-900 dark:text-white mb-2">{item.q}</h3>
-                <p className="text-sm text-gray-600 dark:text-gray-400">{item.a}</p>
+                <h3 className="font-medium text-app dark:text-white mb-2">{item.q}</h3>
+                <p className="text-sm text-muted">{item.a}</p>
               </motion.div>
             ))}
           </div>
@@ -190,28 +190,28 @@ const About = () => {
         <AnimatedSection delay={0.6}>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* License Info */}
-            <div className="p-5 rounded-xl bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700">
-              <h3 className="font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+            <div className="p-5 rounded-xl bg-surface border border-line">
+              <h3 className="font-semibold text-app dark:text-white mb-3 flex items-center gap-2">
                 <Icon src="/icons/info.svg" size="sm" className="icon-tint-accent" />
                 {getText("aboutLicenseTitle", "License")}
               </h3>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+              <p className="text-sm text-muted mb-3">
                 {getText("aboutLicenseText", "FinX Pro is a managed service provided by IT-BAER. Your subscription includes secure cloud hosting, automatic updates, and priority support.")}
               </p>
             </div>
 
             {/* GitHub & Community */}
-            <div className="p-5 rounded-xl bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700">
-              <h3 className="font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+            <div className="p-5 rounded-xl bg-surface border border-line">
+              <h3 className="font-semibold text-app dark:text-white mb-3 flex items-center gap-2">
                 <img src="/logos/logo-32.png" alt="" className="w-5 h-5" />
                 {getText("aboutCommunityTitle", "Support & Contact")}
               </h3>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+              <p className="text-sm text-muted mb-3">
                 {getText("aboutCommunityText", "Need help or have feedback? Reach out to our support team. We're here to make your FinX experience great!")}
               </p>
               <a
                 href="mailto:admin@it-baer.net"
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-900 dark:bg-gray-700 text-white text-sm font-medium hover:bg-gray-800 dark:hover:bg-gray-600 transition-colors"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-app text-surface text-sm font-medium hover:bg-app/85 transition-colors"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
@@ -227,25 +227,25 @@ const About = () => {
               href="/legal/privacy"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-sm text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+              className="text-sm text-muted hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
             >
               {t("privacyPolicy") || "Privacy Policy"}
             </a>
-            <span className="text-gray-300 dark:text-gray-600">•</span>
+            <span className="text-muted/60">•</span>
             <a
               href="/legal/terms"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-sm text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+              className="text-sm text-muted hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
             >
               {t("termsOfUse") || "Terms of Use"}
             </a>
-            <span className="text-gray-300 dark:text-gray-600">•</span>
+            <span className="text-muted/60">•</span>
             <a
               href="/legal/imprint"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-sm text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+              className="text-sm text-muted hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
             >
               {t("imprint") || "Imprint"}
             </a>
@@ -254,11 +254,11 @@ const About = () => {
 
         {/* Version Info */}
         <AnimatedSection delay={0.7}>
-          <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700 text-center">
-            <p className="text-sm text-gray-500 dark:text-gray-400">
+          <div className="mt-8 pt-6 border-t border-line text-center">
+            <p className="text-sm text-muted">
               {getText("aboutVersion", "Version")} <span className="font-mono font-medium">{APP_VERSION}</span>
             </p>
-            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+            <p className="text-xs text-muted mt-1">
               {getText("aboutCreatedBy", "Created by IT-BAER")}
             </p>
           </div>

@@ -367,7 +367,7 @@ const EditTransaction = () => {
                 </label>
                 <div className="grid grid-cols-2 gap-4">
                   <label
-                    className={`flex items-center justify-center p-4 rounded-lg border cursor-pointer transition-all duration-200 ${formData.type === "income" ? "border-green-500 bg-green-50 dark:bg-green-900/20" : "border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500"}`}
+                    className={`flex items-center justify-center p-4 rounded-lg border cursor-pointer transition-all duration-200 ${formData.type === "income" ? "border-green-500 bg-green-50 dark:bg-green-900/20" : "border-line hover:border-muted"}`}
                   >
                     <input
                       type="radio"
@@ -396,7 +396,7 @@ const EditTransaction = () => {
                     </div>
                   </label>
                   <label
-                    className={`flex items-center justify-center p-4 rounded-lg border cursor-pointer transition-all duration-200 ${formData.type === "expense" ? "border-red-500 bg-red-50 dark:bg-red-900/20" : "border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500"}`}
+                    className={`flex items-center justify-center p-4 rounded-lg border cursor-pointer transition-all duration-200 ${formData.type === "expense" ? "border-red-500 bg-red-50 dark:bg-red-900/20" : "border-line hover:border-muted"}`}
                   >
                     <input
                       type="radio"
@@ -482,7 +482,7 @@ const EditTransaction = () => {
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <span className="text-gray-500 sm:text-sm">
+                    <span className="text-muted sm:text-sm">
                       {t("currencySymbol")}
                     </span>
                   </div>
@@ -608,13 +608,13 @@ const EditTransaction = () => {
                         isRecurring: e.target.checked,
                       })
                     }
-                    className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded-sm focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                    className="w-4 h-4 text-blue-600 bg-surface-muted border-line rounded-sm focus:ring-blue-500 dark:focus:ring-blue-600 ring-offset-surface focus:ring-2"
                   />
-                  <span className="text-sm font-medium text-gray-900 dark:text-gray-300">
+                  <span className="text-sm font-medium text-app">
                     {t("makeRecurring")}
                   </span>
                 </label>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 ml-7">
+                <p className="text-xs text-muted mt-1 ml-7">
                   {t("makeRecurringDescription")}
                 </p>
               </div>
@@ -624,7 +624,7 @@ const EditTransaction = () => {
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: "auto" }}
                   exit={{ opacity: 0, height: 0 }}
-                  className="space-y-4 mt-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg"
+                  className="space-y-4 mt-4 p-4 bg-surface-muted rounded-lg"
                 >
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="form-group">
@@ -656,7 +656,7 @@ const EditTransaction = () => {
                         required
                         placeholder="1"
                       />
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      <p className="text-xs text-muted mt-1">
                         {t("recurrenceIntervalDescription", {
                           interval: formData.recurrence_interval,
                           type: t(formData.recurrence_type),
@@ -676,7 +676,7 @@ const EditTransaction = () => {
                         onChange={handleChange}
                         min={formData.date}
                       />
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      <p className="text-xs text-muted mt-1">
                         {t("endDateDescription")}
                       </p>
                     </div>
@@ -692,7 +692,7 @@ const EditTransaction = () => {
                         min="1"
                         placeholder={t("unlimited")}
                       />
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      <p className="text-xs text-muted mt-1">
                         {t("maxOccurrencesDescription")}
                       </p>
                     </div>

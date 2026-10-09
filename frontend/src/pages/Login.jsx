@@ -149,7 +149,7 @@ const Login = () => {
                     id="remember-me"
                     name="remember-me"
                     type="checkbox"
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded-sm"
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-line rounded-sm"
                     checked={rememberMe}
                     onChange={(e) => setRememberMe(e.target.checked)}
                     whileTap={{ scale: 0.95 }}
@@ -157,7 +157,7 @@ const Login = () => {
                   />
                   <label
                     htmlFor="remember-me"
-                    className="ml-2 block text-sm text-gray-700 dark:text-gray-300"
+                    className="ml-2 block text-sm text-app"
                   >
                     {t("rememberMe")}
                   </label>
@@ -196,7 +196,7 @@ const Login = () => {
             </form>
           </div>
           <div className="card-footer text-center">
-            <p className="text-gray-600 dark:text-gray-400">
+            <p className="text-muted">
               {t("dontHaveAccount")}{" "}
               <motion.span
                 whileHover={{ scale: 1.05 }}

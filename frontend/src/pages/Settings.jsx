@@ -279,8 +279,7 @@ const Settings = () => {
                 <h2 className="text-xl font-semibold mb-6">{t("general")}</h2>
 
                 <div
-                  className={`flex items-center justify-between p-4 rounded-lg mb-4 ${dark ? "bg-gray-700/30" : "bg-gray-50"
-                    }`}
+                  className={`flex items-center justify-between p-4 rounded-lg mb-4 bg-surface-muted`}
                 >
                   <div className="flex items-center flex-1">
                     <div className="mr-3">
@@ -312,8 +311,7 @@ const Settings = () => {
                 </div>
 
                 <div
-                  className={`flex items-center justify-between p-4 rounded-lg ${dark ? "bg-gray-700/30" : "bg-gray-50"
-                    }`}
+                  className={`flex items-center justify-between p-4 rounded-lg bg-surface-muted`}
                 >
                   <div className="flex items-center">
                     <div className="mr-3">
@@ -349,8 +347,7 @@ const Settings = () => {
                 </div>
 
                 <div
-                  className={`flex items-start justify-between p-4 rounded-lg mt-4 ${dark ? "bg-gray-700/30" : "bg-gray-50"
-                    }`}
+                  className={`flex items-start justify-between p-4 rounded-lg mt-4 bg-surface-muted`}
                 >
                   <div className="flex items-start flex-1 min-w-0">
                     <div className="mr-3 mt-0.5 shrink-0">
@@ -364,14 +361,14 @@ const Settings = () => {
                     </div>
                     <div className="min-w-0">
                       <div className="font-medium">{t("incomeTracking")}</div>
-                      <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-tight">
+                      <div className="text-xs text-muted mt-1 leading-tight">
                         {t("incomeTrackingDescription")}
                       </div>
                     </div>
                   </div>
                   <motion.button
                     onClick={toggleIncomeTracking}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-hidden shrink-0 ${isIncomeTrackingDisabled ? "bg-gray-300" : "bg-blue-600"
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-hidden shrink-0 ${isIncomeTrackingDisabled ? "bg-surface-muted" : "bg-blue-600"
                       }`}
                     whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.95 }}
@@ -389,8 +386,7 @@ const Settings = () => {
                 </div>
 
                 <div
-                  className={`p-4 rounded-lg mt-4 ${dark ? "bg-gray-700/30" : "bg-gray-50"
-                    }`}
+                  className={`p-4 rounded-lg mt-4 bg-surface-muted`}
                 >
                   <div className="flex items-center mb-4">
                     <div className="mr-3">
@@ -402,19 +398,19 @@ const Settings = () => {
                   </div>
 
                   <div className="grid grid-cols-2 gap-4 mb-4">
-                    <div className="rounded-lg bg-white/80 dark:bg-gray-800/70 shadow-soft p-3 text-center">
-                      <div className="text-[10px] uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1">
+                    <div className="rounded-lg bg-surface/80 shadow-soft p-3 text-center">
+                      <div className="text-[10px] uppercase tracking-wide text-muted mb-1">
                         {t("sharedWithOthers")}
                       </div>
-                      <div className="text-xl font-bold text-gray-900 dark:text-gray-100">
+                      <div className="text-xl font-bold text-app">
                         {myPermissions.length}
                       </div>
                     </div>
-                    <div className="rounded-lg bg-white/80 dark:bg-gray-800/70 shadow-soft p-3 text-center">
-                      <div className="text-[10px] uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1">
+                    <div className="rounded-lg bg-surface/80 shadow-soft p-3 text-center">
+                      <div className="text-[10px] uppercase tracking-wide text-muted mb-1">
                         {t("sharedWithMe")}
                       </div>
-                      <div className="text-xl font-bold text-gray-900 dark:text-gray-100">
+                      <div className="text-xl font-bold text-app">
                         {sharedWithMe.length}
                       </div>
                     </div>
@@ -434,8 +430,7 @@ const Settings = () => {
 
                 {/* Account Actions Section */}
                 <div
-                  className={`p-4 rounded-lg mt-4 ${dark ? "bg-gray-700/30" : "bg-gray-50"
-                    }`}
+                  className={`p-4 rounded-lg mt-4 bg-surface-muted`}
                 >
                   <div className="flex flex-col space-y-4">
                     {/* Title Row */}
@@ -557,7 +552,7 @@ const Settings = () => {
                   </div>
                 </form>
 
-                <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
+                <div className="border-t border-line pt-6">
                   <h3 className="text-lg font-semibold mb-6">
                     {t("changePassword")}
                   </h3>
@@ -639,8 +634,8 @@ const Settings = () => {
                   <motion.div
                     className={`group w-full rounded-lg p-5 transition relative duration-300 cursor-pointer 
                   hover:translate-y-[3px] opacity-80 hover:opacity-100 ${dark
-                        ? "bg-gray-800 hover:shadow-[0_-8px_0px_0px_#546e7a]"
-                        : "bg-gray-100 hover:shadow-[0_-8px_0px_0px_#d1d5db]"
+                        ? "bg-surface-muted hover:shadow-[0_-8px_0px_0px_#546e7a]"
+                        : "bg-surface-muted hover:shadow-[0_-8px_0px_0px_#d1d5db]"
                       }`}
                     onClick={() => {
                       // Remove haptic feedback - only notifications and "+" button should have haptic
@@ -650,14 +645,12 @@ const Settings = () => {
                     transition={motionTheme.springs.press}
                   >
                     <p
-                      className={`text-lg font-bold ${dark ? "text-gray-100" : "text-gray-800"
-                        }`}
+                      className={`text-lg font-bold text-app`}
                     >
                       {t("userManagement")}
                     </p>
                     <p
-                      className={`text-sm mt-1.5 max-w-[75%] ${dark ? "text-gray-300" : "text-gray-600"
-                        }`}
+                      className={`text-sm mt-1.5 max-w-[75%] text-muted`}
                     >
                       {t("manageUsersDescription")}
                     </p>
@@ -677,8 +670,8 @@ const Settings = () => {
                   <motion.div
                     className={`group w-full rounded-lg p-5 transition relative duration-300 cursor-pointer 
                   hover:translate-y-[3px] opacity-80 hover:opacity-100 ${dark
-                        ? "bg-gray-800 hover:shadow-[0_-8px_0px_0px_#546e7a]"
-                        : "bg-gray-100 hover:shadow-[0_-8px_0px_0px_#d1d5db]"
+                        ? "bg-surface-muted hover:shadow-[0_-8px_0px_0px_#546e7a]"
+                        : "bg-surface-muted hover:shadow-[0_-8px_0px_0px_#d1d5db]"
                       }`}
                     onClick={() => {
                       // Remove haptic feedback - only notifications and "+" button should have haptic
@@ -688,14 +681,12 @@ const Settings = () => {
                     transition={motionTheme.springs.press}
                   >
                     <p
-                      className={`text-lg font-bold ${dark ? "text-gray-100" : "text-gray-800"
-                        }`}
+                      className={`text-lg font-bold text-app`}
                     >
                       {t("adminTaxonomy")}
                     </p>
                     <p
-                      className={`text-xs mt-1.5 max-w-[75%] ${dark ? "text-gray-300" : "text-gray-600"
-                        }`}
+                      className={`text-xs mt-1.5 max-w-[75%] text-muted`}
                     >
                       {t("adminTaxonomyDescription")}
                     </p>
@@ -715,22 +706,20 @@ const Settings = () => {
                   <motion.div
                     className={`group w-full rounded-lg p-5 transition relative duration-300 cursor-pointer 
                   hover:translate-y-[3px] opacity-80 hover:opacity-100 ${dark
-                        ? "bg-gray-800 hover:shadow-[0_-8px_0px_0px_#546e7a]"
-                        : "bg-gray-100 hover:shadow-[0_-8px_0px_0px_#d1d5db]"
+                        ? "bg-surface-muted hover:shadow-[0_-8px_0px_0px_#546e7a]"
+                        : "bg-surface-muted hover:shadow-[0_-8px_0px_0px_#d1d5db]"
                       }`}
                     onClick={() => setShowRemoveSampleDataModal(true)}
                     whileTap={{ scale: 0.95 }}
                     transition={motionTheme.springs.press}
                   >
                     <p
-                      className={`text-lg font-bold ${dark ? "text-gray-100" : "text-gray-800"
-                        }`}
+                      className={`text-lg font-bold text-app`}
                     >
                       {t("removeSampleData") || "Remove Sample Data"}
                     </p>
                     <p
-                      className={`text-xs mt-1.5 max-w-[75%] ${dark ? "text-gray-300" : "text-gray-600"
-                        }`}
+                      className={`text-xs mt-1.5 max-w-[75%] text-muted`}
                     >
                       {t("removeSampleDataDescription") ||
                         "Clean database from sample transactions and categories"}
@@ -766,7 +755,7 @@ const SimpleToggle = ({ checked, onChange, disabled = false }) => {
   return (
     <button
       type="button"
-      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-hidden focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 ${checked ? "bg-cyan-600" : "bg-gray-200 dark:bg-gray-700"
+      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-hidden focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 ${checked ? "bg-cyan-600" : "bg-surface-muted"
         } ${disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
       onClick={() => !disabled && onChange(!checked)}
       disabled={disabled}

@@ -113,16 +113,16 @@ export default function SafeToSpendCard({ className = "" }) {
               </svg>
             </div>
             <div className="min-w-0">
-              <p className="text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-400 mb-0.5">
+              <p className="text-xs font-medium uppercase tracking-wider text-muted mb-0.5">
                 {t("safeToSpend") || "Safe to Spend"}
               </p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white insight-value">
+              <p className="text-2xl font-bold text-app dark:text-white insight-value">
                 {formatCurrency(Math.abs(safeToSpend))}
                 {safeToSpend < 0 && (
                   <span className="text-xs font-normal text-red-500 ml-1.5">({t("overBudget") || "over"})</span>
                 )}
               </p>
-              <p className="text-xs text-gray-400 dark:text-gray-400 mt-0.5">
+              <p className="text-xs text-muted mt-0.5">
                 {formatCurrency(dailyBudget)}/{t("perDay") || "day"} · {daysRemaining} {t("daysLeft") || "days left"}
               </p>
             </div>
@@ -131,18 +131,18 @@ export default function SafeToSpendCard({ className = "" }) {
           <div className="shrink-0 relative flex items-center justify-center" style={{ width: 68, height: 68 }}>
             <svg width="68" height="68" className="transform -rotate-90">
               <circle cx="34" cy="34" r={ringRadius} fill="none" strokeWidth="5"
-                className="stroke-gray-200 dark:stroke-gray-700" />
+                className="stroke-line" />
               <circle cx="34" cy="34" r={ringRadius} fill="none" strokeWidth="5"
                 stroke={status.ringColor} strokeLinecap="round"
                 strokeDasharray={circumference} strokeDashoffset={ringOffset}
                 className="progress-ring-circle" />
             </svg>
-            <span className="absolute text-xs font-bold text-gray-600 dark:text-gray-300">{spentPercent}%</span>
+            <span className="absolute text-xs font-bold text-muted">{spentPercent}%</span>
           </div>
         </div>
 
         <div className="mt-3">
-          <div className="flex justify-between text-[11px] text-gray-400 dark:text-gray-400 mb-1.5">
+          <div className="flex justify-between text-[11px] text-muted mb-1.5">
             <span>{t("spent") || "Spent"}: {formatCurrency(monthlyExpenses)}</span>
             <span>{t("income") || "Income"}: {formatCurrency(monthlyIncome)}</span>
           </div>
@@ -152,7 +152,7 @@ export default function SafeToSpendCard({ className = "" }) {
         </div>
 
         {upcomingRecurringExpenses > 0 && (
-          <p className="text-[11px] text-gray-400 dark:text-gray-400 mt-1.5">
+          <p className="text-[11px] text-muted mt-1.5">
             {t("upcomingRecurring") || "Upcoming bills"}: {formatCurrency(upcomingRecurringExpenses)} {t("thisMonth") || "this month"}
           </p>
         )}

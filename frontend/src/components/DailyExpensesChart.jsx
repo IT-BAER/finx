@@ -123,7 +123,7 @@ export default function DailyExpensesChart({ startDate, endDate, timeRange }) {
           formatValue={formatCurrency}
         />
       ) : (
-        <div className="text-center py-8 text-gray-500">{t("noDataAvailable")}</div>
+        <div className="text-center py-8 text-muted">{t("noDataAvailable")}</div>
       )}
     </div>
   );

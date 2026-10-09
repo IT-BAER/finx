@@ -274,7 +274,7 @@ const ShareData = () => {
                   required
                 />
                 {resolving && (
-                  <p className="text-sm text-gray-500 mt-1">{t("loading")}...</p>
+                  <p className="text-sm text-muted mt-1">{t("loading")}...</p>
                 )}
                 {resolvedUser && (
                   <p className="text-sm text-green-600 dark:text-green-400 mt-1">
@@ -324,7 +324,7 @@ const ShareData = () => {
                     />
                     <label htmlFor="read" className="flex-1">
                       <div className="font-medium">{t("read")}</div>
-                      <div className="text-sm text-gray-600 dark:text-gray-400">
+                      <div className="text-sm text-muted">
                         {t("readPermissionDescription")}
                       </div>
                     </label>
@@ -342,7 +342,7 @@ const ShareData = () => {
                     />
                     <label htmlFor="read_write" className="flex-1">
                       <div className="font-medium">{t("readWrite")}</div>
-                      <div className="text-sm text-gray-600 dark:text-gray-400">
+                      <div className="text-sm text-muted">
                         {t("readWritePermissionDescription")}
                       </div>
                     </label>
@@ -382,7 +382,7 @@ const ShareData = () => {
                 {t("sharedWithOthers")}
               </h2>
               {myPerms.length === 0 ? (
-                <div className="text-sm text-gray-500 dark:text-gray-400">
+                <div className="text-sm text-muted">
                   {t("noSharingPermissions")}
                 </div>
               ) : (
@@ -390,7 +390,7 @@ const ShareData = () => {
                   {myPerms.map((perm) => (
                     <li
                       key={perm.id}
-                      className="flex items-center justify-between p-3 rounded-md bg-white/80 dark:bg-gray-800/80 shadow-soft"
+                      className="flex items-center justify-between p-3 rounded-md bg-surface/80 shadow-soft"
                     >
                       <div className="min-w-0">
                         <div className="font-medium truncate">
@@ -398,7 +398,7 @@ const ShareData = () => {
                             perm.shared_with_email ||
                             perm.shared_with_user_id}
                         </div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400">
+                        <div className="text-xs text-muted">
                           {t("permissions")}:{" "}
                           {perm.permission_level === "read"
                             ? t("read")
@@ -466,7 +466,7 @@ const ShareData = () => {
                 {t("sharedWithMe")}
               </h2>
               {sharedToMe.length === 0 ? (
-                <div className="text-sm text-gray-500 dark:text-gray-400">
+                <div className="text-sm text-muted">
                   {t("noDataSharedWithYou")}
                 </div>
               ) : (
@@ -474,7 +474,7 @@ const ShareData = () => {
                   {sharedToMe.map((perm) => (
                     <li
                       key={perm.id}
-                      className="flex items-start justify-between p-3 rounded-md bg-white/80 dark:bg-gray-800/80 shadow-soft"
+                      className="flex items-start justify-between p-3 rounded-md bg-surface/80 shadow-soft"
                     >
                       <div className="min-w-0">
                         <div className="font-medium truncate">
@@ -482,7 +482,7 @@ const ShareData = () => {
                             perm.owner_email ||
                             perm.owner_user_id}
                         </div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400">
+                        <div className="text-xs text-muted">
                           {t("permissions")}:{" "}
                           {perm.permission_level === "read"
                             ? t("read")

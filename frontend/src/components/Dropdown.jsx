@@ -110,7 +110,7 @@ const Dropdown = ({
   return (
     <div className="relative" ref={dropdownRef}>
       {label && (
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+        <label className="block text-sm font-medium text-app mb-1">
           {label}
         </label>
       )}
@@ -126,7 +126,7 @@ const Dropdown = ({
         whileTap={{ scale: 0.98 }}
         transition={{ type: "spring", stiffness: 500, damping: 30 }}
       >
-        <span className={value ? "" : "text-gray-400 dark:text-gray-500"}>
+        <span className={value ? "" : "text-muted"}>
           {options.find((o) => o.value === value)?.label || placeholder}
         </span>
         <motion.svg

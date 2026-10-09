@@ -16,7 +16,7 @@ const SimpleToggle = ({ checked, onChange, disabled = false }) => {
     <button
       type="button"
       className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-hidden focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 ${
-        checked ? "bg-cyan-600" : "bg-gray-200 dark:bg-gray-700"
+        checked ? "bg-cyan-600" : "bg-surface-muted"
       } ${disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
       onClick={() => !disabled && onChange(!checked)}
       disabled={disabled}
@@ -259,7 +259,7 @@ const UserManagement = () => {
               {users.map((user) => (
                 <div
                   key={user.id}
-                  className="flex items-center gap-4 p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer"
+                  className="flex items-center gap-4 p-3 rounded-lg border border-line hover:bg-surface-muted transition-colors cursor-pointer"
                   onClick={() => {
                     setEditingUser({
                       id: user.id,
@@ -273,7 +273,7 @@ const UserManagement = () => {
                 >
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="font-medium text-gray-900 dark:text-gray-100 truncate">
+                      <span className="font-medium text-app truncate">
                         {user.first_name && user.last_name
                           ? `${user.first_name} ${user.last_name}`
                           : user.first_name || user.last_name || "-"}
@@ -284,11 +284,11 @@ const UserManagement = () => {
                         </span>
                       )}
                     </div>
-                    <div className="text-sm text-gray-500 dark:text-gray-400 truncate">
+                    <div className="text-sm text-muted truncate">
                       {user.email}
                     </div>
                   </div>
-                  <div className="text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap hidden md:block">
+                  <div className="text-sm text-muted whitespace-nowrap hidden md:block">
                     {new Date(user.created_at).toLocaleDateString(t("locale"), {
                       day: "2-digit",
                       month: "2-digit",

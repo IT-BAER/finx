@@ -110,12 +110,12 @@ export default function SpendingPaceCard({ className = "" }) {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
               </svg>
             </div>
-            <p className="text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-400 mt-0.5">
+            <p className="text-xs font-medium uppercase tracking-wider text-muted mt-0.5">
               {t("spendingPace") || "Spending Pace"}
             </p>
           </div>
           <div className="flex-1 flex items-center justify-center">
-            <p className="text-sm text-gray-400 dark:text-gray-500">No previous month data</p>
+            <p className="text-sm text-muted">No previous month data</p>
           </div>
         </div>
       </Card>
@@ -155,7 +155,7 @@ export default function SpendingPaceCard({ className = "" }) {
             </svg>
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-400">
+            <p className="text-xs font-medium uppercase tracking-wider text-muted">
               {t("spendingPace") || "Spending Pace"}
             </p>
             <p className={`text-sm font-semibold ${config.textColor}`}>
@@ -164,8 +164,8 @@ export default function SpendingPaceCard({ className = "" }) {
           </div>
           {/* Projected badge */}
           <div className="shrink-0 text-right">
-            <p className="text-[11px] text-gray-400 dark:text-gray-400">{t("projected") || "Projected"}</p>
-            <p className="text-sm font-bold text-gray-900 dark:text-white insight-value">
+            <p className="text-[11px] text-muted">{t("projected") || "Projected"}</p>
+            <p className="text-sm font-bold text-app dark:text-white insight-value">
               {formatCurrency(data.projectedTotal)}
             </p>
           </div>
@@ -175,8 +175,8 @@ export default function SpendingPaceCard({ className = "" }) {
         <div className="space-y-3">
           <div>
             <div className="flex justify-between text-[11px] mb-1.5">
-              <span className="text-gray-500 dark:text-gray-400">{t("thisMonth") || "This month"}</span>
-              <span className="font-medium text-gray-700 dark:text-gray-300">{formatCurrency(data.currentDailyAvg)}/{t("perDay") || "day"}</span>
+              <span className="text-muted">{t("thisMonth") || "This month"}</span>
+              <span className="font-medium text-app">{formatCurrency(data.currentDailyAvg)}/{t("perDay") || "day"}</span>
             </div>
             <div className="progress-bar-track" style={{ height: "10px" }}>
               <div className="progress-bar-fill" style={{ width: `${currentBarPct}%`, background: config.gradient }} />
@@ -184,8 +184,8 @@ export default function SpendingPaceCard({ className = "" }) {
           </div>
           <div>
             <div className="flex justify-between text-[11px] mb-1.5">
-              <span className="text-gray-500 dark:text-gray-400">{t("lastMonth") || "Last month"}</span>
-              <span className="font-medium text-gray-700 dark:text-gray-300">{formatCurrency(data.prevDailyAvg)}/{t("perDay") || "day"}</span>
+              <span className="text-muted">{t("lastMonth") || "Last month"}</span>
+              <span className="font-medium text-app">{formatCurrency(data.prevDailyAvg)}/{t("perDay") || "day"}</span>
             </div>
             <div className="progress-bar-track" style={{ height: "10px" }}>
               <div className="progress-bar-fill" style={{ width: `${prevBarPct}%`, background: "rgba(156,163,175,0.4)" }} />

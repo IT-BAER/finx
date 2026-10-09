@@ -337,7 +337,7 @@
   --surface: #ffffff; /* white */
   --surface-muted: #f3f4f6; /* gray-100 */
   --border: #e5e7eb; /* gray-200 */
-  --muted: #6b7280; /* gray-500 */
+  --muted: #69707e; /* gray-500, darkened to reach 4.5:1 on surface-muted */
   --accent: #3b6bd4; /* blue-600 muted */
   --accent-600: #3258c0; /* blue-700 muted */
   --accent-400: #6da1e8; /* blue-400 muted */

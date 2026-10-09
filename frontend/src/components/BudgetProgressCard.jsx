@@ -94,10 +94,10 @@ export default function BudgetProgressCard({ className = "" }) {
               </svg>
             </div>
             <div>
-              <p className="text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500">
+              <p className="text-xs font-medium uppercase tracking-wider text-muted">
                 {t("budgetProgress") || "Budget Progress"}
               </p>
-              <p className="text-[11px] text-gray-400 dark:text-gray-500">
+              <p className="text-[11px] text-muted">
                 {formatCurrency(totalSpent)} / {formatCurrency(totalBudget)} ({totalPercent}%)
               </p>
             </div>
@@ -120,7 +120,7 @@ export default function BudgetProgressCard({ className = "" }) {
                 <div className="flex items-center justify-between mb-1">
                   <div className="flex items-center gap-2 min-w-0">
                     <span className="w-2 h-2 rounded-full shrink-0" style={{ background: colors.dot }} />
-                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300 truncate">
+                    <span className="text-sm font-medium text-app truncate">
                       {budget.name}
                     </span>
                   </div>

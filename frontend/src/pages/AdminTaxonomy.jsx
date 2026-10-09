@@ -287,7 +287,7 @@ const AdminTaxonomy = () => {
 
       <AnimatedSection delay={0.2}>
   {/* Tabs */}
-  <div className="flex space-x-1 mb-6 bg-gray-100 dark:bg-gray-800 rounded-lg">
+  <div className="flex space-x-1 mb-6 bg-surface-muted rounded-lg">
         <motion.button
           onClick={() => {
             // Remove haptic feedback - only notifications and "+" button should have haptic
@@ -295,8 +295,8 @@ const AdminTaxonomy = () => {
           }}
           className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all duration-200 ${
             activeTab === "categories"
-              ? "bg-white dark:bg-gray-700 shadow-xs text-blue-600 dark:text-blue-400"
-              : "text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
+              ? "bg-surface shadow-xs text-blue-600 dark:text-blue-400"
+              : "text-app hover:bg-surface-muted"
           }`}
           whileTap={{ scale: 0.98 }}
           transition={{ type: "spring", stiffness: 400, damping: 30 }}
@@ -310,8 +310,8 @@ const AdminTaxonomy = () => {
           }}
           className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all duration-200 ${
             activeTab === "sources"
-              ? "bg-white dark:bg-gray-700 shadow-xs text-blue-600 dark:text-blue-400"
-              : "text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
+              ? "bg-surface shadow-xs text-blue-600 dark:text-blue-400"
+              : "text-app hover:bg-surface-muted"
           }`}
           whileTap={{ scale: 0.98 }}
           transition={{ type: "spring", stiffness: 400, damping: 30 }}
@@ -325,8 +325,8 @@ const AdminTaxonomy = () => {
           }}
           className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all duration-200 ${
             activeTab === "targets"
-              ? "bg-white dark:bg-gray-700 shadow-xs text-blue-600 dark:text-blue-400"
-              : "text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
+              ? "bg-surface shadow-xs text-blue-600 dark:text-blue-400"
+              : "text-app hover:bg-surface-muted"
           }`}
           whileTap={{ scale: 0.98 }}
           transition={{ type: "spring", stiffness: 400, damping: 30 }}
@@ -348,13 +348,13 @@ const AdminTaxonomy = () => {
                     getItems().length > 0
                   }
                   onChange={handleSelectAll}
-                  className="rounded-sm border-gray-300 text-blue-600 focus:ring-blue-500"
+                  className="rounded-sm border-line text-blue-600 focus:ring-blue-500"
                 />
-                <span className="text-sm text-gray-600 dark:text-gray-400">
+                <span className="text-sm text-muted">
                   {t("selectAll")}
                 </span>
               </label>
-              <span className="text-sm text-gray-500 dark:text-gray-400">
+              <span className="text-sm text-muted">
                 {selectedItems.length} {t("selected")}
               </span>
             </div>
@@ -379,7 +379,7 @@ const AdminTaxonomy = () => {
                     className={`flex items-center p-3 rounded-lg border transition-colors cursor-pointer ${
                       selectedItems.includes(item.id)
                         ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
-                        : "border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
+                        : "border-line hover:bg-surface-muted"
                     }`}
                     onClick={() => handleSelect(item.id)}
                   >
@@ -387,19 +387,19 @@ const AdminTaxonomy = () => {
                       type="checkbox"
                       checked={selectedItems.includes(item.id)}
                       onChange={() => handleSelect(item.id)}
-                      className="rounded-sm border-gray-300 text-blue-600 focus:ring-blue-500 mr-3"
+                      className="rounded-sm border-line text-blue-600 focus:ring-blue-500 mr-3"
                     />
                     <div className="flex-1">
-                      <div className="font-medium text-gray-900 dark:text-gray-100">
+                      <div className="font-medium text-app">
                         {item.name}
                       </div>
                       {item.description && (
-                        <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                        <div className="text-sm text-muted mt-1">
                           {item.description}
                         </div>
                       )}
                     </div>
-                    <div className="text-sm text-gray-500 dark:text-gray-400 text-right">
+                    <div className="text-sm text-muted text-right">
                       {(() => {
                         // Support both new admin shape (user_id, first_name, last_name, email)
                         // and legacy shape (owner_user_id, owner_display)
@@ -419,7 +419,7 @@ const AdminTaxonomy = () => {
                         return `#${uid}`;
                       })()}
                       {Number(item.user_id ?? item.owner_user_id ?? 0) !== 0 && (item.email || item.owner_display) && (
-                        <div className="text-[11px] text-gray-500 dark:text-gray-500">
+                        <div className="text-[11px] text-muted">
                           {item.email || item.owner_display}
                         </div>
                       )}
@@ -432,7 +432,7 @@ const AdminTaxonomy = () => {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ duration: 0.3, delay: 0.1 }}
-                    className="text-center py-6 text-gray-500 dark:text-gray-400"
+                    className="text-center py-6 text-muted"
                   >
                     {t("noItemsFound")}
                   </motion.div>
@@ -523,7 +523,7 @@ const AdminTaxonomy = () => {
             >
               <h3 className="text-lg font-semibold mb-4">{t("renameItem")}</h3>
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <label className="block text-sm font-medium text-app mb-2">
                   {t("newName")}
                 </label>
                 <input
@@ -582,7 +582,7 @@ const AdminTaxonomy = () => {
                 {t("consolidateItems")}
               </h3>
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <label className="block text-sm font-medium text-app mb-2">
                   {t("consolidateFrom")}
                 </label>
                 <select
@@ -602,7 +602,7 @@ const AdminTaxonomy = () => {
                 </select>
               </div>
               <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <label className="block text-sm font-medium text-app mb-2">
                   {t("consolidateTo")}
                 </label>
                 <select
