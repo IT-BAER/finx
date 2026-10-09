@@ -27,7 +27,7 @@ const Footer = () => {
             rel="noopener noreferrer"
           >
             <img
-              src="/logos/logo-32.png?v=2"
+              src="/logos/logo-32.png?v=3"
               alt="FinX Logo"
               className="h-6 w-auto"
               width="24"

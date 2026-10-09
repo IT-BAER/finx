@@ -203,7 +203,7 @@ const About = () => {
             {/* GitHub & Community */}
             <div className="p-5 rounded-xl bg-surface border border-line">
               <h3 className="font-semibold text-app dark:text-white mb-3 flex items-center gap-2">
-                <img src="/logos/logo-32.png?v=2" alt="" className="w-5 h-5" />
+                <img src="/logos/logo-32.png?v=3" alt="" className="w-5 h-5" />
                 {getText("aboutCommunityTitle", "Support & Contact")}
               </h3>
               <p className="text-sm text-muted mb-3">
