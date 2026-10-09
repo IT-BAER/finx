@@ -5,3 +5,12 @@
   --radius-2: 12px;
   --radius-full: 9999px;
 }
+
+/* Tone inks for text and icons: the raw palette tones miss 4.5:1 on some cards,
+   35% of the text colour pulls them to AA in every palette (tests/kpiTiles.test.js). */
+:root {
+  --accent-ink: color-mix(in srgb, var(--accent) 65%, var(--text));
+  --ok-ink: color-mix(in srgb, var(--success) 65%, var(--text));
+  --warn-ink: color-mix(in srgb, var(--warning) 65%, var(--text));
+  --bad-ink: color-mix(in srgb, var(--danger) 65%, var(--text));
+}

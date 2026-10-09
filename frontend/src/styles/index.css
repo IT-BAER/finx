@@ -289,6 +289,10 @@
   --color-ok: var(--success);
   --color-warn: var(--warning);
   --color-bad: var(--danger);
+  --color-accent-ink: var(--accent-ink);
+  --color-ok-ink: var(--ok-ink);
+  --color-warn-ink: var(--warn-ink);
+  --color-bad-ink: var(--bad-ink);
 }
 
 /*
@@ -526,6 +530,10 @@
 }
 .theme-accent-border {
   border-color: var(--accent);
+}
+/* Soft tone chip: the tone lives in currentColor, one rule serves every tone. */
+.tone-chip {
+  background-color: color-mix(in srgb, currentColor 12%, transparent);
 }
 
 /* Themed header/footer/background wrappers */

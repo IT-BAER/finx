@@ -8,6 +8,7 @@ import Modal from "../components/Modal.jsx";
 import Input from "../components/Input.jsx";
 import Icon from "../components/Icon.jsx";
 import { AnimatedPage, AnimatedSection } from "../components/AnimatedPage";
+import { KpiTiles, COIN, BARS, TARGET, FLAG } from "../components/SummaryCards.jsx";
 import {
   useGoals,
   useGoalsSummary,
@@ -44,6 +45,24 @@ const GOAL_COLORS = [
   "#14b8a6", // teal
   "#6366f1", // indigo
 ];
+
+// Summary strip, outside Goals so a state change does not remount it and replay the animation
+const GoalsSummary = ({ summary, t, formatCurrency }) => {
+  if (!summary) return null;
+
+  const totalProgress = summary.total_target > 0
+    ? ((summary.total_saved / summary.total_target) * 100).toFixed(1)
+    : 0;
+
+  const tiles = [
+    { key: "saved", label: t("totalSaved") || "Total Saved", value: formatCurrency(parseFloat(summary.total_saved) || 0), tone: "accent", icon: COIN },
+    { key: "target", label: t("totalTarget") || "Total Target", value: formatCurrency(parseFloat(summary.total_target) || 0), tone: "neutral", icon: TARGET },
+    { key: "active", label: t("activeGoals") || "Active Goals", value: summary.active_goals || 0, tone: "neutral", icon: FLAG },
+    { key: "progress", label: t("overallProgress") || "Overall Progress", value: `${totalProgress}%`, tone: parseFloat(totalProgress) >= 50 ? "ok" : "accent", icon: BARS },
+  ];
+
+  return <KpiTiles tiles={tiles} />;
+};
 
 const Goals = () => {
   const { t } = useTranslation();
@@ -423,44 +442,6 @@ const Goals = () => {
     );
   };
 
-  // Render summary cards
-  const SummaryCards = () => {
-    if (!summary) return null;
-
-    const totalProgress = summary.total_target > 0
-      ? ((summary.total_saved / summary.total_target) * 100).toFixed(1)
-      : 0;
-
-    return (
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <div className={`card p-4 ${dark ? "bg-cyan-900/20" : "bg-cyan-50"}`}>
-          <p className="text-sm text-muted">{t("totalSaved") || "Total Saved"}</p>
-          <p className="text-xl font-bold text-cyan-600 dark:text-cyan-400">
-            {formatCurrency(parseFloat(summary.total_saved) || 0)}
-          </p>
-        </div>
-        <div className={`card p-4 ${dark ? "bg-blue-900/20" : "bg-blue-50"}`}>
-          <p className="text-sm text-muted">{t("totalTarget") || "Total Target"}</p>
-          <p className="text-xl font-bold text-blue-600 dark:text-blue-400">
-            {formatCurrency(parseFloat(summary.total_target) || 0)}
-          </p>
-        </div>
-        <div className={`card p-4 ${dark ? "bg-green-900/20" : "bg-green-50"}`}>
-          <p className="text-sm text-muted">{t("activeGoals") || "Active Goals"}</p>
-          <p className="text-xl font-bold text-green-600 dark:text-green-400">
-            {summary.active_goals || 0}
-          </p>
-        </div>
-        <div className={`card p-4 ${dark ? "bg-purple-900/20" : "bg-purple-50"}`}>
-          <p className="text-sm text-muted">{t("overallProgress") || "Overall Progress"}</p>
-          <p className="text-xl font-bold text-purple-600 dark:text-purple-400">
-            {totalProgress}%
-          </p>
-        </div>
-      </div>
-    );
-  };
-
   // Render goal form fields (inline to avoid focus issues)
   const renderGoalFormFields = () => (
     <>
@@ -570,7 +551,7 @@ const Goals = () => {
 
       <AnimatedSection delay={0.2}>
       {/* Summary cards */}
-      <SummaryCards />
+      <GoalsSummary summary={summary} t={t} formatCurrency={formatCurrency} />
 
       {/* Filter toggle */}
       <div className="flex items-center justify-between mb-4">
