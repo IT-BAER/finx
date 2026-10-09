@@ -588,7 +588,7 @@ const AdminTaxonomy = () => {
                 <select
                   value={consolidateFrom}
                   onChange={(e) => setConsolidateFrom(e.target.value)}
-                  className="form-input w-full"
+                  className="form-select w-full"
                 >
                   <option value="">{t("selectItem")}</option>
                   {selectedItems.map((id) => {
@@ -608,7 +608,7 @@ const AdminTaxonomy = () => {
                 <select
                   value={consolidateTo}
                   onChange={(e) => setConsolidateTo(e.target.value)}
-                  className="form-input w-full"
+                  className="form-select w-full"
                 >
                   <option value="">{t("selectItem")}</option>
                   {getAvailableOptions().map((item) => (

@@ -823,7 +823,7 @@ footer {
    - Single-layer shadow with reduced blur & opacity
 /* Button base — flat, no hover animations */
 .btn {
-  @apply inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-blue-500;
+  @apply inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-accent;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
 }
 
@@ -1087,22 +1087,31 @@ footer {
 
 /* Generic form-control (used by ShareData and other components) */
 .form-control {
-  @apply w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg 
-         focus:ring-2 focus:ring-blue-500 focus:border-blue-500 
-         bg-white dark:bg-gray-700 
-         text-gray-900 dark:text-white 
+  @apply w-full px-4 py-2 border border-line rounded-lg
+         focus:ring-2 focus:ring-accent focus:border-accent
+         bg-surface text-app
          placeholder-gray-400 dark:placeholder-gray-500
          transition-colors duration-200;
   box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
 }
 
 .form-input {
-  @apply w-full px-4 h-[40px] border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white transition-colors duration-200;
+  @apply w-full px-4 h-[40px] border border-line rounded-lg focus:ring-2 focus:ring-accent focus:border-accent bg-surface text-app transition-colors duration-200;
   box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
 }
 
 .form-input-with-prefix {
   @apply pl-10 h-[40px];
+}
+
+.form-select {
+  @apply w-full px-4 h-[40px] border border-line rounded-lg bg-surface text-app
+         focus:ring-2 focus:ring-accent focus:border-accent transition-colors duration-200
+         appearance-none bg-no-repeat;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-position: right 0.75rem center;
+  background-size: 1rem;
+  padding-right: 2.25rem;
 }
 
 /* Mobile Form Styles */
@@ -1116,7 +1125,7 @@ footer {
   }
 
   .form-input {
-    @apply w-full px-4 h-[45px] border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200;
+    @apply w-full px-4 h-[45px] border border-line rounded-lg bg-surface text-app focus:ring-2 focus:ring-accent focus:border-accent transition-colors duration-200;
   }
 
   .form-input-with-prefix {
@@ -1579,12 +1588,12 @@ body {
 :root[data-theme="wednesday"] .border-blue-500 { border-color: var(--accent) !important; }
 
 .dark .form-input {
-  @apply border-gray-600 text-white;
+  @apply border-line text-app;
   background-color: rgb(55 65 81 / 0.3);
 }
 
 .dark .form-input:focus {
-  @apply ring-2 ring-blue-500/50;
+  @apply ring-2 ring-accent/50;
 }
 
 .dark .table-header {

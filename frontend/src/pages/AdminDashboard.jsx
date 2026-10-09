@@ -713,7 +713,7 @@ const AdminDashboard = () => {
               setAuditFilter(e.target.value);
               setAuditOffset(0);
             }}
-            className="rounded-lg border border-line bg-surface text-sm px-3 py-2 text-app"
+            className="form-select w-auto text-sm"
           >
             <option value="">{t("allActions")}</option>
             {actionTypes.map((a) => (

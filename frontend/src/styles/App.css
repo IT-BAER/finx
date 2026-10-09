@@ -221,11 +221,6 @@
   position: relative;
 }
 
-.dark .form-input {
-  border-color: #718096;
-  color: #e2e8f0;
-}
-
 /* Responsive adjustments */
 @media (max-width: 768px) {
   .main-content {
