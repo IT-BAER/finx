@@ -869,6 +869,7 @@ footer {
   font-weight: 600;
   font-size: 14px;
   cursor: pointer;
+  transition: all 120ms ease-out;
   overflow: visible;
   outline: none;
 }
@@ -889,12 +890,13 @@ footer {
   outline-offset: 2px;
 }
 
-/* Neon button hover — keep subtle color change but no glow animations */
+/* Hover — background fades to transparent (default / danger) */
 .neon-btn-primary:hover:not(:disabled),
 .neon-btn-primary:focus:not(:disabled) {
   background-color: transparent;
 }
 
+/* Hover — ghost/secondary: border appears + subtle background */
 .neon-btn-secondary:hover:not(:disabled),
 .neon-btn-secondary:focus:not(:disabled) {
   border-color: color-mix(in srgb, var(--muted) 30%, transparent);
@@ -921,17 +923,28 @@ footer {
     var(--neon, var(--accent)),
     transparent
   );
+  transition: all 150ms ease-out;
 }
 
+/* Top glow — hidden at rest, appears on hover */
 .neon-btn-glow-top {
   top: 0;
   bottom: 0;
   opacity: 0;
 }
 
+.neon-btn:hover:not(:disabled) .neon-btn-glow-top {
+  opacity: 1;
+}
+
+/* Bottom glow — visible at rest (opacity 1), dims on hover */
 .neon-btn-glow-bottom {
   bottom: -1px;
   opacity: 1;
+}
+
+.neon-btn:hover:not(:disabled) .neon-btn-glow-bottom {
+  opacity: 0.3;
 }
 
 /* —— Content layout —— */
