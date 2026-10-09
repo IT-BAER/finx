@@ -289,9 +289,13 @@ CREATE INDEX IF NOT EXISTS idx_categories_name_lower ON categories (LOWER(name))
 CREATE INDEX IF NOT EXISTS idx_sources_name_lower ON sources (LOWER(name));
 CREATE INDEX IF NOT EXISTS idx_targets_name_lower ON targets (LOWER(name));
 
--- Index for goals by user
-CREATE INDEX IF NOT EXISTS idx_goals_user ON goals(user_id);
-CREATE INDEX IF NOT EXISTS idx_goals_user_deadline ON goals(user_id, deadline);
+-- Index for goals by user (goals table may not exist until migration 009)
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'goals') THEN
+    CREATE INDEX IF NOT EXISTS idx_goals_user ON goals(user_id);
+    CREATE INDEX IF NOT EXISTS idx_goals_user_deadline ON goals(user_id, deadline);
+  END IF;
+END $$;
 
 -- Indexes for recurring transactions
 CREATE INDEX IF NOT EXISTS idx_recurring_user ON recurring_transactions(user_id);
