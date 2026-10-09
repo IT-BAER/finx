@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## [v1.4.3] - 2026-10-09
+
+### Fixed
+- **A fresh install stopped in `init.sql`.** It created the goals indexes before the `goals` table exists (migration 009), so a new database failed with "relation goals does not exist". The indexes are now created only when the table exists; migration 009 adds them on fresh installs. Existing installs are not affected because they skip `init.sql`.
+
 ## [v1.4.2] - 2026-10-09
 
 ### Fixed
