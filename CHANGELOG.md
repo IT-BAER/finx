@@ -2,6 +2,21 @@
 
 All notable changes to this project are documented in this file.
 
+## [v1.5.0] - 2026-10-09
+
+### Changed
+- **Web frontend moved to Tailwind CSS 4.** Before the redesign, computed-style snapshots of 13 routes (desktop and phone, light and dark) showed no visible difference from the Tailwind 3 build.
+- **Redesign aligned with myfinx.app.** Semantic colour tokens and a three-step corner radius scale; one KPI tile for Dashboard, Reports and Goals; one shape for inputs, selects and buttons, with the floating label notched into the input border; the neon button hover is back. Tone colours on KPI tiles and category chips meet WCAG AA contrast in all 5 palettes, light and dark. Cards stay flat (no glass).
+- **One colour per category.** A category keeps the same colour in the donut, the legend and its chip on Dashboard and Reports.
+- **Charts.** Donut charts are now SVG, with a centre label on hover and whole-percent shares that add up to 100 %. Bar and area axes use round tick values (0/50/100/150). Area charts fill to the zero line, and flat balance lines get extra headroom. Stacked bars round only their outer corners, and a small non-zero slice stays visible (at least 3 px).
+- **New F logo** for the favicon and app icons. The favicon is a white F on the navy tile, so it is readable on dark browser tab bars.
+
+### Removed
+- chart.js, react-chartjs-2 and chartjs-plugin-datalabels (no remaining user), the unused Montserrat font load (no external font request) and the unused AmbientBackground component.
+
+### Security
+- Dependabot alerts #171-#190 fixed. Backend: proxy-addr 2.0.8, compression 1.8.2, morgan 1.12.1, moment 2.31.0, brace-expansion 1.1.21/2.1.7, express ^4.22.3 (body-parser 1.20.8, qs 6.16.0). Frontend: source-map-js 1.2.2, brace-expansion 2.1.7, postcss-selector-parser ^7.1.6. `npm audit --omit=dev` reports 0 vulnerabilities in both packages.
+
 ## [v1.4.3] - 2026-10-09
 
 ### Fixed
