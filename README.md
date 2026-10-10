@@ -6,11 +6,12 @@
 [![Express](https://img.shields.io/badge/Backend-Express-informational.svg)](https://expressjs.com/)
 [![React](https://img.shields.io/badge/Frontend-React%20%2B%20Vite-61DAFB.svg)](https://react.dev/)
 [![PostgreSQL](https://img.shields.io/badge/DB-PostgreSQL-336791.svg)](https://www.postgresql.org/)
-![Open Source](https://img.shields.io/badge/Open%20Source-Free-brightgreen.svg)
+[![License](https://img.shields.io/badge/License-Apache%202.0%20%2B%20Commons%20Clause-blue.svg)](LICENSE)
+![Source available](https://img.shields.io/badge/Source-available-brightgreen.svg)
 
 Self-hosted personal finance tracker: a React web frontend with a Node.js/PostgreSQL backend, plus a native Android app.
 
-Your database, your server, your transactions. FinX has no cloud component; everything runs on hardware you control.
+Your database, your server, your transactions. A self-hosted FinX needs no cloud service; everything runs on hardware you control. If you prefer not to run a server, optional managed hosting is available at [myfinx.app](https://myfinx.app).
 
 <a href="https://play.google.com/store/apps/details?id=com.baer.finx" target="_blank"><img src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" alt="Get it on Google Play" height="80"></a>
 
