@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## [v1.5.1] - 2026-11-06
+
+### Fixed
+- **Pausing a recurring transaction stops it.** The server had no pause flag, so a paused rule kept creating transactions. A paused rule now creates nothing and is left out of upcoming bills. On resume, the dates missed during the pause are skipped (they count toward the maximum number of occurrences) instead of being created at once. Migration 023 adds the `is_active` column.
+
 ## [v1.5.0] - 2026-10-09
 
 ### Changed
