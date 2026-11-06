@@ -1,4 +1,5 @@
 const RecurringTransaction = require("../models/RecurringTransaction");
+const { skipMissedOccurrences } = require("../services/recurringProcessor");
 const { getSharingPermissionMeta, getUsersSharedWithOwner, getAccessibleUserIds } = require("../utils/access");
 const logger = require("../utils/logger");
 
@@ -385,6 +386,7 @@ const updateRecurringTransaction = async (req, res) => {
 
     // Normalize updates to avoid passing empty strings to DATE columns
     const normalized = { ...updatesRaw };
+    delete normalized.occurrences_created; // server-owned; only the resume branch below sets it
     if (Object.prototype.hasOwnProperty.call(updatesRaw, "start_date")) {
       const nd = normalizeDateInput(updatesRaw.start_date);
       if (nd) normalized.start_date = nd;
@@ -428,6 +430,14 @@ const updateRecurringTransaction = async (req, res) => {
       const l = String(updatesRaw.reminder_lead || "").toLowerCase().trim();
       if (["day", "week", "month"].includes(l)) normalized.reminder_lead = l;
       else delete normalized.reminder_lead;
+    }
+
+    if (Object.prototype.hasOwnProperty.call(updatesRaw, "is_active")) {
+      const active = updatesRaw.is_active === true || updatesRaw.is_active === "true";
+      normalized.is_active = active;
+      if (active && recurringTransaction.is_active === false) {
+        normalized.occurrences_created = skipMissedOccurrences({ ...recurringTransaction, ...normalized });
+      }
     }
 
     // VALIDATION: If category_id is being updated
@@ -642,6 +652,7 @@ const getUpcomingBills = async (req, res) => {
     const upcomingBills = [];
     
     for (const rt of recurringTransactions) {
+      if (rt.is_active === false) continue;
       const nextOccurrence = calculateNextOccurrence(rt, new Date(now.getTime() - 24 * 60 * 60 * 1000)); // From yesterday to include today
       
       if (nextOccurrence && nextOccurrence >= now && nextOccurrence <= endWindow) {

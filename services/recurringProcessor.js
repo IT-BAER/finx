@@ -47,6 +47,22 @@ function computeNextDate(
   return next;
 }
 
+/**
+ * occurrences_created after resuming a paused rule: dates before today count as done,
+ * so the processor does not backfill the pause (capped at max_occurrences).
+ */
+function skipMissedOccurrences(rule, now = new Date()) {
+  const today = new Date(now);
+  today.setUTCHours(0, 0, 0, 0);
+  let occ = Number.isInteger(rule.occurrences_created) ? rule.occurrences_created : 0;
+  const max = rule.max_occurrences || Infinity;
+  const interval = rule.recurrence_interval || 1;
+  while (occ < max && computeNextDate(rule.start_date, occ, rule.recurrence_type, interval) < today) {
+    occ++;
+  }
+  return occ;
+}
+
 async function processRecurringJobs(app = null) {
   console.log("Recurring processor: scanning for due recurring entries...");
 
@@ -66,6 +82,7 @@ async function processRecurringJobs(app = null) {
       `SELECT *
        FROM recurring_transactions
        WHERE start_date <= CURRENT_DATE
+         AND is_active = TRUE
          AND (end_date IS NULL OR end_date >= CURRENT_DATE)
          AND (max_occurrences IS NULL OR occurrences_created < max_occurrences)
        ORDER BY id
@@ -219,4 +236,5 @@ async function processRecurringJobs(app = null) {
 module.exports = {
   processRecurringJobs,
   computeNextDate,
+  skipMissedOccurrences,
 };

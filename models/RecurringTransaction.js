@@ -125,6 +125,7 @@ class RecurringTransaction {
       "max_occurrences",
       "reminder_enabled",
       "reminder_lead",
+      "is_active",
     ];
 
     const sets = [];
@@ -189,6 +190,8 @@ class RecurringTransaction {
       "max_occurrences",
       "reminder_enabled",
       "reminder_lead",
+      "is_active",
+      "occurrences_created",
     ];
 
     const sets = [];
