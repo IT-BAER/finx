@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## [v1.5.2] - 2026-11-08
+
+### Security
+- Dependabot alerts #191-#203 fixed. Backend: zod 4.6.7, body-parser 1.20.9, qs 6.16.2; minimatch 11.0.5 for the ESLint toolchain through an npm override, because typescript-eslint does not accept a fixed version yet. Frontend: zod 4.6.7, vite 6.4.5, follow-redirects 1.16.3. `npm audit` reports 0 vulnerabilities in both packages, dev dependencies included.
+
 ## [v1.5.1] - 2026-11-06
 
 ### Fixed
