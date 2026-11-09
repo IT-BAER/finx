@@ -38,11 +38,11 @@ FinX includes an opt-in **Location Reminders** feature (available to Premium sub
 **How it is used:**
 - Your device's GPS/network position is compared against geofences around nearby points of interest (e.g. supermarkets, pharmacies, gas stations)
 - When you enter or leave such a location, the app may send you a local notification reminding you to record a transaction
-- Points of interest are fetched from the **OpenStreetMap Overpass API** (openstreetmap.org) based on your approximate area — only a bounding box around your current position is sent to this service, not your exact coordinates
-- Location data is **processed entirely on your device** and is **never stored on FinX servers** or shared with third parties beyond the Overpass API lookup described above
+- Points of interest are fetched from the **OpenStreetMap Overpass API**: your current position (latitude and longitude) and a search radius are sent to a public Overpass server
+- Apart from that lookup, location data is **processed on your device** and is **never stored on FinX servers** or shared with other third parties
 
 **This feature is:**
-- **Disabled by default** — you must explicitly enable it in Settings → Location Reminders
+- **Disabled by default** — you must explicitly enable it in Settings → Location Reminders or in the first-run setup, after an in-app notice that explains the location use
 - **Opt-in and revocable** — you can disable it at any time in Settings; revoking location permission in your device settings also stops all location access immediately
 - **Premium-only** — available to Premium subscribers only
 
@@ -83,7 +83,7 @@ The only third parties that ever receive your data are the limited, purpose-spec
 
 ### OpenStreetMap Overpass API (Location Reminders only)
 
-When Location Reminders are enabled, FinX queries the **OpenStreetMap Overpass API** to find points of interest (stores, restaurants, etc.) near your current area. A bounding box around your approximate position is sent as a query parameter. No account information, device identifiers, or precise GPS coordinates are transmitted. OpenStreetMap data is made available under the [Open Database License (ODbL)](https://www.openstreetmap.org/copyright).
+When Location Reminders are enabled, FinX queries the **OpenStreetMap Overpass API** to find points of interest (stores, restaurants, etc.) near your current area. Your current position (latitude and longitude) and a search radius are sent in the request to a public Overpass server (overpass-api.de; if it fails, overpass.kumi.systems, overpass.private.coffee or maps.mail.ru). No account information or device identifiers are transmitted. OpenStreetMap data is made available under the [Open Database License (ODbL)](https://www.openstreetmap.org/copyright).
 
 ### Subscription Management (RevenueCat)
 
