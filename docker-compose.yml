@@ -59,6 +59,8 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile.frontend
+      additional_contexts:
+        root: .
     container_name: finx-frontend
     restart: unless-stopped
     ports:

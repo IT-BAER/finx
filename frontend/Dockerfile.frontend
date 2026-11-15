@@ -2,7 +2,9 @@
 FROM node:20-alpine AS build
 WORKDIR /app
 COPY package*.json ./
-COPY ../package.json /
+# vite.config.js reads the app version from the repo root package.json; compose passes the
+# repo root as the named context "root" (plain build: --build-context root=.).
+COPY --from=root package.json /package.json
 RUN npm ci
 COPY . .
 RUN npm run build
